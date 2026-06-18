@@ -5,35 +5,43 @@ This project is a web application that allows community members to list tools, r
 
 ## Resources
 -   [Google Drive Project Folder](https://drive.google.com/drive/folders/0AAv4SV03KLfVUk9PVA)
+## Prerequisites
+- Download and install Docker Desktop from the [Docker website](https://www.docker.com/get-started/)
+
 ## Local Backend Setup
 Follow these steps to run the backend API locally on your machine.
 
-Navigate to the server directory:
-```Bash
-cd server
-```
-Create and activate the virtual environment.
+Navigate to the project root directory.
 
-macOS / Linux (bash):
+For the first setup, or after modifying requirements.txt or Dockerfile use:
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
+docker-compose up --build
 ```
-Windows (bash):
-```bash
-python -m venv .venv && source ".venv/Scripts/activate"
-```
-Install dependencies:
-```Bash
-pip install -r requirements.txt
-```
-The project uses a `.env` file.
-Create a personal .env file using the provided template ".env.example"
 
-Run the development server:
-```Bash
-uvicorn app.main:app --reload --port 5000
+For a normal start:
+```bash
+docker-compose up
 ```
-The server will start locally at: http://127.0.0.1:5000
+
+## Database Migrations
+Alembic is used to manage database schema versions.
+
+Before making or applying migrations, run the docker container.
+
+To update your database to the latest vesion, run:
+```bash
+docker-compose exec web alembic upgrade head
+```
+
+When you modify SQLAlchemy models, import a new moodel in server/app/models/__init__.py and create a new migration:
+```bash
+docker-compose exec web alembic revision --autogenerate -m "description of changes"
+```
+
+To undo the very last database migration that was applied use:
+```bash
+docker-compose exec web alembic downgrade -1
+```
 
 ## API Specifications
-Open http://127.0.0.1:5000/docs
+Open [localhost:5000/docs](http://localhost:5000/docs)

@@ -9,9 +9,11 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 from app.schemas import UserRegisterSchema, UserLoginSchema, TokenResponse
-from app.database import USER_DB
 
 load_dotenv()
+
+USER_DB = {}
+
 
 router = APIRouter(
     prefix="/api/auth",
