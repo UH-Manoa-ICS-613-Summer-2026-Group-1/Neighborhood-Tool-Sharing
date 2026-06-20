@@ -1,17 +1,28 @@
-import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import Enum as SAEnum, Text, DateTime, func, UUID, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, Text, DateTime, func, UUID, String, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
-class UserRole(str, enum.Enum):
-    USER = "USER"
-    ADMIN = "ADMIN"
+class UserRole(Base):
+    __tablename__ = "user_roles"
 
-class UserStatus(str, enum.Enum):
-    ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    users: Mapped[list["User"]] = relationship("User", back_populates="role")
+
+class UserStatus(Base):
+    __tablename__ = "user_statuses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    users: Mapped[list["User"]] = relationship("User", back_populates="status")
 
 class User(Base):
     __tablename__ = "users"
@@ -26,18 +37,23 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)   
-    status: Mapped[UserStatus] = mapped_column(
-        SAEnum(UserStatus, native_enum=False),
-        default=UserStatus.ACTIVE,
-        nullable=False
-    )
-    role: Mapped[UserRole] = mapped_column(
-        SAEnum(UserRole, native_enum=False),
-        default=UserRole.USER,
-        nullable=False
-    )
+
+    # Foreign Key for Photo (0 or 1 photo, One-to-One / Optional)
+    # photo_id: Mapped[uuid.UUID | None] = mapped_column(
+    #     UUID(as_uuid=True), 
+    #     ForeignKey("photos.id"), 
+    #     unique=True, 
+    #     nullable=True
+    # )
+    
+    status_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_statuses.id"), nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("user_roles.id"), nullable=False)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime, 
         server_default=func.now(), 
         nullable=False
     )
+
+    role: Mapped["UserRole"] = relationship("UserRole", back_populates="users")
+    status: Mapped["UserStatus"] = relationship("UserStatus", back_populates="users")
