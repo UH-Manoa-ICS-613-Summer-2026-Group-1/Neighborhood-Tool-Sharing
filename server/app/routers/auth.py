@@ -1,21 +1,30 @@
 import os
 import jwt
-
-from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
-from app.auth_helpers import get_password_hash, verify_password, create_access_token, get_current_user
-from app.schemas.auth import UserRegisterSchema, UserLoginSchema, TokenResponse
+from app.database import get_db
+from app.models.user import User
+
+from app.utils.auth_helpers import get_password_hash, verify_password, create_access_token
+from app.utils.dependencies import get_current_user
 from app.blocklist import TOKEN_BLOCKLIST
+
+from app.schemas.auth import (
+    UserRegisterRequest,
+    UserLoginRequest,
+    TokenResponse,
+    MessageResponse,
+    ProtectedProfileResponse,
+    DetailError
+)
 
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 ALGORITHM = "HS256"
-
-USER_DB = {}
 
 router = APIRouter(
     prefix="/api/auth",
@@ -24,63 +33,77 @@ router = APIRouter(
 
 security_scheme = HTTPBearer()
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegisterSchema):
-    if user_data.email in USER_DB:
+@router.post("/register",
+             status_code=status.HTTP_201_CREATED,
+             response_model=MessageResponse,
+             responses={400: {"model": DetailError}})
+def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
+    # Check if user already exists in the database
+    user = db.query(User).filter(User.email == user_data.email).first()
+    if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is already registered"
+            detail="Email is already registered."
         )
-    # password_validation() can be added here
     
     hashed_password = get_password_hash(user_data.password)
-    USER_DB[user_data.email] = {
-        "email": user_data.email,
-        "hashed_password": hashed_password
-    }
-    return {"message": "User registered successfully!"}
+    new_user = User(
+        email=user_data.email,
+        password=hashed_password,
+        name=user_data.email.split("@")[0], # Temporary name
+        status_id=1,                        # 'Active' 
+        role_id=1                           # 'User'
+    )
+    
+    db.add(new_user)
+    db.commit()
+    
+    return {"message": "User registered successfully."}
 
-
-@router.post("/login", response_model=TokenResponse)
-def login(credentials: UserLoginSchema):
-    user = USER_DB.get(credentials.email)
-    if not user or not verify_password(credentials.password, user["hashed_password"]):
+@router.post("/login", 
+             response_model=TokenResponse,
+             responses={401: {"model": DetailError}})
+def login(credentials: UserLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == credentials.email).first()
+    
+    if not user or not verify_password(credentials.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Invalid email or password."
         )
     
-    # Generate JWT containing the user's email address as the "subject" (sub)
-    token = create_access_token(data={"sub": user["email"]})
+    # Generate JWT containing the user's email address as the "sub"
+    token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
-
-@router.post("/logout")
+@router.post("/logout", 
+             response_model=MessageResponse,
+             responses={401: {"model": DetailError}})
 def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
     token = credentials.credentials
     try:
-        # Decode the token to jti
         payload = jwt.decode(
             token, 
             SECRET_KEY, 
             algorithms=[ALGORITHM], 
-            options={"verify_exp": False} # do not check if the token is expired
+            options={"verify_exp": False} # Do not check if the token is expired
         )
 
         jti = payload.get("jti")
-        
-        # Add it to the blocklist so it cannot be used again
         TOKEN_BLOCKLIST.add(jti)
         return {"message": "Successfully logged out."}
         
     except jwt.PyJWTError:
         raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, 
-        detail="Invalid token provided for logout.")
-        
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid token provided for logout."
+        )
+
 # A test route
-@router.get("/protected-profile")
-def get_profile(current_user: dict = Depends(get_current_user)):
+@router.get("/protected-profile", 
+            response_model=ProtectedProfileResponse,
+            responses={401: {"model": DetailError}})
+def get_profile(current_user: User = Depends(get_current_user)):
     """
     This route is locked! Only users passing a valid JWT can see it.
     """
