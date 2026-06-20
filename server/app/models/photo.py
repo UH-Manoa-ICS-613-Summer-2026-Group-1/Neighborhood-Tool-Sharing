@@ -2,9 +2,12 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Text, DateTime, func, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING
 
 from app.database import Base
-from app.models.user import User
+
+if TYPE_CHECKING:
+    from .user import User
 
 class Photo(Base):
     __tablename__ = "photos"

@@ -2,8 +2,12 @@ import uuid
 from datetime import datetime
 from sqlalchemy import ForeignKey, Text, DateTime, func, UUID, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING
+
 from app.database import Base
-from server.app.models.photo import Photo
+
+if TYPE_CHECKING:
+    from .photo import Photo
 
 class UserRole(Base):
     __tablename__ = "user_roles"
