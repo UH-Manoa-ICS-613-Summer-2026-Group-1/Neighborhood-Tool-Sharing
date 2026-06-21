@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole, UserStatus
 
 from app.utils.auth_helpers import get_password_hash, verify_password, create_access_token
 from app.utils.dependencies import get_current_user
@@ -46,13 +46,17 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
             detail="Email is already registered."
         )
     
+    # Get role and status
+    default_role = db.query(UserRole).filter(UserRole.code == "USER").first()
+    default_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
         password=hashed_password,
         name=user_data.email.split("@")[0], # Temporary name
-        status_id=1,                        # 'Active' 
-        role_id=1                           # 'User'
+        status=default_status,              # ACTIVE status
+        role=default_role                   # USER role
     )
     
     db.add(new_user)
