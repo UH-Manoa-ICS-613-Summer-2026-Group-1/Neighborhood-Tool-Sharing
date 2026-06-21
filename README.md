@@ -35,5 +35,7 @@ uvicorn app.main:app --reload --port 5000
 ```
 The server will start locally at: http://127.0.0.1:5000
 
+To stop the server, press `Ctrl + C` in the same terminal.
+
 ## API Specifications
 Open http://127.0.0.1:5000/docs
