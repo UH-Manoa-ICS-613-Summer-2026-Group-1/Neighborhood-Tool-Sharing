@@ -13,7 +13,7 @@ Follow these steps to run the backend API locally on your machine.
 
 Navigate to the project root directory.
 
-For the first setup, or after modifying requirements.txt or Dockerfile use:
+For the first setup, or after modifying requirements.txt or Dockerfile start docker container using:
 ```bash
 docker-compose up --build
 ```
@@ -22,11 +22,24 @@ For a normal start:
 ```bash
 docker-compose up
 ```
+These commands will start a server in your terminal.
+
+To stop the server press `Ctrl + C` in the termial. 
+
+## Backend Tests
+
+Run docker container and use the following command in separate terminal to start pytest:
+
+```bash
+docker-compose exec web pytest
+```
 
 ## Database Migrations
 Alembic is used to manage database schema versions.
 
 Before making or applying migrations, run the docker container.
+
+Open a new terminal and follow next instructions to manage migrations.
 
 To update your database to the latest vesion, run:
 ```bash

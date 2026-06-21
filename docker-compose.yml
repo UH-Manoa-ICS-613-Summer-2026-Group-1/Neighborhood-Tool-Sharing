@@ -10,7 +10,15 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
-
+  test_db:
+      image: postgres:18.4
+      container_name: tool_share_test_db
+      environment:
+        POSTGRES_USER: ${DB_USER}
+        POSTGRES_PASSWORD: ${DB_PASSWORD}
+        POSTGRES_DB: test_db
+      ports:
+        - "5434:5432"
   web:
     build: 
       context: ./server
@@ -23,8 +31,10 @@ services:
       - "5000:5000"
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - TEST_DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@test_db:5432/test_db
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
+      - test_db
 volumes:
   postgres_data:

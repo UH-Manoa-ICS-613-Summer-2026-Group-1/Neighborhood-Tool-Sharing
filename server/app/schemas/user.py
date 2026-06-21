@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 # RESPONSE SCHEMAS
 
@@ -8,15 +8,14 @@ class PhotoResponse(BaseModel):
     id: uuid.UUID
     url: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class RoleStatusResponse(BaseModel):
     code: str
     display_name: str
-
-    class Config:
-        from_attributes = True
+    description: str | None = None
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -29,5 +28,4 @@ class UserResponse(BaseModel):
     role: RoleStatusResponse
     status: RoleStatusResponse
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
