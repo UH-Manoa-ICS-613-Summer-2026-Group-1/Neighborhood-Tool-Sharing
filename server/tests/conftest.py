@@ -9,6 +9,7 @@ from app.main import app
 from app.database import Base, get_db
 from app.models.user import User, UserRole, UserStatus
 from app.utils.auth_helpers import get_password_hash
+from app.utils.seeder import run_lookup_seeds
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
@@ -30,30 +31,14 @@ def db_session():
         session.close()
 
 @pytest.fixture()
-def seed_lookups(db_session):
+def seed_lookups_tables(db_session):
     """
     Seeds all static reference lookup tables.
     """
-    # Seed user roles
-    db_session.execute(text("""
-        INSERT INTO user_roles (id, code, display_name, description) VALUES 
-        (1, 'USER', 'Member', 'Default application access'),
-        (2, 'ADMIN', 'Administrator', 'Full system control')
-        ON CONFLICT (id) DO NOTHING;
-    """))
+    run_lookup_seeds(db_session)
     
-    # Seed user statuses
-    db_session.execute(text("""
-        INSERT INTO user_statuses (id, code, display_name, description) VALUES 
-        (1, 'ACTIVE', 'Active','Active user account that have access to all system funcionality'),
-        (2, 'SUSPENDED', 'Suspended','Suspended user account that restricted to access certain system functionality')
-        ON CONFLICT (id) DO NOTHING;
-    """))
-    
-    db_session.commit()
-
 @pytest.fixture()
-def client(db_session, seed_lookups):
+def client(db_session, seed_lookups_tables):
     """
     Overrides the standard get_db dependency with our test session.
     """

@@ -24,13 +24,16 @@ class UserRegisterRequest(BaseModel):
             raise ValueError("Password must contain at least one lowercase letter.")
         if not re.search(r"[0-9]", value):
             raise ValueError("Password must contain at least one number.")
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_+-=]", value):
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_+=-]", value):
             raise ValueError("Password must contain at least one special character.")
         return value
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(
+        ...,
+        examples=["Mysecurepassword1!"]
+    )
 
 # RESPONSE SCHEMAS
 

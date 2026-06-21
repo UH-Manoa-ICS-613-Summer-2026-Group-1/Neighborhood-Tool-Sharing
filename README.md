@@ -9,6 +9,9 @@ This project is a web application that allows community members to list tools, r
 - Download and install Docker Desktop from the [Docker website](https://www.docker.com/get-started/)
 
 ## Local Backend Setup
+
+The project uses '.env' file. Create your personal '.env' file using the provided template '.env.example'
+
 Follow these steps to run the backend API locally on your machine.
 
 Navigate to the project root directory.
@@ -26,22 +29,16 @@ These commands will start a server in your terminal.
 
 To stop the server press `Ctrl + C` in the termial. 
 
-## Backend Tests
-
-Run docker container and use the following command in separate terminal to start pytest:
-
-```bash
-docker-compose exec web pytest
-```
-
 ## Database Migrations
-Alembic is used to manage database schema versions.
+Alembic is used to manage database versions.
+
+Initially, you need to create tables in the database by applying migraion.
 
 Before making or applying migrations, run the docker container.
 
 Open a new terminal and follow next instructions to manage migrations.
 
-To update your database to the latest vesion, run:
+To apply the latest version of migration, run:
 ```bash
 docker-compose exec web alembic upgrade head
 ```
@@ -54,6 +51,22 @@ docker-compose exec web alembic revision --autogenerate -m "description of chang
 To undo the very last database migration that was applied use:
 ```bash
 docker-compose exec web alembic downgrade -1
+```
+
+## Seed Data
+
+Run docker container and use the following command in separate terminal to seed the database:
+```bash
+docker-compose exec web python seed.py
+```
+Seed include: user_roles, user_statuses
+
+## Backend Tests
+
+Run docker container and use the following command in separate terminal to start pytest:
+
+```bash
+docker-compose exec web pytest
 ```
 
 ## API Specifications
