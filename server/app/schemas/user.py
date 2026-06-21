@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 class PhotoResponse(BaseModel):
     id: uuid.UUID
     url: str
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,5 +28,6 @@ class UserResponse(BaseModel):
     photo: PhotoResponse | None = None    
     role: RoleStatusResponse
     status: RoleStatusResponse
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
