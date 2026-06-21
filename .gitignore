@@ -1,4 +1,13 @@
+# Testing cach
 /.pytest_cache
 /.ruff_cache
-/backend/placeholder/__pycache__
-/backend/placeholder/tests/__pycache__
+
+# Environments
+.env
+.venv/
+env/
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
