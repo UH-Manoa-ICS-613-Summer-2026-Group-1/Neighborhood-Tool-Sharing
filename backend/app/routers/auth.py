@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 # JWT configuration
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-testing-key-123456789")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 ALGORITHM = "HS256"
 

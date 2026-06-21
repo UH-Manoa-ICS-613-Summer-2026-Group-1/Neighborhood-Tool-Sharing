@@ -1,5 +1,5 @@
 # load application dependencies in backend/requirements.txt to ensure application dependencies are installed
-# -r ../requirements.txt
+-r ../requirements.txt
 
 # add QA-specific dependencies
 pytest
