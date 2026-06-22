@@ -43,7 +43,7 @@ To apply the latest version of migration, run:
 docker-compose exec web alembic upgrade head
 ```
 
-When you modify SQLAlchemy models, import a new moodel in server/app/models/__init__.py and create a new migration:
+When you modify SQLAlchemy models, import a new moodel in backend/app/models/__init__.py and create a new migration:
 ```bash
 docker-compose exec web alembic revision --autogenerate -m "description of changes"
 ```
