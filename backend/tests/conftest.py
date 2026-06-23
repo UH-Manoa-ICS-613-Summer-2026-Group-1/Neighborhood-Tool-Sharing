@@ -72,3 +72,24 @@ def seed_user(db_session):
     db_session.commit()
     db_session.refresh(test_user)
     return test_user
+
+@pytest.fixture() 
+def seed_suspended_user(db_session):
+    """
+    Seeds a single suspended user into the test database.
+    """
+    hashed_password = get_password_hash("Correctpassword123!")
+    test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
+    test_user_status = db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    
+    test_user = User(
+        email="somesuspendedemail@mail.com", 
+        password=hashed_password, 
+        name="Test Suspended User",
+        status=test_user_status,
+        role=test_user_role
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    return test_user
