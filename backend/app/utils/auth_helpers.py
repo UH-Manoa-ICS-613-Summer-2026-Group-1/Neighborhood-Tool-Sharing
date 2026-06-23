@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import os
 import uuid
 import bcrypt
@@ -13,14 +15,26 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 ALGORITHM = "HS256"
 
+
+# def get_password_hash(password: str) -> str:
+#     """
+#     Hashes the password.
+#     """
+#     password_bytes = password.encode('utf-8')
+#     salt = bcrypt.gensalt()
+#     hashed = bcrypt.hashpw(password_bytes, salt)
+#     return hashed.decode('utf-8')
+
 def get_password_hash(password: str) -> str:
     """
     Hashes the password.
     """
     password_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    bcrypt.hashpw()
+    hashed = bcrypt.hashpw(
+        base64.b64encode(hashlib.sha256(password_bytes).digest()), 
+        salt)
+    
     return hashed.decode('utf-8')
 
 def verify_password(password: str, hashed_password: str) -> bool:
@@ -28,8 +42,11 @@ def verify_password(password: str, hashed_password: str) -> bool:
     Verifies the password against the stored database hashed password.
     """
     password_bytes = password.encode('utf-8')
+    password_b64 = base64.b64encode(hashlib.sha256(password_bytes).digest())
+
     hashed_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+    
+    return bcrypt.checkpw(password_b64, hashed_bytes)
 
 def create_access_token(data: dict) -> str:
     """

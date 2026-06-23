@@ -69,5 +69,21 @@ Run docker container and use the following command in separate terminal to start
 docker-compose exec web pytest
 ```
 
+## Virtual Enviroment
+
+To create and activate the virtual environment:
+
+macOS / Linux (bash):
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+```
+Windows (bash):
+```bash
+python -m venv .venv && source ".venv/Scripts/activate"
+```
+Install dependencies:
+```Bash
+pip install -r requirements.txt
+```
 ## API Specifications
 Open [localhost:5000/docs](http://localhost:5000/docs)
