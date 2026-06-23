@@ -66,7 +66,7 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", 
              response_model=TokenResponse,
-             responses={401: {"model": DetailError}})
+             responses={401: {"model": DetailError}, 403: {"model": DetailError}})
 def login(credentials: UserLoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email).first()
     
@@ -76,8 +76,14 @@ def login(credentials: UserLoginRequest, db: Session = Depends(get_db)):
             detail="Invalid email or password."
         )
     
-    # Generate JWT containing the user's email address as the "sub"
-    token = create_access_token(data={"sub": user.email})
+    # Check if the user is suspended
+    if user.status.code == "SUSPENDED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended. Please contact support.")
+    
+    # Generate JWT containing the user's id address as the "sub"
+    token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 
 @router.post("/logout", 
@@ -106,7 +112,7 @@ def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme))
 # A test route
 @router.get("/protected-profile", 
             response_model=ProtectedProfileResponse,
-            responses={401: {"model": DetailError}})
+            responses={401: {"model": DetailError}, 403: {"model": DetailError}})
 def get_profile(current_user: User = Depends(get_current_user)):
     """
     This route is locked! Only users passing a valid JWT can see it.

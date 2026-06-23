@@ -37,16 +37,22 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been revoked (logged out).")
 
-    email = payload.get("sub")
-    if not email:
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload.")
 
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found.")
+    
+    # Check if the user is suspended
+    if user.status.code == "SUSPENDED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended. Please contact support.")
 
     return user
