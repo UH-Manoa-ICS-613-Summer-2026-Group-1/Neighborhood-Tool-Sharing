@@ -2,11 +2,11 @@ import base64
 import hashlib
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
 import jwt
-
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
@@ -22,9 +22,9 @@ def get_password_hash(password: str) -> str:
     password_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(
-        base64.b64encode(hashlib.sha256(password_bytes).digest()), 
+        base64.b64encode(hashlib.sha256(password_bytes).digest()),
         salt)
-    
+
     return hashed.decode('utf-8')
 
 def verify_password(password: str, hashed_password: str) -> bool:
@@ -35,7 +35,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
     password_b64 = base64.b64encode(hashlib.sha256(password_bytes).digest())
 
     hashed_bytes = hashed_password.encode('utf-8')
-    
+
     return bcrypt.checkpw(password_b64, hashed_bytes)
 
 def create_access_token(data: dict) -> str:

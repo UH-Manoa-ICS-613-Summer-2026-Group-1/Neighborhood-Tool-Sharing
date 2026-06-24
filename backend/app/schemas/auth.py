@@ -1,4 +1,5 @@
 import re
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.user import UserResponse
@@ -8,8 +9,8 @@ from app.schemas.user import UserResponse
 class UserRegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(
-        ..., 
-        min_length=8, 
+        ...,
+        min_length=8,
         max_length=64,
         description="Password must be between 8 and 64 characters long.",
         examples=["Mysecurepassword1!"]

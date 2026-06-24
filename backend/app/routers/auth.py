@@ -1,25 +1,28 @@
 import os
-import jwt
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from dotenv import load_dotenv
 
+import jwt
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
+from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
 from app.models.user import User, UserRole, UserStatus
-
-from app.utils.auth_helpers import get_password_hash, verify_password, create_access_token
-from app.utils.dependencies import get_current_user
-from app.blocklist import TOKEN_BLOCKLIST
-
 from app.schemas.auth import (
-    UserRegisterRequest,
-    UserLoginRequest,
-    TokenResponse,
+    DetailError,
     MessageResponse,
     ProtectedProfileResponse,
-    DetailError
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
 )
+from app.utils.auth_helpers import (
+    create_access_token,
+    get_password_hash,
+    verify_password,
+)
+from app.utils.dependencies import get_current_user
 
 load_dotenv()
 
@@ -45,7 +48,7 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already registered."
         )
-    
+
     # Get role and status
     default_role = db.query(UserRole).filter(UserRole.code == "USER").first()
     default_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
@@ -58,59 +61,59 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
         status=default_status,              # ACTIVE status
         role=default_role                   # USER role
     )
-    
+
     db.add(new_user)
     db.commit()
-    
+
     return {"message": "User registered successfully."}
 
-@router.post("/login", 
+@router.post("/login",
              response_model=TokenResponse,
              responses={401: {"model": DetailError}, 403: {"model": DetailError}})
 def login(credentials: UserLoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email).first()
-    
+
     if not user or not verify_password(credentials.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password."
         )
-    
+
     # Check if the user is suspended
     if user.status.code == "SUSPENDED":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your account has been suspended. Please contact support.")
-    
+
     # Generate JWT containing the user's id address as the "sub"
     token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 
-@router.post("/logout", 
+@router.post("/logout",
              response_model=MessageResponse,
              responses={401: {"model": DetailError}})
 def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
     token = credentials.credentials
     try:
         payload = jwt.decode(
-            token, 
-            SECRET_KEY, 
-            algorithms=[ALGORITHM], 
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
             options={"verify_exp": False} # Do not check if the token is expired
         )
 
         jti = payload.get("jti")
         TOKEN_BLOCKLIST.add(jti)
         return {"message": "Successfully logged out."}
-        
+
     except jwt.PyJWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token provided for logout."
         )
 
 # A test route
-@router.get("/protected-profile", 
+@router.get("/protected-profile",
             response_model=ProtectedProfileResponse,
             responses={401: {"model": DetailError}, 403: {"model": DetailError}})
 def get_profile(current_user: User = Depends(get_current_user)):

@@ -1,4 +1,5 @@
 import os
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -48,7 +49,7 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found.")
-    
+
     # Check if the user is suspended
     if user.status.code == "SUSPENDED":
         raise HTTPException(

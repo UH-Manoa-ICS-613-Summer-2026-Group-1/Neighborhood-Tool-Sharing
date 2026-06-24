@@ -1,38 +1,39 @@
-import pytest
 import time
+
 import jwt
+from app.models.user import User, UserStatus
+from app.utils.auth_helpers import ALGORITHM, SECRET_KEY
 from sqlalchemy.orm import Session
 
-from app.models.user import User, UserStatus
-from app.utils.auth_helpers import SECRET_KEY, ALGORITHM
-
 # Seed user data={
-# "email": "someemail@mail.com", 
+# "email": "someemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test User", 
+# "name": "Test User",
 # "status_id": 1,                       Active
 # "role_id": 1}                         User
 
 # Seed suspended user data={
-# "email": "somesuspendedemail@mail.com", 
+# "email": "somesuspendedemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test Suspended User", 
+# "name": "Test Suspended User",
 # "status_id": 2,                       Suspended
 # "role_id": 1}                         User
 
-# 'db_session' is a fixture that provides a session for interacting with the test database. 
+# 'db_session' is a fixture that provides a session
+#  for interacting with the test database.
 # It wipes and rebuilds all database tables before the test.
 
 # 'client' is a fixture that provides a TestClient instance for making requests.
 # It overrides the get_db dependency to use a test database session.
-# 'client' fixture takes 'db_session' as a dependency. Therefore, whenever you include 'client' in a test,
+# 'client' fixture takes 'db_session' as a dependency.
+# Therefore, whenever you include 'client' in a test,
 # the database is automatically clean first.
 
 # US 17 Scenario 1: Successful login
-def test_login_success(client, seed_user): 
+def test_login_success(client, seed_user):
     """
     Test that valid credentials return a JWT token and bearer type.
-    """  
+    """
     response = client.post(
         "/api/auth/login",
         json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
@@ -114,7 +115,7 @@ def test_logout_success(client, seed_user):
     login2_response = client.get(
         "/api/auth/protected-profile",
         headers=headers)
-    
+
     assert login2_response.status_code == 401
     assert login2_response.json()["detail"] == "Token has been revoked (logged out)."
     assert login_response.headers
@@ -124,7 +125,7 @@ def test_protected_route_without_token(client):
     """
     Test that accessing a protected route without a token fails.
     """
-    response = client.get("/api/auth/protected-profile")  
+    response = client.get("/api/auth/protected-profile")
     assert response.status_code == 401
 
 # US 17 Scenario 5: Accessing protected pages
@@ -138,7 +139,7 @@ def test_protected_route_with_expired_token(client, seed_user):
         "jti": "some-test-jti-uuid",
         "exp": time.time() - 1
     }
-    
+
     # Encode it
     expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -158,10 +159,10 @@ def test_protected_route_with_token(client, seed_user):
         json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
     )
     token = login_response.json()["access_token"]
-    
+
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get("/api/auth/protected-profile", headers=headers)
-    
+
     user_details = response.json()["user_details"]
 
     assert response.status_code == 200
@@ -181,7 +182,7 @@ def test_suspended_user_login(client, seed_suspended_user):
     response = client.post(
         "/api/auth/login",
         json={"email": "somesuspendedemail@mail.com", "password": "Correctpassword123!"})
-    
+
     assert response.status_code == 403
     assert response.json()["detail"] == "Your account has been suspended. Please contact support."
 
@@ -196,18 +197,18 @@ def test_protected_route_suspended_user(client, seed_user, db_session: Session):
         json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
     )
     token = login_response.json()["access_token"]
-    
+
     # Simulate an admin suspending the user (will be a route later)
     suspended_status = db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
     seed_user.status = suspended_status
     db_session.commit()
-    
+
     # Try to access the protected route
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get(
-        "/api/auth/protected-profile", 
+        "/api/auth/protected-profile",
         headers=headers)
-    
+
     assert response.status_code == 403
     assert response.json()["detail"] == "Your account has been suspended. Please contact support."
 
@@ -223,7 +224,7 @@ def test_register_success(client, db_session: Session):
 
     assert response.status_code == 201
     assert response.json()["message"] == "User registered successfully."
-    
+
     user_in_db = db_session.query(User).filter(User.email == "newuser@mail.com").first()
     assert user_in_db is not None
 
