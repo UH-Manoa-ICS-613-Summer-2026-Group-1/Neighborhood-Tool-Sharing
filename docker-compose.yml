@@ -33,6 +33,7 @@ services:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - TEST_DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@test_db:5432/test_db
       - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       - db
       - test_db
