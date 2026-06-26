@@ -26,10 +26,10 @@ jobs:
       # Pytest with Docker
       - name: Run pytest tests 
         env:
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: tool_share_test
-          SECRET_KEY: some_testing_secret_key_12345678
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: |
           docker compose run --rm web pytest
           docker compose down --volumes
