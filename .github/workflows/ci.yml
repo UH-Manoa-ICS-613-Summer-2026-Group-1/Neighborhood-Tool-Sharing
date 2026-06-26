@@ -23,8 +23,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r ./backend/qa/requirements-qa.txt
       
+      # Pytest with Docker
       - name: Run pytest tests 
-        run: python -m pytest       
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          docker compose run --rm web pytest
+          docker compose down --volumes
         
       - name: Run Ruff linter 
         run: python -m ruff check . 

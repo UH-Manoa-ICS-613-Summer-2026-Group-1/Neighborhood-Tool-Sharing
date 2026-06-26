@@ -1,149 +1,122 @@
-import uuid
-import jwt
-import bcrypt
 import os
 
-from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
-from app.schemas import UserRegisterSchema, UserLoginSchema, TokenResponse
-from app.database import USER_DB
+from app.blocklist import TOKEN_BLOCKLIST
+from app.database import get_db
+from app.models.user import User, UserRole, UserStatus
+from app.schemas.auth import (
+    DetailError,
+    MessageResponse,
+    ProtectedProfileResponse,
+    TokenResponse,
+    UserLoginRequest,
+    UserRegisterRequest,
+)
+from app.utils.auth_helpers import (
+    create_access_token,
+    get_password_hash,
+    verify_password,
+)
+from app.utils.dependencies import get_current_user
 
 load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
 
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"]
 )
 
-# JWT configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-testing-key-123456789")
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-ALGORITHM = "HS256"
-
 security_scheme = HTTPBearer()
 
-# This variable contains the blocklist of the JWT tokens. So tokens can be added to the blocklist when the user logs out
-TOKEN_BLOCKLIST = set()
-
-def get_password_hash(password: str) -> str:
-    """
-    Hashes the password
-    """
-    password_bytes = password.encode('utf-8')
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password_bytes, salt)
-    return hashed.decode('utf-8')
-
-def verify_password(password: str, hashed_password: str) -> bool:
-    """
-    Verifies the password against the stored database hashed password.
-    """
-    password_bytes = password.encode('utf-8')
-    hashed_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
-
-def create_access_token(data: dict) -> str:
-    """
-    Generates JWT.
-    """
-    to_encode = data.copy()
-    # Set expiration time (current time + 60 minutes)
-    to_encode["exp"] = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    # generate jti for blocklist functionality
-    to_encode["jti"] = str(uuid.uuid4())
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> dict:
-    """
-    A reusable dependency function. Protects routes by forcing incoming 
-    requests to submit a valid, unexpired JWT.
-    """
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        # Check if JTI token has been blocklisted on logout
-        jti = payload.get("jti")
-        if jti in TOKEN_BLOCKLIST:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, 
-                detail="Token has been revoked (logged out)."
-            )
-
-        email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, 
-                detail="Invalid token payload"
-            )
-        return {"email": email}
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Token has expired. Please log in again."
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Could not validate credentials"
-        )
-
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegisterSchema):
-    if user_data.email in USER_DB:
+@router.post("/register",
+             status_code=status.HTTP_201_CREATED,
+             response_model=MessageResponse,
+             responses={400: {"model": DetailError}})
+def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
+    # Check if user already exists in the database
+    user = db.query(User).filter(User.email == user_data.email).first()
+    if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is already registered"
+            detail="Email is already registered."
         )
-    # password_validation() can be added here
-    
+
+    # Get role and status
+    default_role = db.query(UserRole).filter(UserRole.code == "USER").first()
+    default_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+
     hashed_password = get_password_hash(user_data.password)
-    USER_DB[user_data.email] = {
-        "email": user_data.email,
-        "hashed_password": hashed_password
-    }
-    return {"message": "User registered successfully!"}
+    new_user = User(
+        email=user_data.email,
+        password=hashed_password,
+        name=user_data.email.split("@")[0], # Temporary name
+        status=default_status,              # ACTIVE status
+        role=default_role                   # USER role
+    )
 
+    db.add(new_user)
+    db.commit()
 
-@router.post("/login", response_model=TokenResponse)
-def login(credentials: UserLoginSchema):
-    user = USER_DB.get(credentials.email)
-    if not user or not verify_password(credentials.password, user["hashed_password"]):
+    return {"message": "User registered successfully."}
+
+@router.post("/login",
+             response_model=TokenResponse,
+             responses={401: {"model": DetailError}, 403: {"model": DetailError}})
+def login(credentials: UserLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == credentials.email).first()
+
+    if not user or not verify_password(credentials.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Invalid email or password."
         )
-    
-    # Generate JWT containing the user's email address as the "subject" (sub)
-    token = create_access_token(data={"sub": user["email"]})
+
+    # Check if the user is suspended
+    if user.status.code == "SUSPENDED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended. Please contact support.")
+
+    # Generate JWT containing the user's id address as the "sub"
+    token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 
-
-@router.post("/logout")
+@router.post("/logout",
+             response_model=MessageResponse,
+             responses={401: {"model": DetailError}})
 def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)):
     token = credentials.credentials
     try:
-        # Decode the token to jti
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_exp": False} # Do not check if the token is expired
+        )
+
         jti = payload.get("jti")
-        
-        # Add it to the blocklist so it cannot be used again
         TOKEN_BLOCKLIST.add(jti)
         return {"message": "Successfully logged out."}
-        
+
     except jwt.PyJWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token provided for logout."
         )
 
 # A test route
-@router.get("/protected-profile")
-def get_profile(current_user: dict = Depends(get_current_user)):
+@router.get("/protected-profile",
+            response_model=ProtectedProfileResponse,
+            responses={401: {"model": DetailError}, 403: {"model": DetailError}})
+def get_profile(current_user: User = Depends(get_current_user)):
     """
     This route is locked! Only users passing a valid JWT can see it.
     """
