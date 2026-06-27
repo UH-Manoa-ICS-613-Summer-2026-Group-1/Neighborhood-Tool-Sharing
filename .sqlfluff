@@ -1,0 +1,9 @@
+[sqlfluff]
+dialect = postgres
+max_line_length = 120
+
+# Disable rules that are not important (long queries)
+exclude_rules = LT02, ST06, ST02, ST09, AM05
+
+# Categorize minor issues visible, but do not fail linting because of them
+warnings = LT01, LT06, LT12
