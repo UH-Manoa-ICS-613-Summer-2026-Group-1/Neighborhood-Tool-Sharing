@@ -2,6 +2,7 @@ create or replace view data_dictionary_objects_v
 as
 select
     c.relname as object_name,
+    CASE WHEN c.relkind in ('r', 'p') THEN 'Table' WHEN c.relkind in ('v') THEN 'View' ELSE 'Materialized View' END as object_type,
     pg_catalog.obj_description(c.oid, 'pg_class') as object_description,
     a.attnum as column_position,
     a.attname as column_name,
@@ -37,9 +38,11 @@ where c.relkind in ('r', 'p', 'v', 'm')  -- regular and partitioned tables
 order by object_name, column_position;
 
 comment on view data_dictionary_objects_v is
-'Data Dictionary View for the Object (Table, View, Materialized Views) and Column metadata';
+'Data dictionary view for the object and column metadata for Tables, Views and Materialized Views';
 comment on column data_dictionary_objects_v.object_name is
-'The name of the object (table, view, materialized view)';
+'The name of the object';
+comment on column data_dictionary_objects_v.object_type is
+'The type of the object (table, view, materialized view)';
 comment on column data_dictionary_objects_v.object_description is
 'The object''s description';
 comment on column data_dictionary_objects_v.column_position is
@@ -102,7 +105,7 @@ order by
     fk.conname,
     source_key.ordinality;
 comment on view data_dictionary_relationships_v is
-'data dictionary view for the foreign key relationships between tables';
+'Data dictionary view for the foreign key relationships between tables';
 comment on column data_dictionary_relationships_v.source_table is
 'the name of the source table that references the referenced_table';
 comment on column data_dictionary_relationships_v.source_column is
