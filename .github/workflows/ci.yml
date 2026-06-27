@@ -1,6 +1,7 @@
 name: Neighborhood Tool Sharing App - CI Pipeline
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
