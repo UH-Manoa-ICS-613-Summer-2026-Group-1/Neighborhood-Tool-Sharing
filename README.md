@@ -91,20 +91,31 @@ Open http://127.0.0.1:5000/docs
 
 ## QA Tests
 -   This project implements automated testing on-demand from a developer's workstation as well as using GitHub actions during specific events: pull requests, merging changes to main branch
--   On-Demand tests:
-    -   Using bash (or git-bash), change to the root directory of the working copy of the repository
-    -   Then execute the following command: `bash ./backend/qa/scripts/run_tests.sh`
-    -   This will automatically execute all of the define automated tests
--   Automated GitHub tests:
-    -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml)
-    -   The [run_tests.sh](./backend/qa/scripts/run_tests.sh) and ci.yml files should stay in-sync to ensure the tests are consistent
--   Testing Types:
-    -   Backend:
+-   ### Backend Tests
+    -   #### On-Demand Tests
+        -   Using bash (or git-bash), change to the root directory of the working copy of the repository
+        -   Execute the [run_backend_qa_checks.sh](./qa/scripts/run_backend_qa_checks.sh) script: `bash ./qa/scripts/run_backend_qa_checks.sh`
+            -   This will automatically execute all of the defined automated tests and linters
+    -   #### Testing Types
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [ruff](https://docs.astral.sh/ruff/): python linter
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
     -   Frontend:
         -   No frontend tests have been implemented yet
+-   ### Frontend Tests
+    -   #### On-Demand Tests
+        -   Using bash (or git-bash), change to the root directory of the working copy of the repository
+        -   Execute the [run_frontend_qa_checks.sh](./qa/scripts/run_frontend_qa_checks.sh) script: `bash ./qa/scripts/run_frontend_qa_checks.sh`
+            -   This will automatically execute all of the defined automated tests, linters, and build process
+    -   #### Testing Types
+        -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+        -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
+        -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
+-   ### CI Pipeline
+    -   The CI pipeline is implemented using GitHub Actions
+    -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml) for both backend and frontend tests
+    -   The CI pipeline runs each time a pull request is submitted and each time code is merged to the main branch
+    -   \*Note: The ci.yml file must stay in-sync with the [on-demand backend](#on-demand-tests) and [frontend](#on-demand-tests-1) tests to ensure they are consistent
 
 ## Data Dictionary
 -   The [data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql) script contains the DDL necessary to define the data dictionary views in the PostgreSQL database
