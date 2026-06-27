@@ -2,7 +2,11 @@ create or replace view data_dictionary_objects_v
 as
 select
     c.relname as object_name,
-    CASE WHEN c.relkind in ('r', 'p') THEN 'Table' WHEN c.relkind in ('v') THEN 'View' ELSE 'Materialized View' END as object_type,
+    case
+        when c.relkind in ('r', 'p') then 'Table'
+        when c.relkind in ('v') then 'View'
+        else 'Materialized View'
+    end as object_type,
     pg_catalog.obj_description(c.oid, 'pg_class') as object_description,
     a.attnum as column_position,
     a.attname as column_name,
