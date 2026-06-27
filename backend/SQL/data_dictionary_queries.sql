@@ -60,7 +60,7 @@ comment on column data_dictionary_objects_v.column_name is
 'The column''s name';
 
 
-create or replace view 
+create or replace view
 data_dictionary_relationships_v
 as select
     source_table.relname as source_table,
@@ -81,11 +81,11 @@ inner join pg_catalog.pg_namespace as referenced_schema
     on referenced_schema.oid = referenced_table.relnamespace
 -- referencing/source foreign-key column
 inner join lateral unnest(fk.conkey)
-    with ordinality as source_key(attnum, ordinality)
+    with ordinality as source_key (attnum, ordinality)
     on true
 -- matching referenced column, preserving composite-key order
 inner join lateral unnest(fk.confkey)
-    with ordinality as referenced_key(attnum, ordinality)
+    with ordinality as referenced_key (attnum, ordinality)
     on referenced_key.ordinality = source_key.ordinality
 inner join pg_catalog.pg_attribute as source_column
     on source_column.attrelid = fk.conrelid
