@@ -90,18 +90,19 @@ pip install -r requirements.txt
 Open http://127.0.0.1:5000/docs
 
 ## QA Tests
--   This project implements automated testing on-demand from a developer's workstation as well as using GitHub actions during specific events: pull requests, merging changes to main branch
+-   This project implements automated testing on-demand QA tests from a developer's workstation or from the GitHub platform. The automated QA tests will be automatically run during specific GitHub events: pull requests and merging changes to main branch
 -   ### Backend Tests
     -   #### On-Demand Tests
         -   Using bash (or git-bash), change to the root directory of the working copy of the repository
+        -   Start the docker containers: `docker-compose up`
         -   Execute the [run_backend_qa_checks.sh](./qa/scripts/run_backend_qa_checks.sh) script: `bash ./qa/scripts/run_backend_qa_checks.sh`
             -   This will automatically execute all of the defined automated tests and linters
     -   #### Testing Types
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [ruff](https://docs.astral.sh/ruff/): python linter
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
-    -   Frontend:
-        -   No frontend tests have been implemented yet
+    -   #### Test Definitions
+        -   The backend python tests reside in the [backend/tests folder](./backend/tests)
 -   ### Frontend Tests
     -   #### On-Demand Tests
         -   Using bash (or git-bash), change to the root directory of the working copy of the repository
@@ -111,6 +112,8 @@ Open http://127.0.0.1:5000/docs
         -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
         -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
         -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
+    -   #### Test Definitions
+        -   The frontend React tests and the vitest configuration file reside in the [frontend/tests folder](./frontend/tests/)
 -   ### CI Pipeline
     -   The CI pipeline is implemented using GitHub Actions
     -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml) for both backend and frontend tests
