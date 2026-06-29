@@ -9,6 +9,7 @@ from app.utils.seeder import run_lookup_seeds
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy_utils import create_database, database_exists
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
@@ -16,7 +17,10 @@ if not TEST_DATABASE_URL:
     raise ValueError("TEST_DATABASE_URL environment variable is not set")
 
 engine = create_engine(TEST_DATABASE_URL)
+if not database_exists(engine.url):
+    create_database(engine.url)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 @pytest.fixture()
 def db_session():
@@ -32,6 +36,7 @@ def db_session():
     finally:
         session.close()
 
+
 @pytest.fixture()
 def seed_lookups_tables(db_session):
     """
@@ -39,11 +44,13 @@ def seed_lookups_tables(db_session):
     """
     run_lookup_seeds(db_session)
 
+
 @pytest.fixture()
 def client(db_session, seed_lookups_tables):
     """
     Overrides the standard get_db dependency with our test session.
     """
+
     def override_get_db():
         try:
             yield db_session
@@ -54,6 +61,7 @@ def client(db_session, seed_lookups_tables):
     yield TestClient(app)
     app.dependency_overrides.clear()
 
+
 @pytest.fixture()
 def seed_user(db_session):
     """
@@ -61,19 +69,22 @@ def seed_user(db_session):
     """
     hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
-    test_user_status = db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+    test_user_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+    )
 
     test_user = User(
         email="someemail@mail.com",
         password=hashed_password,
         name="Test User",
         status=test_user_status,
-        role=test_user_role
+        role=test_user_role,
     )
     db_session.add(test_user)
     db_session.commit()
     db_session.refresh(test_user)
     return test_user
+
 
 @pytest.fixture()
 def seed_suspended_user(db_session):
@@ -82,14 +93,16 @@ def seed_suspended_user(db_session):
     """
     hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
-    test_user_status = db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    test_user_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    )
 
     test_user = User(
         email="somesuspendedemail@mail.com",
         password=hashed_password,
         name="Test Suspended User",
         status=test_user_status,
-        role=test_user_role
+        role=test_user_role,
     )
     db_session.add(test_user)
     db_session.commit()
