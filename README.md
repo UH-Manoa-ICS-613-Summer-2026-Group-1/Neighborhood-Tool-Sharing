@@ -70,14 +70,15 @@ Quick local start:
  ```bash
 ./backend/scripts/quick_local_start.sh
 ```
+The script:
 - Create docker images and start containers
 - Upgrage database to latest version
 - Seed data to database
-- Run backend tests (Look at QA Tests/Backend Tests section)
+- Run backend tests (see the QA Tests > Backend Tests section for detailed info about backend tests)
 
 NOTE: Docker containers are left running for manual testing.
-- Local Server: http://localhost:5000
-- To stop the containers, run:
+Local Server: http://localhost:5000.
+To stop the containers, run:
  ```bash 
  docker compose down
  ```
