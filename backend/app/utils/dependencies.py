@@ -1,4 +1,6 @@
-import os
+"""
+Dependency injection helpers.
+"""
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -8,52 +10,66 @@ from sqlalchemy.orm import Session
 from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
 from app.models.user import User
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
+from app.utils.auth_helpers import ALGORITHM, SECRET_KEY
 
 security_scheme = HTTPBearer()
 
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    db: Session = Depends(get_db)) -> User:
+    db: Session = Depends(get_db),
+) -> User:
     """
-    Validate the token and return the authenticated user.
+    Validate the JWT and return the authenticated user.
     """
+    # JWT
     token = credentials.credentials
     try:
+        # Decode the JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+    # If the token is expired raise an exception
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired. Please log in again.")
+            detail="Token has expired. Please log in again.",
+        )
+
+    # If the token is invalid raise an exception
     except jwt.PyJWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials.")
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token provided."
+        )
 
+    # payload contains {sub: user_id, exp: expiration_time, jti: uuid}.
     jti = payload.get("jti")
+    user_id = payload.get("sub")
+
+    # If JTI or user_id is None in the payload raise an exception
+    if jti is None or user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token provided."
+        )
+
+    # If JTI is in the blocklist raise an exception
     if jti in TOKEN_BLOCKLIST:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked (logged out).")
+            detail="Token has been revoked (logged out).",
+        )
 
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload.")
-
+    # If the user does not exist raise an exception in db
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found.")
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found."
+        )
 
-    # Check if the user is suspended
+    # If the user is suspended raise an exception
     if user.status.code == "SUSPENDED":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your account has been suspended. Please contact support.")
+            detail="Your account has been suspended. Please contact support.",
+        )
 
     return user

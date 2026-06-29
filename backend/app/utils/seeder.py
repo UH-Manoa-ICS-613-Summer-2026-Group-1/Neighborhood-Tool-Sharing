@@ -1,6 +1,9 @@
-# This module provides a function to seed all lookup tables in the database.
-# it can be used in seeding scripts for development, testing, or production databases.
-# Tables included: user_roles, user_statuses
+"""
+This module provides functions to seed data into the database.
+It can be used in seeding scripts for development, testing, or production databases.
+Seed include: lookup tables: user_roles, user_statuses; users table (users, admins)
+"""
+
 import os
 
 from sqlalchemy import text
@@ -76,7 +79,7 @@ def run_users_seeds(db: Session):
 
 def run_admin_seeds(db: Session):
     """
-    Seed the users table with admin.
+    Seed the users table with admins.
     """
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 

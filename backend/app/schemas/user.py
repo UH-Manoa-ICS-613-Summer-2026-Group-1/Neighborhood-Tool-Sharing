@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 # RESPONSE SCHEMAS
 
+
 class PhotoResponse(BaseModel):
     id: uuid.UUID
     url: str
@@ -12,12 +13,14 @@ class PhotoResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class RoleStatusResponse(BaseModel):
     code: str
     display_name: str
     description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class UserResponse(BaseModel):
     id: uuid.UUID
