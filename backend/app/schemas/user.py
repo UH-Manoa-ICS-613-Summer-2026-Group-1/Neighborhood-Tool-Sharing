@@ -6,32 +6,27 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 # RESPONSE SCHEMAS
 
 
-class PhotoResponse(BaseModel):
-    id: uuid.UUID
-    url: str
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+class UserResponse(BaseModel):  # delete
+    pass
 
 
-class RoleStatusResponse(BaseModel):
-    code: str
-    display_name: str
-    description: str | None = None
+class UserProfileResponse(BaseModel):
+    """
+    User profile response schema matching the user_profiles_v view.
+    """
 
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserResponse(BaseModel):
-    id: uuid.UUID
-    name: str
-    email: EmailStr
-    bio: str | None = None
-    location: str | None = None
-    created_at: datetime
-    photo: PhotoResponse | None = None
-    role: RoleStatusResponse
-    status: RoleStatusResponse
-    created_at: datetime
+    user_id: uuid.UUID
+    user_name: str
+    user_email: EmailStr
+    user_bio: str | None = None
+    user_location: str | None = None
+    user_created_at: datetime
+    user_photo_url: str | None = None
+    role_code: str
+    role: str
+    role_description: str | None = None
+    status_code: str
+    status: str
+    status_description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

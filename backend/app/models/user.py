@@ -2,13 +2,31 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, DateTime, ForeignKey, Integer, String, Text, func, text
+from sqlalchemy import (
+    UUID,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
     from .photo import Photo
+
+# Tables:
+# - user_roles (id, code, display_name, description)
+# - user_statuses (id, code, display_name, description)
+# - users (id, name, email, password, bio, location, created_at, photo_id, role_id, status_id)
+
+# Views:
+# - user_profiles_v
 
 
 class UserRole(Base):
@@ -26,7 +44,7 @@ class UserRole(Base):
         String(50),
         unique=True,
         nullable=False,
-        comment='Uppercase code name (e.g., "USER", "ADMIN")',
+        comment='Uppercase code name of the role (e.g., "USER", "ADMIN")',
     )
     display_name: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="Human-readable role name for UI display"
@@ -53,7 +71,7 @@ class UserStatus(Base):
         String(50),
         unique=True,
         nullable=False,
-        comment='Uppercase code name (e.g., "ACTIVE", "SUSPENDED")',
+        comment='Uppercase code name of the status (e.g., "ACTIVE", "SUSPENDED")',
     )
     display_name: Mapped[str] = mapped_column(
         String(100), nullable=False, comment="Human-readable status name for UI display"
@@ -99,7 +117,7 @@ class User(Base):
         comment="Brief personal bio or introduction written by the user",
     )
     location: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, comment="General neighborhood or street location"
+        String(255), nullable=True, comment="Location of the user"
     )
     photo_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -130,3 +148,21 @@ class User(Base):
     photo: Mapped["Photo | None"] = relationship("Photo", back_populates="user")
     role: Mapped["UserRole"] = relationship("UserRole", back_populates="users")
     status: Mapped["UserStatus"] = relationship("UserStatus", back_populates="users")
+
+
+class UserProfileView(Base):
+    __tablename__ = "user_profiles_v"
+
+    user_id = Column(UUID(as_uuid=True), primary_key=True)
+    user_name = Column(String)
+    user_email = Column(String)
+    user_bio = Column(Text, nullable=True)
+    user_location = Column(String, nullable=True)
+    user_created_at = Column(DateTime)
+    user_photo_url = Column(String, nullable=True)
+    role_code = Column(String)
+    role = Column(String)
+    role_description = Column(String, nullable=True)
+    status_code = Column(String)
+    status = Column(String)
+    status_description = Column(String, nullable=True)

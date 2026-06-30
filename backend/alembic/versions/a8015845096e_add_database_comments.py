@@ -62,7 +62,7 @@ def upgrade() -> None:
         "user_roles",
         "code",
         existing_type=sa.VARCHAR(length=50),
-        comment='Uppercase code name (e.g., "USER", "ADMIN")',
+        comment='Uppercase code name of the role (e.g., "USER", "ADMIN")',
         existing_nullable=False,
     )
     op.alter_column(
@@ -97,7 +97,7 @@ def upgrade() -> None:
         "user_statuses",
         "code",
         existing_type=sa.VARCHAR(length=50),
-        comment='Uppercase code name (e.g., "ACTIVE", "SUSPENDED")',
+        comment='Uppercase code name of the status (e.g., "ACTIVE", "SUSPENDED")',
         existing_nullable=False,
     )
     op.alter_column(
@@ -160,7 +160,7 @@ def upgrade() -> None:
         "users",
         "location",
         existing_type=sa.VARCHAR(length=255),
-        comment="General neighborhood or street location",
+        comment="Location of the user",
         existing_nullable=True,
     )
     op.alter_column(
@@ -247,7 +247,7 @@ def downgrade() -> None:
         "location",
         existing_type=sa.VARCHAR(length=255),
         comment=None,
-        existing_comment="General neighborhood or street location",
+        existing_comment="Location of the user",
         existing_nullable=True,
     )
     op.alter_column(
@@ -317,7 +317,7 @@ def downgrade() -> None:
         "code",
         existing_type=sa.VARCHAR(length=50),
         comment=None,
-        existing_comment='Uppercase code name (e.g., "ACTIVE", "SUSPENDED")',
+        existing_comment='Uppercase code name of the status (e.g., "ACTIVE", "SUSPENDED")',
         existing_nullable=False,
     )
     op.alter_column(
@@ -355,7 +355,7 @@ def downgrade() -> None:
         "code",
         existing_type=sa.VARCHAR(length=50),
         comment=None,
-        existing_comment='Uppercase code name (e.g., "USER", "ADMIN")',
+        existing_comment='Uppercase code name of the role (e.g., "USER", "ADMIN")',
         existing_nullable=False,
     )
     op.alter_column(
