@@ -23,17 +23,16 @@ def upgrade() -> None:
     # Create user profile view
 
     # Path to the create_user_profiles_v.sql file in the views directory
-    sql_path = (
-        Path(__file__).resolve().parent
-        / ".."
-        / ".."
-        / "sql"
+    SQL_PATH = (
+        Path(__file__).resolve().parent.parent.parent
+        / "SQL"
         / "views"
         / "create_user_profiles_v.sql"
     )
 
-    # Read and execute the file
-    op.execute(sa.text(open(sql_path).read()))
+    # Read and execute the sql file
+    with open(SQL_PATH, "r", encoding="utf-8") as f:
+        op.execute(sa.text(f.read()))
 
 
 def downgrade() -> None:
