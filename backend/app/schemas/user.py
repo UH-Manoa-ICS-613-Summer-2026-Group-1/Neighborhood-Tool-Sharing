@@ -6,10 +6,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 # RESPONSE SCHEMAS
 
 
-class UserResponse(BaseModel):  # delete
-    pass
-
-
 class UserProfileResponse(BaseModel):
     """
     User profile response schema matching the user_profiles_v view.

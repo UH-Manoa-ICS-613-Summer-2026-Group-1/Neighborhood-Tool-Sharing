@@ -1,10 +1,9 @@
 """
 Authentication routers.
-Handles registration, login, logout.
+Handles registration, login, logout, and password reset.
 """
 
 import jwt
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -13,13 +12,11 @@ from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
 from app.models.user import User, UserRole, UserStatus
 from app.schemas.auth import (
-    DetailError,
-    MessageResponse,
-    ProtectedProfileResponse,
     TokenResponse,
     UserLoginRequest,
     UserRegisterRequest,
 )
+from app.schemas.common import DetailError, MessageResponse
 from app.utils.auth_helpers import (
     ALGORITHM,
     SECRET_KEY,
@@ -28,8 +25,6 @@ from app.utils.auth_helpers import (
     verify_password,
 )
 from app.utils.dependencies import get_current_user
-
-load_dotenv()
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -147,19 +142,3 @@ def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme))
     TOKEN_BLOCKLIST.add(jti)
 
     return {"message": "Successfully logged out."}
-
-
-# A test route
-@router.get(
-    "/protected-profile",
-    response_model=ProtectedProfileResponse,
-    responses={401: {"model": DetailError}, 403: {"model": DetailError}},
-)
-def get_profile(current_user: User = Depends(get_current_user)):
-    """
-    This route is locked! Only users passing a valid JWT can see it.
-    """
-    return {
-        "message": "Access granted! You are inside a locked route.",
-        "user_details": current_user,
-    }

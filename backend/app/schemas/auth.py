@@ -2,8 +2,6 @@ import re
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from app.schemas.user import UserResponse
-
 # REQUEST SCHEMAS
 
 
@@ -39,22 +37,6 @@ class UserLoginRequest(BaseModel):
 # RESPONSE SCHEMAS
 
 
-class MessageResponse(BaseModel):
-    message: str
-
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
-
-
-class ProtectedProfileResponse(BaseModel):
-    message: str
-    user_details: UserResponse
-
-
-# ERROR SCHEMAS
-
-
-class DetailError(BaseModel):
-    detail: str
