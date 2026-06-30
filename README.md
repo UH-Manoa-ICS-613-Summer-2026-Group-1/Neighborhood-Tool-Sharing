@@ -105,3 +105,24 @@ Open http://127.0.0.1:5000/docs
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
     -   Frontend:
         -   No frontend tests have been implemented yet
+
+## Data Dictionary
+-   The [data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql) script contains the DDL necessary to define the data dictionary views in the PostgreSQL database
+-   ### Updating the Data Dictionary
+    -   The data dictionary can be updated to define comments on tables, views, and columns. Once these comments are defined they can be retrieved by the custom [data dictionary views](#data-dictionary-views)
+    -   There are multiple ways to define database object comments:
+        -   Comments can be defined using sqlalchemy ([reference](https://docs.sqlalchemy.org/en/21/changelog/migration_12.html): under the "Support for SQL Comments on Table, Column, includes DDL, reflection" heading)
+        -   Comments can be defined using SQL DDL commands:
+            -   [DDL_helper.ods](./backend/SQL/DDL_helper.ods) has formulas defined to generate column comment DDL statements based on the values defined in Columns A - C
+            -   The generated value in column D can be executed to define the corresponding column comment
+            -   Table comments can be defined using the following DDL, where \[TABLE\_NAME\] is the name of the table and \[COMMENT\] is the comment for the specified table:
+                -   `COMMENT ON TABLE [TABLE_NAME] IS '[COMMENT]';`
+            -   The DDL can be saved and versioned by using the DDL to define an Alembic migration
+-   ### Data Dictionary Views
+    -   Data Dictionary Objects (data_dictionary_objects_v): this view returns the Object (Table, View, Materialized Views) and Column metadata
+    -   Data Dictionary Relationships (data_dictionary_relationships_v): this view returns the foreign key relationships between tables
+-   ### Export Procedure
+    -   \*Note: Comments defined on the tables/columns will be included in the data dictionary views
+    -   Define the data dictionary views ([data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql))
+    -   Using a database client (e.g. pgadmin, DBeaver) export the results of the [data dictionary views](#data-dictionary-views) into separate tabs/worksheets of the spreadsheet
+        -   \*Note: to export the Data Dictionary Objects view execute the following query: `SELECT * FROM public.data_dictionary_objects_v;`
