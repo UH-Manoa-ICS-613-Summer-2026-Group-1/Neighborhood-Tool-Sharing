@@ -112,7 +112,7 @@ def test_logout_success(client, seed_user):
     assert logout_response.json()["message"] == "Successfully logged out."
 
     # Try to access a protected profile using the same token
-    login2_response = client.get("/api/auth/protected-profile", headers=headers)
+    login2_response = client.get("/api/users/me", headers=headers)
 
     assert login2_response.status_code == 401
     assert login2_response.json()["detail"] == "Token has been revoked (logged out)."
@@ -124,7 +124,7 @@ def test_protected_route_without_token(client):
     """
     Test that accessing a protected route without a token fails.
     """
-    response = client.get("/api/auth/protected-profile")
+    response = client.get("/api/users/me")
     assert response.status_code == 401
 
 
@@ -144,7 +144,7 @@ def test_protected_route_with_expired_token(client, seed_user):
     expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
 
     headers = {"Authorization": f"Bearer {expired_token}"}
-    response = client.get("/api/auth/protected-profile", headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Token has expired. Please log in again."
@@ -162,18 +162,18 @@ def test_protected_route_with_token(client, seed_user):
     token = login_response.json()["access_token"]
 
     headers = {"Authorization": f"Bearer {token}"}
-    response = client.get("/api/auth/protected-profile", headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
-    user_details = response.json()["user_details"]
+    profile = response.json()
 
     assert response.status_code == 200
 
-    assert user_details["email"] == seed_user.email
-    assert user_details["name"] == seed_user.name
-    assert user_details["status"]["code"] == seed_user.status.code
-    assert user_details["role"]["code"] == seed_user.role.code
+    assert profile["user_email"] == seed_user.email
+    assert profile["user_name"] == seed_user.name
+    assert profile["status_code"] == seed_user.status.code
+    assert profile["role_code"] == seed_user.role.code
 
-    assert "password" not in user_details
+    assert "password" not in profile
 
 
 # US 17 Scenario 6: Suspended user
@@ -217,7 +217,7 @@ def test_protected_route_suspended_user(client, seed_user, db_session: Session):
 
     # Try to access the protected route
     headers = {"Authorization": f"Bearer {token}"}
-    response = client.get("/api/auth/protected-profile", headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
     assert response.status_code == 403
     assert (

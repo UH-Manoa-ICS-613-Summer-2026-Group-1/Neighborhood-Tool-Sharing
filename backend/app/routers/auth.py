@@ -24,7 +24,6 @@ from app.utils.auth_helpers import (
     get_password_hash,
     verify_password,
 )
-from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 

@@ -11,7 +11,7 @@ from app.models.user import (
     User,
     UserProfileView,
 )
-from app.schemas.common import DetailError, MessageResponse
+from app.schemas.common import DetailError
 from app.schemas.user import UserProfileResponse
 from app.utils.dependencies import get_current_user
 

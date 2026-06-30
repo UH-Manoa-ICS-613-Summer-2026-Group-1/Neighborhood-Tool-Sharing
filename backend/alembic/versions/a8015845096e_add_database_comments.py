@@ -56,7 +56,6 @@ def upgrade() -> None:
         existing_type=sa.INTEGER(),
         comment="Unique identifier for the role",
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "user_roles",
@@ -91,7 +90,6 @@ def upgrade() -> None:
         existing_type=sa.INTEGER(),
         comment="Unique identifier for the account status",
         existing_nullable=False,
-        autoincrement=True,
     )
     op.alter_column(
         "user_statuses",
@@ -327,7 +325,6 @@ def downgrade() -> None:
         comment=None,
         existing_comment="Unique identifier for the account status",
         existing_nullable=False,
-        autoincrement=True,
     )
     op.drop_table_comment(
         "user_roles",
@@ -365,7 +362,6 @@ def downgrade() -> None:
         comment=None,
         existing_comment="Unique identifier for the role",
         existing_nullable=False,
-        autoincrement=True,
     )
     op.drop_table_comment(
         "photos",

@@ -10,12 +10,16 @@ from sqlalchemy import engine_from_config, pool
 # access to the values within the .ini file in use.
 config = context.config
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Check if a URL was already injected into the config (by pytest's conftest.py)
+url_from_config = config.get_main_option("sqlalchemy.url")
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is not set")
-
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# If no URL exists, or if it contains the placeholder 'driver://' from alembic.ini,
+# then use DATABASE_URL
+if not url_from_config or "driver://" in url_from_config:
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set")
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

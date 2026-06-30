@@ -62,7 +62,7 @@ docker compose exec web alembic revision -m "create view_name"
 ```
 Open the migration file and add the SQL statement to create the view.
 
-Views names should be placed in env.py IGNORED_VIEWS set to be ignored by alembic autogenerate command.
+Views names should be placed in backend/alembic/env.py IGNORED_VIEWS set to be ignored by alembic autogenerate command.
 
 ## Seed Data
 

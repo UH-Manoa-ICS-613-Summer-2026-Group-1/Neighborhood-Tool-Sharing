@@ -19,10 +19,10 @@ class UserProfileResponse(BaseModel):
     user_created_at: datetime
     user_photo_url: str | None = None
     role_code: str
-    role: str
+    role_name: str
     role_description: str | None = None
     status_code: str
-    status: str
+    status_name: str
     status_description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
