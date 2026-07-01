@@ -34,4 +34,5 @@ class Photo(Base):
         comment="Date and time the image was added",
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="photo", uselist=False)
+    # Relationship: photo.
+    user: Mapped["User | None"] = relationship("User", back_populates="photo")
