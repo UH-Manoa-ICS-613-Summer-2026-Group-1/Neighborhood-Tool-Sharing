@@ -64,12 +64,13 @@ Open the migration file and add the SQL statement to create the view.
 
 Views names should be placed in backend/alembic/env.py IGNORED_VIEWS set to be ignored by alembic autogenerate command.
 
-For the clean run, you can delete all data from database:
+If alembic migration fails, and you stuck in the middle of the migration, you can clean the container volume (storage).
+Next command will stop the container and delete all tables, views, and data from database:
 ```bash
 docker compose down -v
 ```
-Or delete all tables, views, and data from database:
 
+You can undo all migrations, which also deletes all tables, views, and data if run successfully:
 ```bash
 docker compose exec web alembic downgrade base
 ```
