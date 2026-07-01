@@ -12,7 +12,7 @@ echo "Seeding temporary test data..."
 docker compose exec -T web python seed.py
 
 echo "Executing backend tests..."
-source backend/qa/scripts/run_tests.sh
+source ./qa/scripts/run_backend_qa_checks.sh
 echo "NOTE: Docker containers are left running for manual testing."
 echo "    - Local Server: http://localhost:5000"
 echo "    - API Docs:     http://localhost:5000/docs"

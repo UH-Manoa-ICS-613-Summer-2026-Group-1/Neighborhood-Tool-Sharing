@@ -23,6 +23,6 @@ python -m ruff check .
 # python -m pip_audit
 
 echo "Running SQLFluff linter..."
-python -m sqlfluff lint --dialect postgres .
+python -m sqlfluff lint .
 
 echo "All checks passed."
