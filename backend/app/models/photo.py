@@ -28,8 +28,8 @@ class Photo(Base):
         Text, nullable=False, comment="The address hosting the actual image file"
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.timezone("UTC", func.now()),
         nullable=False,
         comment="Date and time the image was added",
     )

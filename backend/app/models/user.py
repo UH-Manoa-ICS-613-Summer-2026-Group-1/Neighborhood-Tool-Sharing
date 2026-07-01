@@ -139,8 +139,8 @@ class User(Base):
         comment="Links the user to their system role",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.timezone("UTC", func.now()),  # server_default=func.now(),
         nullable=False,
         comment="Date and time the user account was created",
     )
@@ -158,7 +158,7 @@ class UserProfileView(Base):
     user_email = Column(String)
     user_bio = Column(Text, nullable=True)
     user_location = Column(String, nullable=True)
-    user_created_at = Column(DateTime)
+    user_created_at = Column(DateTime(timezone=True))
     user_photo_url = Column(String, nullable=True)
     role_code = Column(String)
     role_name = Column(String)
