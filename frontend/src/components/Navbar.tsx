@@ -1,5 +1,8 @@
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, MagnifyingGlassIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import { useNavigate } from 'react-router-dom'
+import { logoutUser } from '../api/auth'
+
 
 const navigation = [
   { name: 'Home', href: '#', icon: HomeIcon, current: true },
@@ -12,7 +15,19 @@ function classNames(...classes: (string | undefined | null | boolean)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function Example() {
+export default function Navbar() {
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    try {
+      await logoutUser()
+      localStorage.removeItem('access_token')
+      navigate('/')
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : 'Logout failed.')
+    }
+  }
+
   return (
     <Disclosure as="nav" className="relative bg-gray-800">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -78,12 +93,12 @@ export default function Example() {
                   </a>
                 </MenuItem>
                 <MenuItem>
-                  <a
-                    href="#"
-                    className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
                   >
                     Sign out
-                  </a>
+                  </button>
                 </MenuItem>
               </MenuItems>
             </Menu>
