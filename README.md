@@ -56,13 +56,24 @@ To undo the very last database migration that was applied use:
 docker compose exec web alembic downgrade -1
 ```
 
-To create a view generate an empty migration:
+To create a view, generate an empty migration:
 ```bash
 docker compose exec web alembic revision -m "create view_name"
 ```
 Open the migration file and add the SQL statement to create the view.
 
 Views names should be placed in backend/alembic/env.py IGNORED_VIEWS set to be ignored by alembic autogenerate command.
+
+For the clean run, you can delete all data from database:
+```bash
+docker compose down -v
+```
+Or delete all tables, views, and data from database:
+
+```bash
+docker compose exec web alembic downgrade base
+```
+These commands are useful for testing clean environment.
 
 ## Seed Data
 

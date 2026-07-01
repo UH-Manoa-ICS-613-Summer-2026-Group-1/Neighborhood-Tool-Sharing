@@ -1,8 +1,8 @@
-"""Create_user_profile_view
+"""Create user_profiles_v
 
-Revision ID: db799141d79e
-Revises: a8015845096e
-Create Date: 2026-06-30 01:21:19.292737
+Revision ID: 71f4b9017e5a
+Revises: f9635f5bf9df
+Create Date: 2026-07-01 06:35:00.403298
 
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "db799141d79e"
-down_revision: Union[str, Sequence[str], None] = "a8015845096e"
+revision: str = "71f4b9017e5a"
+down_revision: Union[str, Sequence[str], None] = "f9635f5bf9df"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
