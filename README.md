@@ -18,16 +18,19 @@ Navigate to the project root directory.
 
 For the first setup, or after modifying requirements.txt or Dockerfile start docker container using:
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 For a normal start:
 ```bash
-docker-compose up
+docker compose up
 ```
 These commands will start a server in your terminal.
 
-To stop the server press `Ctrl + C` in the termial. 
+To stop the server press `Ctrl + C` in the termial or use:
+```bash
+docker compose down
+```
 
 ## Database Migrations
 Alembic is used to manage database versions.
@@ -40,34 +43,45 @@ Open a new terminal and follow next instructions to manage migrations.
 
 To apply the latest version of migration, run:
 ```bash
-docker-compose exec web alembic upgrade head
+docker compose exec web alembic upgrade head
 ```
 
 When you modify SQLAlchemy models, import a new moodel in backend/app/models/__init__.py and create a new migration:
 ```bash
-docker-compose exec web alembic revision --autogenerate -m "description of changes"
+docker compose exec web alembic revision --autogenerate -m "description of changes"
 ```
 
 To undo the very last database migration that was applied use:
 ```bash
-docker-compose exec web alembic downgrade -1
+docker compose exec web alembic downgrade -1
 ```
 
 ## Seed Data
 
 Run docker container and use the following command in separate terminal to seed the database:
 ```bash
-docker-compose exec web python seed.py
+docker compose exec web python seed.py
 ```
 Seed include: user_roles, user_statuses, users
 
-## Backend Tests
+## Backend Scripts
 
-Run docker container and use the following command in separate terminal to start pytest:
-
-```bash
-docker-compose exec web pytest
+Quick local start:
+ ```bash
+./backend/scripts/quick_local_start.sh
 ```
+The script:
+- Create docker images and start containers
+- Upgrage database to latest version
+- Seed data to database
+- Run backend tests (see the QA Tests > Backend Tests section for detailed info about backend tests)
+
+NOTE: Docker containers are left running for manual testing.
+Local Server: http://localhost:5000.
+To stop the containers, run:
+ ```bash 
+ docker compose down
+ ```
 
 ## Virtual Enviroment
 
@@ -87,7 +101,7 @@ pip install -r requirements.txt
 ```
 
 ## API Specifications
-Open http://127.0.0.1:5000/docs
+Open http://localhost:5000/docs
 
 ## QA Tests
 -   This project implements automated testing on-demand QA tests from a developer's workstation or from the GitHub platform. The automated QA tests will be automatically run during specific GitHub events: pull requests and merging changes to main branch
