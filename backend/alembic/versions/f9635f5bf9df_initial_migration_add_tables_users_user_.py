@@ -34,8 +34,8 @@ def upgrade() -> None:
         ),
         sa.Column(
             "created_at",
-            sa.DateTime(),
-            server_default=sa.text("now()"),
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
             comment="Date and time the image was added",
         ),
@@ -163,8 +163,8 @@ def upgrade() -> None:
         ),
         sa.Column(
             "created_at",
-            sa.DateTime(),
-            server_default=sa.text("now()"),
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
             comment="Date and time the user account was created",
         ),
