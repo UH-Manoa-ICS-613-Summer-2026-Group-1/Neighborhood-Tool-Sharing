@@ -1,12 +1,14 @@
-name: Python CI
+name: Neighborhood Tool Sharing App - CI Pipeline
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
 
 jobs:
-  test-and-lint:
+  backend:
+    name: Backend checks
     runs-on: ubuntu-latest
 
     steps:
@@ -38,7 +40,38 @@ jobs:
         run: python -m ruff check . 
 
       - name: Run SQLFluff linter 
-        run: python -m sqlfluff lint --dialect postgres .
+        run: python -m sqlfluff lint .
         
 #      - name: Run pip-audit linter
 #        run: python -m pip_audit
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with: 
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests 
+        run: npm run test    
+        
+      - name: Run linter 
+        run: npm run lint 
+
+      - name: Run build
+        run: npm run build
