@@ -108,31 +108,31 @@ def run_invitaions_seeds(db: Session):
         INSERT INTO invitations (sender_id, recipient_email, invitation_token, status) VALUES
         (
             (SELECT id FROM users WHERE email = 'seed1@example.com'),
-            'newuser@mail.com',
+            'newuser@example.com',
             'valid-invite-token',
             'PENDING'
         ),
         (
             (SELECT id FROM users WHERE email = 'seed2@example.com'),
-            'newuser2@mail.com',
+            'newuser2@example.com',
             'valid-invite-token2',
             'PENDING'
         ),
         (
             (SELECT id FROM users WHERE email = 'seed2@example.com'),
-            'newuser3@mail.com',
+            'newuser3@example.com',
             'valid-invite-token3',
             'REVOKED'
         ),
         (
             (SELECT id FROM users WHERE email = 'seed3@example.com'),
-            'newuser4@mail.com',
+            'newuser4@example.com',
             'valid-invite-token4',
             'EXPIRED'
         ),
         (
             (SELECT id FROM users WHERE email = 'seed3@example.com'),
-            'newuser5@mail.com',
+            'newuser5@example.com',
             'valid-invite-token5',
             'USED'
         )
