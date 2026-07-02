@@ -1,14 +1,8 @@
-// App.tsx
-// Main application router — defines all page routes
-
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Home from "./pages/Landing/Home";
 import Login from "./pages/Login/Login";
 import Dashboard from "./pages/Dashboard/Dashboard";
-
-
-// global styles
-// import './style.css'
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
 
@@ -17,7 +11,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          {/* add more protected pages here, e.g. */}
+        </Route>
       </Routes>
     </BrowserRouter>
   )

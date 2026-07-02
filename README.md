@@ -29,6 +29,27 @@ These commands will start a server in your terminal.
 
 To stop the server press `Ctrl + C` in the termial. 
 
+## Local Frontend Setup
+ 
+The frontend is a React + TypeScript app built with [Vite](https://vite.dev/).
+ 
+Prerequisites:
+- [Node.js](https://nodejs.org/) (LTS version recommended) and npm
+Navigate to the frontend directory (`cd frontend`)
+ 
+For the first setup, or after pulling changes that modify `package.json`, install dependencies:
+```bash
+npm install
+```
+ 
+To start the local development server:
+```bash
+npm run dev
+```
+This will start the app in your terminal and print a local URL (typically `http://localhost:5173`) where you can view it in your browser. Note that the frontend expects the backend API to be running (see "Local Backend Setup" below) since requests to `/api/...` are proxied/served by the backend.
+ 
+To stop the dev server, press `Ctrl + C` in the terminal.
+
 ## Database Migrations
 Alembic is used to manage database versions.
 
@@ -90,18 +111,53 @@ pip install -r requirements.txt
 Open http://127.0.0.1:5000/docs
 
 ## QA Tests
--   This project implements automated testing on-demand from a developer's workstation as well as using GitHub actions during specific events: pull requests, merging changes to main branch
--   On-Demand tests:
-    -   Using bash (or git-bash), change to the root directory of the working copy of the repository
-    -   Then execute the following command: `bash ./backend/qa/scripts/run_tests.sh`
-    -   This will automatically execute all of the define automated tests
--   Automated GitHub tests:
-    -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml)
-    -   The [run_tests.sh](./backend/qa/scripts/run_tests.sh) and ci.yml files should stay in-sync to ensure the tests are consistent
--   Testing Types:
-    -   Backend:
+-   This project implements automated testing on-demand QA tests from a developer's workstation or from the GitHub platform. The automated QA tests will be automatically run during specific GitHub events: pull requests and merging changes to main branch
+-   ### Backend Tests
+    -   #### On-Demand Tests
+        -   Using bash (or git-bash), change to the root directory of the working copy of the repository
+        -   Start the docker containers: `docker-compose up`
+        -   Execute the [run_backend_qa_checks.sh](./qa/scripts/run_backend_qa_checks.sh) script: `bash ./qa/scripts/run_backend_qa_checks.sh`
+            -   This will automatically execute all of the defined automated tests and linters
+    -   #### Testing Types
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [ruff](https://docs.astral.sh/ruff/): python linter
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
-    -   Frontend:
-        -   No frontend tests have been implemented yet
+    -   #### Test Definitions
+        -   The backend python tests reside in the [backend/tests folder](./backend/tests)
+-   ### Frontend Tests
+    -   #### On-Demand Tests
+        -   Using bash (or git-bash), change to the root directory of the working copy of the repository
+        -   Execute the [run_frontend_qa_checks.sh](./qa/scripts/run_frontend_qa_checks.sh) script: `bash ./qa/scripts/run_frontend_qa_checks.sh`
+            -   This will automatically execute all of the defined automated tests, linters, and build process
+    -   #### Testing Types
+        -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+        -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
+        -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
+    -   #### Test Definitions
+        -   The frontend React tests and the vitest configuration file reside in the [frontend/tests folder](./frontend/tests/)
+-   ### CI Pipeline
+    -   The CI pipeline is implemented using GitHub Actions
+    -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml) for both backend and frontend tests
+    -   The CI pipeline runs each time a pull request is submitted and each time code is merged to the main branch
+    -   \*Note: The ci.yml file must stay in-sync with the [on-demand backend](#on-demand-tests) and [frontend](#on-demand-tests-1) tests to ensure they are consistent
+
+## Data Dictionary
+-   The [data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql) script contains the DDL necessary to define the data dictionary views in the PostgreSQL database
+-   ### Updating the Data Dictionary
+    -   The data dictionary can be updated to define comments on tables, views, and columns. Once these comments are defined they can be retrieved by the custom [data dictionary views](#data-dictionary-views)
+    -   There are multiple ways to define database object comments:
+        -   Comments can be defined using sqlalchemy ([reference](https://docs.sqlalchemy.org/en/21/changelog/migration_12.html): under the "Support for SQL Comments on Table, Column, includes DDL, reflection" heading)
+        -   Comments can be defined using SQL DDL commands:
+            -   [DDL_helper.ods](./backend/SQL/DDL_helper.ods) has formulas defined to generate column comment DDL statements based on the values defined in Columns A - C
+            -   The generated value in column D can be executed to define the corresponding column comment
+            -   Table comments can be defined using the following DDL, where \[TABLE\_NAME\] is the name of the table and \[COMMENT\] is the comment for the specified table:
+                -   `COMMENT ON TABLE [TABLE_NAME] IS '[COMMENT]';`
+            -   The DDL can be saved and versioned by using the DDL to define an Alembic migration
+-   ### Data Dictionary Views
+    -   Data Dictionary Objects (data_dictionary_objects_v): this view returns the Object (Table, View, Materialized Views) and Column metadata
+    -   Data Dictionary Relationships (data_dictionary_relationships_v): this view returns the foreign key relationships between tables
+-   ### Export Procedure
+    -   \*Note: Comments defined on the tables/columns will be included in the data dictionary views
+    -   Define the data dictionary views ([data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql))
+    -   Using a database client (e.g. pgadmin, DBeaver) export the results of the [data dictionary views](#data-dictionary-views) into separate tabs/worksheets of the spreadsheet
+        -   \*Note: to export the Data Dictionary Objects view execute the following query: `SELECT * FROM public.data_dictionary_objects_v;`

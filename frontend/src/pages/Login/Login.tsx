@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { loginUser } from '../../api/auth'
 
+// Handles the email/password form, calls the auth API, stores the
+// resulting access token, and redirects the user back to wherever
+// they were trying to go (or /dashboard by default).
 const Login = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // where the user was headed before being bounced to /login
+    const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard'
 
     const handleSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault()
@@ -19,9 +26,11 @@ const Login = () => {
         setLoading(true)
 
         try {
+            // Call the backend, store the token, and continue to the
+            // originally-requested page (or the dashboard).
             const data = await loginUser(email, password)
             localStorage.setItem('access_token', data.access_token)
-            navigate('/dashboard')
+            navigate(from, { replace: true })
  
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unable to reach the server.')
@@ -33,6 +42,7 @@ const Login = () => {
     return (
         <div className="flex flex-col items-center min-h-screen pt-[15vh] px-4">
             <div className="w-full max-w-[15em] mx-auto">
+                {/* Back to landing page */}
                 <button
                     className="block w-1/4 px-3 py-2 sm:py-3 bg-black/25 text-[#e8a838] border border-[#e8a838] border-b-0 text-[0.65rem] sm:text-[0.75rem] font-semibold tracking-[0.05em] text-left cursor-pointer transition-colors duration-200 hover:bg-[#e8a838] hover:text-white"
                     onClick={() => navigate('/')}
@@ -43,7 +53,7 @@ const Login = () => {
                     className="relative w-full sm:w-[50vw] sm:max-w-[15em] p-4 sm:p-6 md:p-8 bg-black/15 box-border before:content-[''] before:absolute before:top-[-2px] before:left-0 before:h-[2px] before:w-full before:bg-[#e8a838]"
                     onSubmit={handleSubmit}
                 >
-                    {/* Error message */}
+                    {/* Error message (shown after a failed login attempt or empty fields) */}
                     {error && (
                         <div className="mb-4 px-3 py-2 bg-red-500/20 border border-red-500/50 text-red-300 text-[0.65em] sm:text-[0.75em]">
                             {error}

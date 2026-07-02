@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
+// Introduces the app and provides a "Sign In" button that routes to /login.
 const Home = () => {
     const navigate = useNavigate()
 
@@ -11,6 +12,7 @@ const Home = () => {
                 </h1>
             </div>
 
+            {/* Feature highlight cards */}
             <div className="flex flex-wrap justify-center gap-3 md:gap-5 w-full max-w-[800px]">
                 {[
                     { icon: '🔧', title: 'List Your Tools', desc: 'Share your tools with photos, condition notes, and lending rules.' },
@@ -25,6 +27,7 @@ const Home = () => {
                 ))}
             </div>
 
+            {/* Entry point into the auth flow */}
             <div className="flex justify-center w-full">
                 <button
                     type="button"

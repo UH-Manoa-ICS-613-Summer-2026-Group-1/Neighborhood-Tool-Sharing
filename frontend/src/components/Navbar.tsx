@@ -15,9 +15,12 @@ function classNames(...classes: (string | undefined | null | boolean)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
+// Top navigation bar for logged-in users.
 export default function Navbar() {
   const navigate = useNavigate()
 
+  // Logs the user out via the API, clears the local token, and
+  // returns them to the public landing page.
   const handleSignOut = async () => {
     try {
       await logoutUser()
@@ -59,8 +62,8 @@ export default function Navbar() {
                 ))}
             </div>
           </div>
+          {/* Profile dropdown menu (avatar, profile link, invite, sign out) */}
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-            {/* Profile dropdown */}
             <Menu as="div" className="relative ml-3">
               <MenuButton className="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
                 <span className="absolute -inset-1.5" />
