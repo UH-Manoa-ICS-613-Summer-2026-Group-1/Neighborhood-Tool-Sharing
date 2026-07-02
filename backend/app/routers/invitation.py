@@ -6,6 +6,7 @@ Handles sending, validating, and retrieving invitations.
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -91,7 +92,9 @@ def send_invitation(
     recipient_email = invitation_data.recipient_email
 
     # If the user account already exists, raise an exeption
-    existing_user = db.query(User).filter(User.email == recipient_email).first()
+    existing_user = (
+        db.query(User).filter(func.lower(User.email) == recipient_email.lower()).first()
+    )
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -104,18 +107,24 @@ def send_invitation(
     pending_invite = (
         db.query(Invitation)
         .filter(
-            Invitation.recipient_email == recipient_email,
+            func.lower(Invitation.recipient_email) == recipient_email.lower(),
             Invitation.status == InvitationStatus.PENDING,
         )
         .first()
     )
+
     if pending_invite:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"An invitation has already been sent to the email address {recipient_email}."
-            ),
-        )
+        # If it's expired by time, update it to expired and let a fresh invite be created
+        if datetime.now(timezone.utc) > pending_invite.expires_at.replace(
+            tzinfo=timezone.utc
+        ):
+            pending_invite.status = InvitationStatus.EXPIRED
+            db.commit()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"An invitation has already been sent to the email address {recipient_email}.",
+            )
 
     # Generate invitation token and store in db
     invite_token = generate_token()

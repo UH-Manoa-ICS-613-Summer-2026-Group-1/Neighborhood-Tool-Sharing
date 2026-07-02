@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 class UserRegisterRequest(BaseModel):
     email: EmailStr
+    invite_token: str
     password: str = Field(
         ...,
         min_length=8,
