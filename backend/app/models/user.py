@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
+    from .invitation import Invitation
     from .photo import Photo
 
 # Tables:
@@ -140,14 +141,25 @@ class User(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.timezone("UTC", func.now()),  # server_default=func.now(),
+        server_default=func.timezone("UTC", func.now()),
         nullable=False,
         comment="Date and time the user account was created",
     )
 
-    photo: Mapped["Photo | None"] = relationship("Photo", back_populates="user")
+    # Relationships: user.
     role: Mapped["UserRole"] = relationship("UserRole", back_populates="users")
     status: Mapped["UserStatus"] = relationship("UserStatus", back_populates="users")
+
+    photo: Mapped["Photo | None"] = relationship("Photo", back_populates="user")
+
+    sent_invitations: Mapped[list["Invitation"]] = relationship(
+        "Invitation", foreign_keys="[Invitation.sender_id]", back_populates="sender"
+    )
+    received_invitations: Mapped[list["Invitation"]] = relationship(
+        "Invitation",
+        foreign_keys="[Invitation.recipient_id]",
+        back_populates="recipient",
+    )
 
 
 class UserProfileView(Base):

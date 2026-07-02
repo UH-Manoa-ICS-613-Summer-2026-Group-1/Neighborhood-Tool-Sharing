@@ -2,11 +2,14 @@ import re
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.utils.auth_helpers import normalize_email
+
 # REQUEST SCHEMAS
 
 
 class UserRegisterRequest(BaseModel):
     email: EmailStr
+    invite_token: str
     password: str = Field(
         ...,
         min_length=8,
@@ -14,6 +17,11 @@ class UserRegisterRequest(BaseModel):
         description="Password must be between 8 and 64 characters long.",
         examples=["Mysecurepassword1!"],
     )
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def lowercase_email(cls, value: str) -> str:
+        return normalize_email(value)
 
     @field_validator("password")
     @classmethod
@@ -32,6 +40,11 @@ class UserRegisterRequest(BaseModel):
 class UserLoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1, examples=["Mysecurepassword1!"])
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def lowercase_email(cls, value: str) -> str:
+        return normalize_email(value)
 
 
 # RESPONSE SCHEMAS

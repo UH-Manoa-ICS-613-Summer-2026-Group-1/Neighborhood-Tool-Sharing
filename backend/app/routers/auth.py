@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
+from app.models.invitation import InvitationStatus
 from app.models.user import User, UserRole, UserStatus
+from app.routers.invitation import get_valid_invite
 from app.schemas.auth import (
     TokenResponse,
     UserLoginRequest,
@@ -34,12 +36,20 @@ security_scheme = HTTPBearer()
     "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=MessageResponse,
-    responses={400: {"model": DetailError}},
+    responses={400: {"model": DetailError}, 404: {"model": DetailError}},
 )
 def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
     """
     Create a new user account.
     """
+    invite = get_valid_invite(user_data.invite_token, db)
+
+    if invite.recipient_email.lower() != user_data.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration failed. This invitation link was issued to a different email address.",
+        )
+
     # Check if user already exists in the database
     user = db.query(User).filter(User.email == user_data.email).first()
     if user:
@@ -61,7 +71,12 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
         role=default_role,  # USER role
     )
 
+    # Add the new user to the database
     db.add(new_user)
+
+    # Set invite token status to USED
+    invite.status = InvitationStatus.USED
+
     db.commit()
 
     return {"message": "User registered successfully."}

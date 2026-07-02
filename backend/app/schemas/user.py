@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
@@ -8,10 +7,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 class UserProfileResponse(BaseModel):
     """
-    User profile response schema matching the user_profiles_v view.
+    User profile response schema matching only the necessary fields from the user_profiles_v view.
     """
 
-    user_id: uuid.UUID
     user_name: str
     user_email: EmailStr
     user_bio: str | None = None

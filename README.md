@@ -32,6 +32,12 @@ To stop the server press `Ctrl + C` in the termial or use:
 docker compose down
 ```
 
+To see server logs use, run:
+```bash
+docker compose logs -f
+```
+Also, the server logs are visible in the docker desktop application.
+
 ## Database Migrations
 Alembic is used to manage database versions.
 
@@ -82,7 +88,7 @@ Run docker container and use the following command in separate terminal to seed 
 ```bash
 docker compose exec web python seed.py
 ```
-Seed include: user_roles, user_statuses, users
+Seed include: user_roles, user_statuses, users, invitations
 
 ## Backend Scripts
 

@@ -7,6 +7,7 @@ from alembic import command
 from alembic.config import Config
 from app.database import get_db
 from app.main import app
+from app.models.invitation import Invitation
 from app.models.user import User, UserRole, UserStatus
 from app.utils.auth_helpers import get_password_hash
 from app.utils.seeder import run_lookup_seeds
@@ -89,7 +90,11 @@ def seed_lookups_tables(db_session):
 @pytest.fixture()
 def client(db_session):
     """
-    Overrides the standard get_db dependency with our test session.
+    This fixture provides a TestClient instance for making requests.
+    It overrides the get_db dependency to use a test database session.
+    'client' fixture takes 'db_session' as a dependency.
+    Therefore, whenever you include 'client' in a test,
+    the database is automatically clean first.
     """
 
     def override_get_db():
@@ -149,3 +154,21 @@ def seed_suspended_user(db_session):
     db_session.commit()
     db_session.refresh(test_user)
     return test_user
+
+
+@pytest.fixture()
+def seed_invitation(db_session, seed_user):
+    """
+    Seeds a single invitation into the test database.
+    """
+    # Create an invite for a new user
+    invite = Invitation(
+        sender_id=seed_user.id,
+        recipient_email="newuser@mail.com",
+        invitation_token="valid-invite-token",
+        status="PENDING",
+    )
+    db_session.add(invite)
+    db_session.commit()
+    db_session.refresh(invite)
+    return invite
