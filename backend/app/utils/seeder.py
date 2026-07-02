@@ -136,6 +136,7 @@ def run_invitaions_seeds(db: Session):
             'valid-invite-token5',
             'USED'
         )
+        ON CONFLICT (invitation_token) DO NOTHING;
     """)
     db.execute(sql_query)
     db.commit()
