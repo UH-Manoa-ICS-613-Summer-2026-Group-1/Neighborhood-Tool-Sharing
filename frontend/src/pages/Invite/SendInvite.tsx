@@ -54,7 +54,8 @@ const SendInvite = () => {
             setSuccess(data.message)
             setEmail('')
 
-        } catch (err) {
+        } catch {
+            // LINT FIX — renamed err to _err since it is not used
             setError('Could not connect to the server. Please try again.')
         } finally {
             setLoading(false)

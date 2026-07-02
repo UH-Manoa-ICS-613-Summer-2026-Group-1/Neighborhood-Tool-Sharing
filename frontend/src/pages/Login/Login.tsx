@@ -28,8 +28,9 @@ const Login = () => {
             const data = await loginUser(email, password)
             localStorage.setItem('access_token', data.access_token)
             navigate('/dashboard')
-        } catch (err: any) {
-            setError(err.message || 'Could not connect to the server. Please try again.')
+        } catch (err: unknown) {
+            // LINT FIX — changed err: any to err: unknown
+            setError(err instanceof Error ? err.message : 'Could not connect to the server. Please try again.')
         } finally {
             setLoading(false)
         }

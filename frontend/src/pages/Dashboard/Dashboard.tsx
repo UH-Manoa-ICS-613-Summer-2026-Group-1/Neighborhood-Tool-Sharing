@@ -43,8 +43,9 @@ export default function Dashboard() {
 
         const data = await response.json()
         setUser(data)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load dashboard data.')
+      } catch (err: unknown) {
+        // LINT FIX — changed err: any to err: unknown
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard data.')
         localStorage.removeItem('access_token')
       } finally {
         setLoading(false)

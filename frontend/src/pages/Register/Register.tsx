@@ -17,17 +17,18 @@ const Register = () => {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
-    const [validating, setValidating] = useState(true)
+    // LINT FIX — start validating as false when no token, true when token exists
+    const [validating, setValidating] = useState(!!inviteToken)
     const [error, setError] = useState('')
-    const [tokenError, setTokenError] = useState('')
+    // LINT FIX — set tokenError directly without useEffect when no token
+    const [tokenError, setTokenError] = useState(
+        !inviteToken ? 'No invitation token found. Please use the link from your invitation email.' : ''
+    )
 
     // US 11: Validate the invite token as soon as the page loads
     useEffect(() => {
-        if (!inviteToken) {
-            setTokenError('No invitation token found. Please use the link from your invitation email.')
-            setValidating(false)
-            return
-        }
+        // Skip if no token — already handled above
+        if (!inviteToken) return
 
         const validateToken = async () => {
             try {
@@ -44,7 +45,8 @@ const Register = () => {
                 // Pre-fill the email field with the recipient email from the invite
                 setEmail(data.recipient_email)
 
-            } catch (err) {
+            } catch {
+                // LINT FIX — renamed err to _err since it is not used
                 setTokenError('Could not validate invitation. Please try again.')
             } finally {
                 setValidating(false)
@@ -94,7 +96,8 @@ const Register = () => {
             // Success — redirect to login page
             navigate('/login?registered=true')
 
-        } catch (err) {
+        } catch {
+            // LINT FIX — renamed err to _err since it is not used
             setError('Could not connect to the server. Please try again.')
         } finally {
             setLoading(false)
