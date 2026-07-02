@@ -18,6 +18,7 @@ from app.schemas.invitation import (
     InvitationValidateResponse,
 )
 from app.utils.dependencies import get_current_user
+from app.utils.email import send_invitation_email
 from app.utils.token_generator import generate_token
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations"])
@@ -128,8 +129,9 @@ def send_invitation(
     db.add(new_invite)
     # Try to send the email, if it fails, rollback the db transaction and raise an error
     try:
-        pass
-        # send_invitation_email(recipient_email, invite_token) # TODO
+        # It sends the invitation links to your console; the email service will be implemented later
+        # To see console output, run: `docker compose logs -f`
+        send_invitation_email(recipient_email, invite_token)
     except Exception as e:
         db.rollback()
         raise HTTPException(
