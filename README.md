@@ -32,6 +32,11 @@ To stop the server press `Ctrl + C` in the termial or use:
 docker compose down
 ```
 
+To see server logs use:
+```bash
+docker compose logs -f
+```
+
 ## Database Migrations
 Alembic is used to manage database versions.
 
