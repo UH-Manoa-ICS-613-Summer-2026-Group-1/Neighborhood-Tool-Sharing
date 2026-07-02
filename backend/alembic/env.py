@@ -10,12 +10,16 @@ from sqlalchemy import engine_from_config, pool
 # access to the values within the .ini file in use.
 config = context.config
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Check if a URL was already injected into the config (by pytest's conftest.py)
+url_from_config = config.get_main_option("sqlalchemy.url")
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is not set")
-
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# If no URL exists, or if it contains the placeholder 'driver://' from alembic.ini,
+# then use DATABASE_URL
+if not url_from_config or "driver://" in url_from_config:
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set")
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -33,6 +37,18 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+# Place views in the ignore list to prevent alembic (--autogenerate) from creating them
+IGNORED_VIEWS = {
+    "user_profiles_v",
+}
+
+
+# Tell Alembic to ignore database views
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in IGNORED_VIEWS:
+        return False
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -53,6 +69,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -73,7 +90,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
 
         with context.begin_transaction():
             context.run_migrations()

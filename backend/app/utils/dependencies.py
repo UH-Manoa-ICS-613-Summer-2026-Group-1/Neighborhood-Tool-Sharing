@@ -58,7 +58,7 @@ def get_current_user(
             detail="Token has been revoked (logged out).",
         )
 
-    # If the user does not exist raise an exception in db
+    # If the user does not exist in db raise an exception
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(

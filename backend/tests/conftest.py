@@ -1,17 +1,23 @@
 import os
+from pathlib import Path
 
 import pytest
-from app.database import Base, get_db
+import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
+from app.database import get_db
 from app.main import app
 from app.models.user import User, UserRole, UserStatus
 from app.utils.auth_helpers import get_password_hash
 from app.utils.seeder import run_lookup_seeds
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import create_database, database_exists
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+
+ALEMBIC_INI_PATH = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 if not TEST_DATABASE_URL:
     raise ValueError("TEST_DATABASE_URL environment variable is not set")
@@ -22,22 +28,57 @@ if not database_exists(engine.url):
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session", autouse=True)
+def setup_database_schema():
+    """
+    Runs once at the start of the entire test run.
+    Wipes the schema and uses Alembic to build all tables and views.
+    """
+    # Wipe the database
+    with engine.connect() as conn:
+        conn.execute(sa.text("DROP SCHEMA public CASCADE;"))
+        conn.execute(sa.text("CREATE SCHEMA public;"))
+        conn.commit()
+
+    # Run migrations
+    alembic_cfg = Config(str(ALEMBIC_INI_PATH))
+    alembic_cfg.set_main_option("sqlalchemy.url", str(TEST_DATABASE_URL))
+    command.upgrade(alembic_cfg, "head")
+
+    yield
+
+
+@pytest.fixture(scope="function")
 def db_session():
     """
-    Wipes and rebuilds the test DB for tests.
+    Creates a new database session for each test.
+    It isolates changes by wrapping the test in a database
+    transaction and rolling back at the end.
     """
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    # Begin a database transaction
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
 
-    session = TestingSessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+    # Begin a nested transaction for each test
+    nested = connection.begin_nested()
+
+    # Wrap the test in a database transaction
+    @event.listens_for(session, "after_transaction_end")
+    def end_savepoint(session, transaction):
+        nonlocal nested
+        if not nested.is_active:
+            nested = connection.begin_nested()
+
+    yield session
+
+    # Close the database session, rollback the transaction
+    session.close()
+    transaction.rollback()
+    connection.close()
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def seed_lookups_tables(db_session):
     """
     Seeds all static reference lookup tables.
@@ -46,7 +87,7 @@ def seed_lookups_tables(db_session):
 
 
 @pytest.fixture()
-def client(db_session, seed_lookups_tables):
+def client(db_session):
     """
     Overrides the standard get_db dependency with our test session.
     """
