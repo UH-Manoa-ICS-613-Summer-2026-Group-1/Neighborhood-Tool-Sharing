@@ -98,3 +98,44 @@ def run_admin_seeds(db: Session):
 
     db.execute(sql_query, {"pass": get_password_hash(ADMIN_PASSWORD)})
     db.commit()
+
+
+def run_invitaions_seeds(db: Session):
+    """
+    Seed the invitaions table with initial data.
+    """
+    sql_query = text("""
+        INSERT INTO invitations (sender_id, recipient_email, invitation_token, status) VALUES
+        (
+            (SELECT id FROM users WHERE email = 'seed1@example.com'),
+            'newuser@mail.com',
+            'valid-invite-token',
+            'PENDING'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed2@example.com'),
+            'newuser2@mail.com',
+            'valid-invite-token2',
+            'PENDING'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed2@example.com'),
+            'newuser3@mail.com',
+            'valid-invite-token3',
+            'REVOKED'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed3@example.com'),
+            'newuser4@mail.com',
+            'valid-invite-token4',
+            'EXPIRED'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed3@example.com'),
+            'newuser5@mail.com',
+            'valid-invite-token5',
+            'USED'
+        )
+    """)
+    db.execute(sql_query)
+    db.commit()
