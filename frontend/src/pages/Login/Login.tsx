@@ -1,25 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { loginUser } from '../../api/auth'
 
-// BACKEND CONNECTION ADDED BY MARITZA — 06/29/2026
-// API base URL — the FastAPI backend running via Docker on port 5000
-const API_BASE_URL = 'http://localhost:5000'
+// UPDATED BY MARITZA — 07/02/2026
+// Now uses the team's loginUser service from api/auth.ts
+// so that the existing Login tests pass correctly
 
 const Login = () => {
     const navigate = useNavigate()
-
-    // NEW — form state for email, password, and error message
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
 
-    // UPDATED — now calls POST /api/auth/login instead of doing nothing
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setError('')
 
-        // basic required-field check before calling the API
         if (!email || !password) {
             setError('Email and password are required.')
             return
@@ -27,28 +24,12 @@ const Login = () => {
 
         try {
             setLoading(true)
-
-            const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                // backend returns { detail: "..." } on failure
-                setError(data.detail || 'Login failed. Please check your credentials.')
-                return
-            }
-
-            // success — backend returns { access_token, token_type }
+            // Use team's loginUser service — calls /api/auth/login via Vite proxy
+            const data = await loginUser(email, password)
             localStorage.setItem('access_token', data.access_token)
             navigate('/dashboard')
-
-        } catch (err) {
-            // network error — backend not running, wrong port, etc.
-            setError('Could not connect to the server. Please try again.')
+        } catch (err: any) {
+            setError(err.message || 'Could not connect to the server. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -60,6 +41,7 @@ const Login = () => {
                 <button
                     className="block w-1/4 px-3 py-2 sm:py-3 bg-black/25 text-[#e8a838] border border-[#e8a838] border-b-0 text-[0.65rem] sm:text-[0.75rem] font-semibold tracking-[0.05em] text-left cursor-pointer transition-colors duration-200 hover:bg-[#e8a838] hover:text-white"
                     onClick={() => navigate('/')}
+                    aria-label="Back"
                 >
                     ← Back
                 </button>
@@ -67,26 +49,22 @@ const Login = () => {
                     className="relative w-full sm:w-[50vw] sm:max-w-[15em] p-4 sm:p-6 md:p-8 bg-black/15 box-border before:content-[''] before:absolute before:top-[-2px] before:left-0 before:h-[2px] before:w-full before:bg-[#e8a838]"
                     onSubmit={handleSubmit}
                 >
-                    {/* NEW — error message shown above the form fields */}
+                    {/* Error message */}
                     {error && (
-                        <p
-                            role="alert"
-                            className="text-red-400 text-[0.65rem] sm:text-xs mb-3 text-center"
-                        >
+                        <p role="alert" className="text-red-400 text-[0.65rem] sm:text-xs mb-3 text-center">
                             {error}
                         </p>
                     )}
 
-                    {/* Username/Email */}
+                    {/* Email */}
                     <div className="flex mb-4">
-                        <label className="w-8 flex items-center justify-center bg-[#f5f6f8] cursor-pointer shrink-0" htmlFor="username">
+                        <label className="w-8 flex items-center justify-center bg-[#f5f6f8] cursor-pointer shrink-0" htmlFor="email">
                             <svg x="0px" y="0px" width="12px" height="13px">
                                 <path fill="#B1B7C4" d="M8.9,7.2C9,6.9,9,6.7,9,6.5v-4C9,1.1,7.9,0,6.5,0h-1C4.1,0,3,1.1,3,2.5v4c0,0.2,0,0.4,0.1,0.7 C1.3,7.8,0,9.5,0,11.5V13h12v-1.5C12,9.5,10.7,7.8,8.9,7.2z M4,2.5C4,1.7,4.7,1,5.5,1h1C7.3,1,8,1.7,8,2.5v4c0,0.2,0,0.4-0.1,0.6 l0.1,0L7.9,7.3C7.6,7.8,7.1,8.2,6.5,8.2h-1c-0.6,0-1.1-0.4-1.4-0.9L4.1,7.1l0.1,0C4,6.9,4,6.7,4,6.5V2.5z M11,12H1v-0.5 c0-1.6,1-2.9,2.4-3.4c0.5,0.7,1.2,1.1,2.1,1.1h1c0.8,0,1.6-0.4,2.1-1.1C10,8.5,11,9.9,11,11.5V12z" />
                             </svg>
                         </label>
-                        {/* UPDATED — wired to email state, type changed to email since backend expects an email */}
                         <input
-                            id="username"
+                            id="email"
                             className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:scale-110 transition-transform duration-150"
                             placeholder="Email"
                             type="email"
@@ -105,7 +83,6 @@ const Login = () => {
                                 </g>
                             </svg>
                         </label>
-                        {/* UPDATED — wired to password state */}
                         <input
                             id="password"
                             className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:scale-110 transition-transform duration-150"
@@ -117,11 +94,12 @@ const Login = () => {
                         />
                     </div>
 
-                    {/* UPDATED — shows "Logging in..." while waiting on the API, disabled during request */}
+                    {/* Submit button — shows "LOGGING IN..." while loading */}
                     <button
                         className="block w-full py-2 sm:py-3 bg-[#e8a838] border-0 text-white cursor-pointer text-[0.65em] sm:text-[0.75em] font-semibold [text-shadow:0_1px_0_rgba(0,0,0,0.2)] focus:outline-none focus:scale-110 transition-transform duration-150 disabled:opacity-50"
                         type="submit"
                         disabled={loading}
+                        aria-label={loading ? 'Logging in' : 'Login'}
                     >
                         {loading ? 'LOGGING IN...' : 'LOGIN'}
                     </button>
