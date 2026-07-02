@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     UUID,
+    Column,
     DateTime,
     ForeignKey,
     String,
@@ -27,12 +28,12 @@ INVITATION_LINK_EXPIRE_DAYS = 7  # User story 11
 # - invitations (id, invitation_token, sender_id, recipient_email, recipient_id, status, created_at, expires_at)
 
 # Views:
-#
+# - invitation_history_v (invitation_id, sender_id, recipient_email, status, recipient_id, created_at, expires_at)
 
 
 class InvitationStatus(str, enum.Enum):
     PENDING = "PENDING"
-    ACCEPTED = "USED"
+    USED = "USED"
     EXPIRED = "EXPIRED"
     REVOKED = "REVOKED"
 
@@ -102,3 +103,15 @@ class Invitation(Base):
     recipient: Mapped["User | None"] = relationship(
         "User", foreign_keys=[recipient_id], back_populates="received_invitations"
     )
+
+
+class InvitationHistory(Base):
+    __tablename__ = "invitation_history_v"
+
+    invitation_id = Column(UUID(as_uuid=True), primary_key=True)
+    sender_id = Column(UUID(as_uuid=True))
+    recipient_email = Column(String)
+    status = Column(String)
+    recipient_id = Column(UUID(as_uuid=True), nullable=True)
+    created_at = Column(DateTime(timezone=True))
+    expires_at = Column(DateTime(timezone=True))

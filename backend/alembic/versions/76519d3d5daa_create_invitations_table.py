@@ -58,7 +58,7 @@ def upgrade() -> None:
             "status",
             sa.Enum(
                 "PENDING",
-                "ACCEPTED",
+                "USED",
                 "EXPIRED",
                 "REVOKED",
                 name="invitationstatus",

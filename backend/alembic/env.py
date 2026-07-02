@@ -41,6 +41,7 @@ target_metadata = Base.metadata
 # Place views in the ignore list to prevent alembic (--autogenerate) from creating them
 IGNORED_VIEWS = {
     "user_profiles_v",
+    "invitation_history_v",
 }
 
 
