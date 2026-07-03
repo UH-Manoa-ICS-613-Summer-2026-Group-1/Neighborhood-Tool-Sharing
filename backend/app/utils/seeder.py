@@ -1,6 +1,9 @@
-# This module provides a function to seed all lookup tables in the database.
-# it can be used in seeding scripts for development, testing, or production databases.
-# Tables included: user_roles, user_statuses
+"""
+This module provides functions to seed data into the database.
+It can be used in seeding scripts for development, testing, or production databases.
+Seed include: lookup tables: user_roles, user_statuses; users table (users, admins)
+"""
+
 import os
 
 from sqlalchemy import text
@@ -76,7 +79,7 @@ def run_users_seeds(db: Session):
 
 def run_admin_seeds(db: Session):
     """
-    Seed the users table with admin.
+    Seed the users table with admins.
     """
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
@@ -94,4 +97,46 @@ def run_admin_seeds(db: Session):
     """)
 
     db.execute(sql_query, {"pass": get_password_hash(ADMIN_PASSWORD)})
+    db.commit()
+
+
+def run_invitaions_seeds(db: Session):
+    """
+    Seed the invitaions table with initial data.
+    """
+    sql_query = text("""
+        INSERT INTO invitations (sender_id, recipient_email, invitation_token, status) VALUES
+        (
+            (SELECT id FROM users WHERE email = 'seed1@example.com'),
+            'newuser@example.com',
+            'valid-invite-token',
+            'PENDING'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed2@example.com'),
+            'newuser2@example.com',
+            'valid-invite-token2',
+            'PENDING'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed2@example.com'),
+            'newuser3@example.com',
+            'valid-invite-token3',
+            'REVOKED'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed3@example.com'),
+            'newuser4@example.com',
+            'valid-invite-token4',
+            'EXPIRED'
+        ),
+        (
+            (SELECT id FROM users WHERE email = 'seed3@example.com'),
+            'newuser5@example.com',
+            'valid-invite-token5',
+            'USED'
+        )
+        ON CONFLICT (invitation_token) DO NOTHING;
+    """)
+    db.execute(sql_query)
     db.commit()

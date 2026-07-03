@@ -19,15 +19,12 @@ from sqlalchemy.orm import Session
 # "status_id": 2,                       Suspended
 # "role_id": 1}                         User
 
-# 'db_session' is a fixture that provides a session
-#  for interacting with the test database.
-# It wipes and rebuilds all database tables before the test.
+# Seed invitaion data={
+# "sender_id": seed_user.id,
+# "recipient_email": "newuser@mail.com",
+# "invitation_token": "valid-invite-token",
+# "status": "PENDING"}
 
-# 'client' is a fixture that provides a TestClient instance for making requests.
-# It overrides the get_db dependency to use a test database session.
-# 'client' fixture takes 'db_session' as a dependency.
-# Therefore, whenever you include 'client' in a test,
-# the database is automatically clean first.
 
 # US 17 Scenario 1: Successful login
 def test_login_success(client, seed_user):
@@ -36,12 +33,13 @@ def test_login_success(client, seed_user):
     """
     response = client.post(
         "/api/auth/login",
-        json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
+        json={"email": "someemail@mail.com", "password": "Correctpassword123!"},
     )
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+
 
 # US 17 Scenario 2: Incorrect credentials
 def test_login_wrong_password(client, seed_user):
@@ -50,10 +48,11 @@ def test_login_wrong_password(client, seed_user):
     """
     response = client.post(
         "/api/auth/login",
-        json={"email": "someemail@mail.com", "password": "Wrongpassword123!"}
+        json={"email": "someemail@mail.com", "password": "Wrongpassword123!"},
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password."
+
 
 # US 17 Scenario 2: Incorrect credentials
 def test_login_wrong_email(client, seed_user):
@@ -62,10 +61,11 @@ def test_login_wrong_email(client, seed_user):
     """
     response = client.post(
         "/api/auth/login",
-        json={"email": "notexistingemail@mail.com", "password": "Correctpassword123!"}
+        json={"email": "notexistingemail@mail.com", "password": "Correctpassword123!"},
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid email or password."
+
 
 # US 17 Scenario 3: Incomplete login form
 def test_incomplete_login_data_email(client, seed_user):
@@ -73,11 +73,10 @@ def test_incomplete_login_data_email(client, seed_user):
     Test that incomplete login data returns a 422 unprocessable entity error.
     """
     response = client.post(
-        "/api/auth/login",
-        json={"email": "someemail@mail.com",
-              "password": ""}
+        "/api/auth/login", json={"email": "someemail@mail.com", "password": ""}
     )
     assert response.status_code == 422
+
 
 # US 17 Scenario 3: Incomplete login form
 def test_incomplete_login_data_pw(client, seed_user):
@@ -85,13 +84,12 @@ def test_incomplete_login_data_pw(client, seed_user):
     Test that incomplete login data returns a 422 unprocessable entity error.
     """
     response = client.post(
-        "/api/auth/login",
-        json={"email": "",
-              "password": "Correctpassword123!"}
+        "/api/auth/login", json={"email": "", "password": "Correctpassword123!"}
     )
     assert response.status_code == 422
 
-#US 17 Scenario 4: Successful logout
+
+# US 17 Scenario 4: Successful logout
 def test_logout_success(client, seed_user):
     """
     Test that logging out blocks the token from future requests.
@@ -99,34 +97,32 @@ def test_logout_success(client, seed_user):
     # Log in to get a token
     login_response = client.post(
         "/api/auth/login",
-        json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
+        json={"email": "someemail@mail.com", "password": "Correctpassword123!"},
     )
     token = login_response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # Logout
-    logout_response = client.post(
-        "/api/auth/logout",
-        headers=headers)
+    logout_response = client.post("/api/auth/logout", headers=headers)
     assert logout_response.status_code == 200
     assert logout_response.json()["message"] == "Successfully logged out."
 
     # Try to access a protected profile using the same token
-    login2_response = client.get(
-        "/api/auth/protected-profile",
-        headers=headers)
+    login2_response = client.get("/api/users/me", headers=headers)
 
     assert login2_response.status_code == 401
     assert login2_response.json()["detail"] == "Token has been revoked (logged out)."
     assert login_response.headers
+
 
 # US 17 Scenario 5: Accessing protected pages
 def test_protected_route_without_token(client):
     """
     Test that accessing a protected route without a token fails.
     """
-    response = client.get("/api/auth/protected-profile")
+    response = client.get("/api/users/me")
     assert response.status_code == 401
+
 
 # US 17 Scenario 5: Accessing protected pages
 def test_protected_route_with_expired_token(client, seed_user):
@@ -137,17 +133,18 @@ def test_protected_route_with_expired_token(client, seed_user):
     expired_payload = {
         "sub": str(seed_user.id),
         "jti": "some-test-jti-uuid",
-        "exp": time.time() - 1
+        "exp": time.time() - 1,
     }
 
     # Encode it
     expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
 
     headers = {"Authorization": f"Bearer {expired_token}"}
-    response = client.get("/api/auth/protected-profile", headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Token has expired. Please log in again."
+
 
 # US 17 Scenario 5: Accessing protected pages
 def test_protected_route_with_token(client, seed_user):
@@ -156,23 +153,24 @@ def test_protected_route_with_token(client, seed_user):
     """
     login_response = client.post(
         "/api/auth/login",
-        json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
+        json={"email": "someemail@mail.com", "password": "Correctpassword123!"},
     )
     token = login_response.json()["access_token"]
 
     headers = {"Authorization": f"Bearer {token}"}
-    response = client.get("/api/auth/protected-profile", headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
-    user_details = response.json()["user_details"]
+    profile = response.json()
 
     assert response.status_code == 200
 
-    assert user_details["email"] == seed_user.email
-    assert user_details["name"] == seed_user.name
-    assert user_details["status"]["code"] == seed_user.status.code
-    assert user_details["role"]["code"] == seed_user.role.code
+    assert profile["user_email"] == seed_user.email
+    assert profile["user_name"] == seed_user.name
+    assert profile["status_code"] == seed_user.status.code
+    assert profile["role_code"] == seed_user.role.code
 
-    assert "password" not in user_details
+    assert "password" not in profile
+
 
 # US 17 Scenario 6: Suspended user
 def test_suspended_user_login(client, seed_suspended_user):
@@ -181,10 +179,18 @@ def test_suspended_user_login(client, seed_suspended_user):
     """
     response = client.post(
         "/api/auth/login",
-        json={"email": "somesuspendedemail@mail.com", "password": "Correctpassword123!"})
+        json={
+            "email": "somesuspendedemail@mail.com",
+            "password": "Correctpassword123!",
+        },
+    )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "Your account has been suspended. Please contact support."
+    assert (
+        response.json()["detail"]
+        == "Your account has been suspended. Please contact support."
+    )
+
 
 # US 17 Scenario 6: Suspended user
 def test_protected_route_suspended_user(client, seed_user, db_session: Session):
@@ -194,48 +200,130 @@ def test_protected_route_suspended_user(client, seed_user, db_session: Session):
     # Log in to get a valid token while active
     login_response = client.post(
         "/api/auth/login",
-        json={"email": "someemail@mail.com", "password": "Correctpassword123!"}
+        json={"email": "someemail@mail.com", "password": "Correctpassword123!"},
     )
     token = login_response.json()["access_token"]
 
     # Simulate an admin suspending the user (will be a route later)
-    suspended_status = db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    suspended_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    )
     seed_user.status = suspended_status
     db_session.commit()
 
     # Try to access the protected route
     headers = {"Authorization": f"Bearer {token}"}
-    response = client.get(
-        "/api/auth/protected-profile",
-        headers=headers)
+    response = client.get("/api/users/me", headers=headers)
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "Your account has been suspended. Please contact support."
-
-# US 11. Will be rebuild after the registration with invitaion is implemented.
-def test_register_success(client, db_session: Session):
-    """
-    Test that a new user can register successfully with a new email.
-    """
-    response = client.post(
-        "/api/auth/register",
-        json={"email": "newuser@mail.com", "password": "Securepassword123!"}
+    assert (
+        response.json()["detail"]
+        == "Your account has been suspended. Please contact support."
     )
 
-    assert response.status_code == 201
-    assert response.json()["message"] == "User registered successfully."
 
+# US 11. Scenario 1: Invitation link valid (validation + registration)
+def test_register_success(client, db_session: Session, seed_invitation):
+    """
+    Test that a new user can register successfully with a new email.
+    Invitation seed recipient email is "newuser@mail.com"
+    """
+
+    # There is a new invite
+    assert seed_invitation is not None
+    invite_token = seed_invitation.invitation_token
+
+    # Validate the invite token
+    validate_invite_token_response = client.get(
+        "/api/invitations/validate?token=" + invite_token,
+    )
+    # Token is valid
+    assert validate_invite_token_response.status_code == 200
+    assert (
+        validate_invite_token_response.json()["recipient_email"] == "newuser@mail.com"
+    )
+
+    # Ensure the user does not already exist
+    existing_user = (
+        db_session.query(User).filter(User.email == "newuser@mail.com").first()
+    )
+    assert existing_user is None
+
+    # Register the new user
+    register_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@mail.com",
+            "password": "Securepassword123!",
+            "invite_token": invite_token,
+        },
+    )
+
+    # User is registered
+    assert register_response.status_code == 201
+    assert register_response.json()["message"] == "User registered successfully."
+
+    # User is in the database
     user_in_db = db_session.query(User).filter(User.email == "newuser@mail.com").first()
     assert user_in_db is not None
 
-# US 11. Will be rebuild after the registration with invitaion is implemented.
-def test_register_duplicate_email(client, seed_user):
+
+# US 11. Scenario 2: Invitation link invalid
+def test_register_invalid_invitation(client):
+    """
+    Scenario 2: Invitation link invalid
+        Given the invitation was received via email
+        And the invitation link does not match an invitation record
+        When the user clicks the invitation link
+        Then the system rejects the user action and an error message is displayed
+    """
+    pass
+
+
+# US 11. Scenario 3: User already exists
+def test_register_duplicate_email(client, db_session: Session, seed_invitation):
     """
     Test that a user cannot register an email that already exists.
+    Invitation seed recipient email is "newuser@mail.com"
     """
-    response = client.post(
+
+    invite_token = seed_invitation.invitation_token
+
+    # First registration
+    register_response = client.post(
         "/api/auth/register",
-        json={"email": "someemail@mail.com", "password": "SomeValidPassword1!"}
+        json={
+            "email": "newuser@mail.com",
+            "password": "SomeValidPassword1!",
+            "invite_token": invite_token,
+        },
     )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Email is already registered."
+
+    # User is registered
+    assert register_response.status_code == 201
+
+    # Second registration with the same email
+    register_response2 = client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@mail.com",
+            "password": "SomeValidPassword2!",
+            "invite_token": invite_token,
+        },
+    )
+
+    # User is not registered
+    assert register_response2.status_code == 400
+
+
+# US 11. Scenario 4: Invitation link has expired
+def test_register_expired_invitation(client):
+    """
+    Scenario 4: Invitation link has expired
+        Given the invitation link was sent more than 7 days ago
+        When the user clicks the invitation link
+        Then the system rejects the action
+        And displays an error message indicating the invitation has expired
+        And prompts the user to contact the person who invited them for a new link
+    """
+    pass

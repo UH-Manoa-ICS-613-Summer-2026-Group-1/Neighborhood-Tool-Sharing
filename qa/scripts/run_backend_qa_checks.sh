@@ -11,7 +11,7 @@ python -m pip install -r ./backend/qa/requirements-qa.txt
 echo "Running pytest..."
 # If the server is not running, remainder to start it.
 if [ -z "$(docker compose ps web --services --status running)" ]; then
-    echo "Start the server before the tests: docker-compose up"
+    echo "Start the server before the tests: docker compose up"
     exit 1
 fi
 docker compose exec web pytest
