@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { MemoryRouter } from 'react-router-dom';
 import Login from "../src/pages/Login/Login";
 import * as authApi from "../src/api/auth";
 
@@ -18,6 +19,14 @@ vi.mock("react-router-dom", async (importOriginal) => {
   };
 });
 
+function renderLogin() {
+  return render(
+    <MemoryRouter>
+      <Login />
+    </MemoryRouter>
+  );
+}
+
 describe("Login", () => {
   beforeEach(() => {
     // Reset mocks and local storage before each test.
@@ -28,7 +37,7 @@ describe("Login", () => {
 
   // Verify the login form renders.
   it("renders the email and password fields", () => {
-    render(<Login />);
+    renderLogin();
 
     expect(screen.getByPlaceholderText(/email/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/password/i)).toBeInTheDocument();
@@ -37,7 +46,7 @@ describe("Login", () => {
   // Verify the Back button navigates to the home page.
   it("navigates back to home when Back is clicked", async () => {
     const user = userEvent.setup();
-    render(<Login />);
+    renderLogin();
 
     await user.click(screen.getByRole("button", { name: /back/i }));
 
@@ -52,7 +61,7 @@ describe("Login", () => {
       token_type: "bearer",
     });
 
-    render(<Login />);
+    renderLogin();
 
     await user.type(screen.getByPlaceholderText(/email/i), "test@example.com");
     await user.type(screen.getByPlaceholderText(/password/i), "password123");
@@ -61,7 +70,7 @@ describe("Login", () => {
     await waitFor(() => {
       expect(localStorage.getItem("access_token")).toBe("fake-token");
     });
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard", { replace: true });
   });
 
   // Verify an error message is displayed when login fails.
@@ -71,7 +80,7 @@ describe("Login", () => {
       new Error("Invalid credentials"),
     );
 
-    render(<Login />);
+    renderLogin();
 
     await user.type(screen.getByPlaceholderText(/email/i), "test@example.com");
     await user.type(screen.getByPlaceholderText(/password/i), "wrongpass");
@@ -95,7 +104,7 @@ describe("Login", () => {
         }),
     );
 
-    render(<Login />);
+    renderLogin();
 
     await user.type(screen.getByPlaceholderText(/email/i), "test@example.com");
     await user.type(screen.getByPlaceholderText(/password/i), "password123");
