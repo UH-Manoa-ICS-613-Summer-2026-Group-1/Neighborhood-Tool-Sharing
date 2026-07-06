@@ -38,7 +38,11 @@ jobs:
           STORAGE_EXTERNAL_ENDPOINT: ${{ secrets.STORAGE_EXTERNAL_ENDPOINT }}
           MINIO_BUCKET_NAME: ${{ secrets.MINIO_BUCKET_NAME }}
         run: |
-          docker compose run --rm web pytest
+          docker compose run --rm web \ 
+          python -m pytest tests \
+          --cov=app \
+          --cov-branch \
+          --cov-report=term-missing
           docker compose down --volumes
         
       - name: Run Ruff linter 

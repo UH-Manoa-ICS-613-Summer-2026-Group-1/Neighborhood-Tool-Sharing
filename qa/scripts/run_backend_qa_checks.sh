@@ -14,7 +14,13 @@ if [ -z "$(docker compose ps web --services --status running)" ]; then
     echo "Start the server before the tests: docker compose up"
     exit 1
 fi
-docker compose exec web pytest
+
+# run tests and calculate test coverage
+echo "running unit tests and calculating test coverage"
+docker compose exec web pytest tests \
+--cov=app \
+--cov-branch \
+--cov-report=term-missing  
 
 echo "Running Ruff linter..."
 python -m ruff check .
