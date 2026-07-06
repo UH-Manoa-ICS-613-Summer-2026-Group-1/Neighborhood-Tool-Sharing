@@ -25,10 +25,17 @@ docker compose exec web pytest tests \
 echo "Running Ruff linter..."
 python -m ruff check .
 
+# include only medium and high severity, high confidence findings
+echo "Running Bandit linter..."
+docker compose exec web \
+python -m bandit -r app -ll -iii
+
 # echo "Running pip_audit linter..."
 # python -m pip_audit
 
 echo "Running SQLFluff linter..."
 python -m sqlfluff lint .
+
+
 
 echo "All checks passed."
