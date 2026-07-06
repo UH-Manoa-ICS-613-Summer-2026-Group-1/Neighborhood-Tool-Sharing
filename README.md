@@ -38,6 +38,27 @@ docker compose logs -f
 ```
 Also, the server logs are visible in the docker desktop application.
 
+## Local Frontend Setup
+ 
+The frontend is a React + TypeScript app built with [Vite](https://vite.dev/).
+ 
+Prerequisites:
+- [Node.js](https://nodejs.org/) (LTS version recommended) and npm
+Navigate to the frontend directory (`cd frontend`)
+ 
+For the first setup, or after pulling changes that modify `package.json`, install dependencies:
+```bash
+npm install
+```
+ 
+To start the local development server:
+```bash
+npm run dev
+```
+This will start the app in your terminal and print a local URL (typically `http://localhost:5173`) where you can view it in your browser. Note that the frontend expects the backend API to be running (see "Local Backend Setup" below) since requests to `/api/...` are proxied/served by the backend.
+ 
+To stop the dev server, press `Ctrl + C` in the terminal.
+
 ## Database Migrations
 Alembic is used to manage database versions.
 

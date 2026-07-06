@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html, body {
+  height: 100%;
+  overflow-y: auto;
+}
+
+body {
+  background: #313b3d;
+  font-family: 'Roboto', helvetica, arial, sans-serif;
+  font-size: 1.5em;
+}
+
+::placeholder { color: #8f8f8f; }
