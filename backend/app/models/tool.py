@@ -98,7 +98,7 @@ class Tool(Base):
         nullable=False,
         comment="Links the tool to the user who owns and shares the tool",
     )
-    tool_type_id: Mapped[uuid.UUID] = mapped_column(
+    tool_type_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("tool_types.id"),
         nullable=False,
@@ -123,9 +123,9 @@ class Tool(Base):
     return_notes: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Instructions for returning the tool"
     )
-    loan_duration_limit: Mapped[int | None] = mapped_column(
+    loan_duration_limit: Mapped[int] = mapped_column(
         Integer,
-        nullable=True,
+        nullable=False,
         default=DEFAULT_LOAN_DURATION_LIMIT,
         server_default=text(str(DEFAULT_LOAN_DURATION_LIMIT)),
         comment="Maximum continuous days the user can request the tool",

@@ -36,6 +36,18 @@ def run_lookup_seeds(db: Session):
         """)
     )
 
+    # Seed tool_types
+    db.execute(
+        text("""
+            INSERT INTO tool_types (code, display_name, description) VALUES
+            ('POWER_TOOLS', 'Power Tools', 'Drills, saws, sanders, and other electrical equipment.'),
+            ('GARDENING', 'Gardening & Outdoor', 'Lawnmowers, shovels, shears, and yard care tools.'),
+            ('HAND_TOOLS', 'Hand Tools', 'Wrenches, hammers, screwdrivers, and manual implements.'),
+            ('AUTOMOTIVE', 'Automotive', 'Car jacks, diagnostic scanners, and specialized vehicle tools.')
+        ON CONFLICT (code) DO NOTHING;
+        """)
+    )
+
     db.commit()
 
 

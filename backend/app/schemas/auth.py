@@ -39,7 +39,7 @@ class UserRegisterRequest(BaseModel):
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1, examples=["Mysecurepassword1!"])
+    password: str = Field(..., min_length=1, examples=["ValidPassword1!"])
 
     @field_validator("email", mode="before")
     @classmethod

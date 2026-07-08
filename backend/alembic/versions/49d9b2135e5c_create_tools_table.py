@@ -109,7 +109,7 @@ def upgrade() -> None:
             "loan_duration_limit",
             sa.Integer(),
             server_default=sa.text("7"),
-            nullable=True,
+            nullable=False,
             comment="Maximum continuous days the user can request the tool",
         ),
         sa.Column(
