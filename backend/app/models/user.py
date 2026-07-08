@@ -20,6 +20,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from .invitation import Invitation
     from .photo import Photo
+    from .tool import Tool
 
 # Tables:
 # - user_roles (id, code, display_name, description)
@@ -149,9 +150,7 @@ class User(Base):
     # Relationships: user.
     role: Mapped["UserRole"] = relationship("UserRole", back_populates="users")
     status: Mapped["UserStatus"] = relationship("UserStatus", back_populates="users")
-
     photo: Mapped["Photo | None"] = relationship("Photo", back_populates="user")
-
     sent_invitations: Mapped[list["Invitation"]] = relationship(
         "Invitation", foreign_keys="[Invitation.sender_id]", back_populates="sender"
     )
@@ -160,6 +159,7 @@ class User(Base):
         foreign_keys="[Invitation.recipient_id]",
         back_populates="recipient",
     )
+    tools: Mapped[list["Tool"]] = relationship("Tool", back_populates="owner")
 
 
 class UserProfileView(Base):
