@@ -66,7 +66,9 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
     new_user = User(
         email=user_data.email,
         password=hashed_password,
-        name=user_data.email.split("@")[0],  # Temporary name
+        first_name=user_data.first_name.strip(),
+        last_name=user_data.last_name.strip(),
+        middle_name=user_data.middle_name.strip() if user_data.middle_name else None,
         status=default_status,  # ACTIVE status
         role=default_role,  # USER role
     )

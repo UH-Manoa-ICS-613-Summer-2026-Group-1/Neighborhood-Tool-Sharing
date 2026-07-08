@@ -114,10 +114,22 @@ def upgrade() -> None:
             comment="Unique identifier for each user",
         ),
         sa.Column(
-            "name",
+            "first_name",
             sa.String(length=255),
             nullable=False,
-            comment="Full name of the user",
+            comment="First name of the user",
+        ),
+        sa.Column(
+            "last_name",
+            sa.String(length=255),
+            nullable=False,
+            comment="Last name of the user",
+        ),
+        sa.Column(
+            "middle_name",
+            sa.String(length=255),
+            nullable=True,
+            comment="Middle name of the user",
         ),
         sa.Column(
             "email",

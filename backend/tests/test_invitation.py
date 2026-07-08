@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 # Seed user data={
 # "email": "someemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test User",
+# "first_name"="UserFirst",
+# "last_name"="UserLast",
 # "status_id": 1,                       Active
 # "role_id": 1}                         User
 

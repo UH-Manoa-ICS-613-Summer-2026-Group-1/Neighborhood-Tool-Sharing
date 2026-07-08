@@ -8,14 +8,16 @@ from sqlalchemy.orm import Session
 # Seed user data={
 # "email": "someemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test User",
+# "first_name"="UserFirst",
+# "last_name"="UserLast",
 # "status_id": 1,                       Active
 # "role_id": 1}                         User
 
 # Seed suspended user data={
 # "email": "somesuspendedemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test Suspended User",
+# first_name="Firstname Test Suspended User",
+# last_name="Lastname Test Suspended User",
 # "status_id": 2,                       Suspended
 # "role_id": 1}                         User
 
@@ -165,7 +167,8 @@ def test_protected_route_with_token(client, seed_user):
     assert response.status_code == 200
 
     assert profile["user_email"] == seed_user.email
-    assert profile["user_name"] == seed_user.name
+    assert profile["user_first_name"] == seed_user.first_name
+    assert profile["user_last_name"] == seed_user.last_name
     assert profile["status_code"] == seed_user.status.code
     assert profile["role_code"] == seed_user.role.code
 
@@ -255,6 +258,8 @@ def test_register_success(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "Securepassword123!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
             "invite_token": invite_token,
         },
     )
@@ -295,6 +300,8 @@ def test_register_duplicate_email(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "SomeValidPassword1!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
             "invite_token": invite_token,
         },
     )
@@ -308,6 +315,8 @@ def test_register_duplicate_email(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "SomeValidPassword2!",
+            "first_name": "New User First Name",
+            "last_name": "New User Last Name",
             "invite_token": invite_token,
         },
     )

@@ -56,29 +56,29 @@ def run_users_seeds(db: Session):
     Seed the users table with initial data.
     """
     sql_query = text("""
-        INSERT INTO users (name, email, password, bio, location, status_id, role_id) VALUES
+        INSERT INTO users (first_name, last_name, middle_name, email, password, bio, location, status_id, role_id) VALUES
         (
-            'Seed User 1', 'seed1@example.com', :pass, 'Bio 1', 'Location 1',
+            'SeedFirst1', 'SeedLast1', NULL, 'seed1@example.com', :pass, 'Bio 1', 'Location 1',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 2', 'seed2@example.com', :pass, 'Bio 2', NULL,
+            'SeedFirst2', 'SeedLast2', 'MiddleA', 'seed2@example.com', :pass, 'Bio 2', NULL,
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 3', 'seed3@example.com', :pass, NULL, 'Location 3',
+            'SeedFirst3', 'SeedLast3', NULL, 'seed3@example.com', :pass, NULL, 'Location 3',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 4', 'seed4@example.com', :pass, 'Bio 4', 'Location 4',
+            'SeedFirst4', 'SeedLast4', NULL, 'seed4@example.com', :pass, 'Bio 4', 'Location 4',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 5', 'seed5@example.com', :pass, 'Bio 5', 'Location 5',
+            'SeedFirst5', 'SeedLast5', 'MiddleB', 'seed5@example.com', :pass, 'Bio 5', 'Location 5',
             (SELECT id FROM user_statuses WHERE code = 'SUSPENDED'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         )
@@ -99,9 +99,9 @@ def run_admin_seeds(db: Session):
         raise ValueError("ADMIN_PASSWORD environment variable is not set")
 
     sql_query = text("""
-        INSERT INTO users (name, email, password, status_id, role_id) VALUES
+        INSERT INTO users (first_name,last_name, email, password, status_id, role_id) VALUES
         (
-            'Admin 1', 'admin_email@example.com', :pass,
+            'Admin First Name', 'Admin Last Name', 'admin_email@example.com', :pass,
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'ADMIN')
         )

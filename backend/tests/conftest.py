@@ -122,7 +122,8 @@ def seed_user(db_session):
     test_user = User(
         email="someemail@mail.com",
         password=hashed_password,
-        name="Test User",
+        first_name="UserFirst",
+        last_name="UserLast",
         status=test_user_status,
         role=test_user_role,
     )
@@ -146,7 +147,8 @@ def seed_suspended_user(db_session):
     test_user = User(
         email="somesuspendedemail@mail.com",
         password=hashed_password,
-        name="Test Suspended User",
+        first_name="Firstname Test Suspended User",
+        last_name="Lastname Test Suspended User",
         status=test_user_status,
         role=test_user_role,
     )
