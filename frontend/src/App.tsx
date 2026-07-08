@@ -3,6 +3,8 @@ import Home from "./pages/Landing/Home";
 import Login from "./pages/Login/Login";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SendInvite from "./pages/Invite/SendInvite";
+import Register from "./pages/Register/Register";
 
 function App() {
 
@@ -11,9 +13,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* add more protected pages here, e.g. */}
+          <Route path="/invite" element={<SendInvite />} />
         </Route>
       </Routes>
     </BrowserRouter>

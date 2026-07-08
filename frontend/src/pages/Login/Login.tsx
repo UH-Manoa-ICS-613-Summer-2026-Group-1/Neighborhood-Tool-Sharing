@@ -69,7 +69,7 @@ const Login = () => {
                         </label>
                         <input
                             id="email"
-                            className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:scale-110 transition-transform duration-150"
+                            className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
                             placeholder="Email"
                             type="email"
                             value={email}
@@ -89,7 +89,7 @@ const Login = () => {
                         </label>
                         <input
                             id="password"
-                            className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:scale-110 transition-transform duration-150"
+                            className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
                             placeholder="Password"
                             type="password"
                             value={password}
@@ -99,7 +99,7 @@ const Login = () => {
                     </div>
 
                     <button
-                        className="block w-full py-2 sm:py-3 bg-[#e8a838] border-0 text-white cursor-pointer text-[0.65em] sm:text-[0.75em] font-semibold [text-shadow:0_1px_0_rgba(0,0,0,0.2)] focus:outline-none focus:scale-110 transition-transform duration-150"
+                        className="block w-full py-2 sm:py-3 bg-[#e8a838] border-0 text-white cursor-pointer text-[0.65em] sm:text-[0.75em] font-semibold [text-shadow:0_1px_0_rgba(0,0,0,0.2)] focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
                         type="submit"
                         disabled={loading}
                     >
