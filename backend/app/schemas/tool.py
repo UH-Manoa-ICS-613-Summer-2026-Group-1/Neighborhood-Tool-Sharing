@@ -26,6 +26,12 @@ class ToolRequest(BaseModel):
         description="Description must be between 5 and 2000 characters long.",
     )
     condition: ToolCondition
+    photo_urls: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=5,
+        description="A tool must have 1 to 5 photos.",
+    )
     pickup_notes: str | None = Field(default=None, max_length=2000)
     return_notes: str | None = Field(default=None, max_length=2000)
     loan_duration_limit: int = Field(
@@ -36,7 +42,7 @@ class ToolRequest(BaseModel):
     )
 
 
-# # RESPONSE SCHEMAS
+# RESPONSE SCHEMAS
 
 
 class ToolResponse(BaseModel):
@@ -44,6 +50,7 @@ class ToolResponse(BaseModel):
     title: str
     description: str
     condition: ToolCondition
+    # photo_urls: list[str]
     pickup_notes: str | None
     return_notes: str | None
     loan_duration_limit: int
