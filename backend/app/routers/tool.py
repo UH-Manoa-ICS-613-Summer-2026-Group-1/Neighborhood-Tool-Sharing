@@ -3,6 +3,8 @@ Tool routers.
 Handles creating, viewing, and updating tools.
 """
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case
 from sqlalchemy.orm import Session, joinedload
@@ -12,7 +14,12 @@ from app.models.photo import Photo, ToolPhoto
 from app.models.tool import Tool, ToolCondition, ToolStatus, ToolType, ToolView
 from app.models.user import User
 from app.schemas.common import DetailError
-from app.schemas.tool import ToolRequest, ToolResponse, ToolsResponse, ToolTypeResponse
+from app.schemas.tool import (
+    ToolDetailsResponse,
+    ToolRequest,
+    ToolResponse,
+    ToolTypeResponse,
+)
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/tools", tags=["Tools"])
@@ -142,7 +149,7 @@ def create_tool(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=list[ToolsResponse],
+    response_model=list[ToolDetailsResponse],
     responses={401: {"model": DetailError}, 403: {"model": DetailError}},
 )
 def list_tools(
@@ -212,3 +219,44 @@ def list_tools(
     )
 
     return results
+
+
+@router.get(
+    "/{tool_id}",
+    response_model=ToolDetailsResponse,
+    responses={401: {"model": DetailError}, 403: {"model": DetailError}},
+)
+def get_tool_by_id(
+    tool_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve full details for a specific tool by its unique identifier.
+    """
+    # There is no DELETED tools in the view since we fileter it out in view creation
+
+    # Query tools_v by tool_id
+    tool = db.query(ToolView).filter(ToolView.tool_id == tool_id).first()
+
+    # Check if the tool exists
+    if not tool:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or is currently unavailable.",
+        )
+
+    # Check if the tool is owned by the current user
+    is_owner = bool(tool.owner_id == current_user.id)
+
+    # Check if the tool is available
+    is_available = bool(tool.tool_status == ToolStatus.AVAILABLE)
+
+    # The current user cannot view a tool that is not owned by them and not available (hidden or suspended)
+    if not is_owner and not is_available:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or is currently unavailable.",
+        )
+
+    return tool

@@ -72,7 +72,7 @@ class ToolResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ToolsResponse(BaseModel):
+class ToolDetailsResponse(BaseModel):
     """
     Tools response schema matching only the necessary fields from the tools_v view.
     """
