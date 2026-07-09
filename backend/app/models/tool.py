@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     UUID,
+    Column,
     DateTime,
     ForeignKey,
     Integer,
@@ -16,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SAEnum,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -31,7 +33,8 @@ DEFAULT_LOAN_DURATION_LIMIT = 7
 # - tools (id, owner_id, tool_type_id, title, description, condition, pickup_notes, return_notes, loan_duration_limit, status, created_at)
 
 # Views:
-# -
+# - tools_v (id, owner_id, tool_type_id, tool_type_code, tool_type_name,
+# title, description, condition, pickup_notes, return_notes, loan_duration_limit, status, created_at, tool_photos)
 
 
 class ToolCondition(str, enum.Enum):
@@ -152,3 +155,22 @@ class Tool(Base):
     photos: Mapped[list["Photo"]] = relationship(
         "Photo", secondary="tool_photos", back_populates="tools"
     )
+
+
+class ToolView(Base):
+    __tablename__ = "tools_v"
+
+    tool_id = Column(UUID(as_uuid=True), primary_key=True)
+    owner_id = Column(UUID(as_uuid=True))
+    tool_type_id = Column(Integer)
+    tool_type_code = Column(String)
+    tool_type_name = Column(String)
+    tool_title = Column(String)
+    tool_description = Column(String)
+    tool_condition = Column(String)
+    tool_pickup_notes = Column(String)
+    tool_return_notes = Column(String)
+    tool_loan_duration_limit = Column(Integer)
+    tool_status = Column(String)
+    tool_created_at = Column(DateTime)
+    tool_photos = Column(JSONB)

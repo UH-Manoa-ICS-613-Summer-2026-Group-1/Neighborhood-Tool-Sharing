@@ -3,15 +3,16 @@ Tool routers.
 Handles creating, viewing, and updating tools.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.photo import Photo, ToolPhoto
-from app.models.tool import Tool, ToolCondition, ToolType
+from app.models.tool import Tool, ToolCondition, ToolStatus, ToolType, ToolView
 from app.models.user import User
 from app.schemas.common import DetailError
-from app.schemas.tool import ToolRequest, ToolResponse, ToolTypeResponse
+from app.schemas.tool import ToolRequest, ToolResponse, ToolsResponse, ToolTypeResponse
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/tools", tags=["Tools"])
@@ -136,3 +137,78 @@ def create_tool(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save tool listing and associated assets.",
         )
+
+
+@router.get(
+    "",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ToolsResponse],
+    responses={401: {"model": DetailError}, 403: {"model": DetailError}},
+)
+def list_tools(
+    is_mine: bool = Query(
+        default=True,
+        description="True for the user's listings; False for all users listings.",
+    ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    tool_type: str | None = Query(
+        default=None, description="Filter by tool type code (e.g. 'POWER_TOOLS')"
+    ),
+    tool_condition: str | None = Query(
+        default=None, description="Filter by tool condition"
+    ),
+    search: str | None = Query(
+        default=None, description="Keywords to search in title or description"
+    ),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve a filtered list of tools.
+    """
+    # There is no DELETED tools in the view since we fileter it out in view creation
+
+    # Initialize query context pointed at tool_v
+    query = db.query(ToolView)
+
+    # Filter view by current user if 'is_mine' is True
+    if is_mine:
+        query = query.filter(ToolView.owner_id == current_user.id)
+    else:
+        # Public browsing only reveals available tools (no hidden or suspened)
+        query = query.filter(ToolView.tool_status == ToolStatus.AVAILABLE)
+
+    # Filter view by optional category type
+    if tool_type:
+        query = query.filter(ToolView.tool_type_code == tool_type.upper())
+
+    # Filter view by optional tool condition
+    if tool_condition:
+        query = query.filter(ToolView.tool_condition == tool_condition.upper())
+
+    # Filter view by optional search by keywords in title or description (case-insensitive)
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (ToolView.tool_title.ilike(search_pattern))
+            | (ToolView.tool_description.ilike(search_pattern))
+        )
+
+    # Status priority
+    status_priority = case(
+        (ToolView.tool_status == ToolStatus.AVAILABLE, 1),
+        (ToolView.tool_status == ToolStatus.HIDDEN, 2),
+        (ToolView.tool_status == ToolStatus.SUSPENDED, 3),
+        else_=4,
+    )
+
+    # Apply order by status priority index first, then show the newest listings within each priority group
+    results = (
+        query.order_by(status_priority.asc(), ToolView.tool_created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return results

@@ -12,6 +12,11 @@ if TYPE_CHECKING:
     from .user import User
 
 
+# Tables:
+# - photos (id, url, created_at)
+# - tool_photos (id, tool_id, photo_id)
+
+
 class Photo(Base):
     __tablename__ = "photos"
 

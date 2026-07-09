@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition
+from app.schemas.photo import PhotoSchema
 
 # REQUEST SCHEMAS
 
@@ -44,6 +45,8 @@ class ToolRequest(BaseModel):
 
 
 # RESPONSE SCHEMAS
+
+
 class ToolTypeResponse(BaseModel):
     id: int
     code: str
@@ -53,14 +56,8 @@ class ToolTypeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PhotoSchema(BaseModel):
-    id: uuid.UUID
-    url: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class ToolResponse(BaseModel):
+    id: uuid.UUID
     tool_type_id: int
     title: str
     description: str
@@ -71,5 +68,28 @@ class ToolResponse(BaseModel):
     loan_duration_limit: int
     status: str
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ToolsResponse(BaseModel):
+    """
+    Tools response schema matching only the necessary fields from the tools_v view.
+    """
+
+    tool_id: uuid.UUID
+    owner_id: uuid.UUID
+    tool_type_id: int
+    tool_type_code: str
+    tool_type_name: str
+    tool_title: str
+    tool_description: str
+    tool_condition: str
+    tool_pickup_notes: str | None
+    tool_return_notes: str | None
+    tool_loan_duration_limit: int
+    tool_status: str
+    tool_created_at: datetime
+    tool_photos: list[PhotoSchema]
 
     model_config = ConfigDict(from_attributes=True)

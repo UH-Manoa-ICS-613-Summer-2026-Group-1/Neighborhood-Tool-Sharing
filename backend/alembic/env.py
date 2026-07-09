@@ -42,6 +42,7 @@ target_metadata = Base.metadata
 IGNORED_VIEWS = {
     "user_profiles_v",
     "invitation_history_v",
+    "tools_v",
 }
 
 
