@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,6 +44,20 @@ class ToolRequest(BaseModel):
 
 
 # RESPONSE SCHEMAS
+class ToolTypeResponse(BaseModel):
+    id: int
+    code: str
+    display_name: str
+    description: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PhotoSchema(BaseModel):
+    id: uuid.UUID
+    url: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ToolResponse(BaseModel):
@@ -50,7 +65,7 @@ class ToolResponse(BaseModel):
     title: str
     description: str
     condition: ToolCondition
-    # photo_urls: list[str]
+    photos: list[PhotoSchema]
     pickup_notes: str | None
     return_notes: str | None
     loan_duration_limit: int

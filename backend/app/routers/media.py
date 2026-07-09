@@ -27,8 +27,7 @@ router = APIRouter(prefix="/api/media", tags=["Media"])
 )
 def upload_media(file_data: MediaUploadRequest, current_user=Depends(get_current_user)):
     """
-    Securely requests an upload token slot.
-    Returns the single-use upload destination and the static permanent view URL.
+    Create a temporary upload ticket and permanent url.
     """
     # Verify file extension safety
     file_ext = file_data.filename.split(".")[-1].lower()

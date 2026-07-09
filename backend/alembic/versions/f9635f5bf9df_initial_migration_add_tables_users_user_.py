@@ -24,7 +24,11 @@ def upgrade() -> None:
     op.create_table(
         "photos",
         sa.Column(
-            "id", sa.UUID(), nullable=False, comment="Unique identifier for a image"
+            "id",
+            sa.UUID(),
+            nullable=False,
+            comment="Unique identifier for a image",
+            server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column(
             "url",

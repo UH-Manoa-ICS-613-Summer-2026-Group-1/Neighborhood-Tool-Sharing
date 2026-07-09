@@ -21,6 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
+    from .photo import Photo
     from .user import User
 
 DEFAULT_LOAN_DURATION_LIMIT = 7
@@ -148,3 +149,6 @@ class Tool(Base):
 
     owner: Mapped["User"] = relationship("User", back_populates="tools")
     tool_type: Mapped["ToolType"] = relationship("ToolType", back_populates="tools")
+    photos: Mapped[list["Photo"]] = relationship(
+        "Photo", secondary="tool_photos", back_populates="tools"
+    )

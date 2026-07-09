@@ -2,12 +2,13 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, DateTime, Text, func
+from sqlalchemy import UUID, DateTime, ForeignKey, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
+    from .tool import Tool
     from .user import User
 
 
@@ -22,6 +23,7 @@ class Photo(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
         comment="Unique identifier for a image",
     )
     url: Mapped[str] = mapped_column(
@@ -36,3 +38,34 @@ class Photo(Base):
 
     # Relationship: photo.
     user: Mapped["User | None"] = relationship("User", back_populates="photo")
+    tools: Mapped[list["Tool"]] = relationship(
+        "Tool", secondary="tool_photos", back_populates="photos"
+    )
+
+
+class ToolPhoto(Base):
+    __tablename__ = "tool_photos"
+
+    __table_args__ = {
+        "comment": "Intersection table mapping multiple uploaded tool photo to individual tool"
+    }
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+        comment="Unique identifier for a tool photo",
+    )
+    tool_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tools.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Links the tool photo to the tool",
+    )
+    photo_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("photos.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Links the tool photo to the table where the photo is actually stored",
+    )
