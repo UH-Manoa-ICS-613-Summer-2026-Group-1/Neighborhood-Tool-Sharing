@@ -162,6 +162,9 @@ class ToolView(Base):
 
     tool_id = Column(UUID(as_uuid=True), primary_key=True)
     owner_id = Column(UUID(as_uuid=True))
+    owner_first_name = Column(String)
+    owner_last_name = Column(String)
+    owner_middle_name = Column(String, nullable=True)
     tool_type_id = Column(Integer)
     tool_type_code = Column(String)
     tool_type_name = Column(String)

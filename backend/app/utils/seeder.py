@@ -233,7 +233,7 @@ def run_tools_seeds(db: Session):
                 'e0000000-0000-0000-0000-000000000007', (SELECT id FROM users WHERE email = 'seed3@example.com'),
                 (SELECT id FROM tool_types WHERE code = 'GARDENING'), 'Gas-Powered String Trimmer',
                 'Straight shaft lawn edger weed-whacker. Runs on standard mixed fuel.',
-                'FAIR', 'Fuel reservoir is empty. Bring 2-cycle oil mix.', 'Empty any debris guard lines.', 2, 'SUSPENDED' -- Admin suspension testing
+                'FAIR', 'Fuel reservoir is empty. Bring 2-cycle oil mix.', 'Empty any debris guard lines.', 2, 'SUSPENDED'
             ),
 
             -- User 4 Listings ('seed4@example.com')

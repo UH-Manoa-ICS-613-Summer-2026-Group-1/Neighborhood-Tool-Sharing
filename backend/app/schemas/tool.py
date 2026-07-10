@@ -10,10 +10,10 @@ from app.schemas.photo import PhotoSchema
 
 
 class ToolRequest(BaseModel):
-    tool_type_id: int = Field(
+    tool_type_code: str = Field(
         ...,
-        description="Tool category ID (1, 2, 3, etc.).",
-        examples=[1],
+        description="Tool category code (e.g., POWER_TOOLS).",
+        examples=["POWER_TOOLS"],
     )
     title: str = Field(
         ...,
@@ -79,6 +79,9 @@ class ToolDetailsResponse(BaseModel):
 
     tool_id: uuid.UUID
     owner_id: uuid.UUID
+    owner_first_name: str
+    owner_last_name: str
+    owner_middle_name: str | None
     tool_type_id: int
     tool_type_code: str
     tool_type_name: str

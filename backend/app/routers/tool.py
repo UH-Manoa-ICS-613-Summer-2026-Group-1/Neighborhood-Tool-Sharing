@@ -81,12 +81,13 @@ def create_tool(
     # Verify the tool_type_id actually exists in the database
     # Frontend has the ability to see all tool types with IDs (GET api/toos/types)
     tool_type_exists = (
-        db.query(ToolType.id).filter(ToolType.id == tool_data.tool_type_id).first()
+        db.query(ToolType).filter(ToolType.code == tool_data.tool_type_code).first()
     )
+
     if not tool_type_exists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid tool_type_id: {tool_data.tool_type_id}. Category not found.",
+            detail=f"Invalid tool_type_code: {tool_data.tool_type_code}. Category not found.",
         )
 
     # Tool cannot be added without at least one photo
@@ -97,7 +98,7 @@ def create_tool(
         )
 
     new_tool = Tool(
-        tool_type_id=tool_data.tool_type_id,
+        tool_type_id=tool_type_exists.id,
         title=tool_data.title,
         description=tool_data.description,
         condition=tool_data.condition,

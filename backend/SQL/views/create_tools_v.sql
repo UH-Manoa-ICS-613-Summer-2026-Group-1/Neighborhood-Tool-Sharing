@@ -2,6 +2,9 @@ CREATE OR REPLACE VIEW tools_v AS
 SELECT
     tools.id AS tool_id,
     tools.owner_id,
+    users.first_name AS owner_first_name,
+    users.last_name AS owner_last_name,
+    users.middle_name AS owner_middle_name,
     tools.tool_type_id,
     tool_types.code AS tool_type_code,
     tool_types.display_name AS tool_type_name,
@@ -24,13 +27,17 @@ SELECT
     ) AS tool_photos
 FROM tools
 JOIN tool_types ON tools.tool_type_id = tool_types.id
+JOIN users ON tools.owner_id = users.id
 LEFT JOIN tool_photos ON tools.id = tool_photos.tool_id
 LEFT JOIN photos ON tool_photos.photo_id = photos.id
 WHERE tools.status != 'DELETED'
-GROUP BY tools.id, tool_types.id;
+GROUP BY tools.id, tool_types.id, users.id;
 COMMENT ON VIEW tools_v IS 'View for tool listings';
 COMMENT ON COLUMN tools_v.tool_id IS 'Unique identifier for a tool';
 COMMENT ON COLUMN tools_v.owner_id IS 'Identifier for the user who owns and shares the tool';
+COMMENT ON COLUMN tools_v.owner_first_name IS 'First name of the tool owner';
+COMMENT ON COLUMN tools_v.owner_last_name IS 'Last name of the tool owner';
+COMMENT ON COLUMN tools_v.owner_middle_name IS 'Optional middle name of the tool owner';
 COMMENT ON COLUMN tools_v.tool_type_id IS 'Identifier for the tool type';
 COMMENT ON COLUMN tools_v.tool_type_code IS 'Uppercase code name of the tool category (e.g., "POWER_TOOLS")';
 COMMENT ON COLUMN tools_v.tool_type_name IS 'Human-readable tool category for UI display';

@@ -146,6 +146,20 @@ Install dependencies:
 ```Bash
 pip install -r requirements.txt
 ```
+## Media Storage Architecture (MinIO)
+
+### Overview
+The project utilizes MinIO, an open-source, high-performance object storage server. It serves as the dedicated bucket reservoir for storing user-uploaded images.
+
+### Storage Container
+The project uses Chainguard MinIO image.
+
+### How It Works
+To keep the server fast, the frontend does not send image files to the API. Instead, the API gives the frontend a temporary, secure upload ticket to upload images to the local MinIO storage server.
+- Request Ticket: The frontend asks the backend for ticket to upload an image file.
+- Security Check: The backend checks that the file extension is safe (.jpg, .png, etc.), creates a secure unique filename, and asks MinIO for a short-lived upload ticket.
+- Direct Upload: The frontend gets the ticket and sends the image file straight to MinIO. The images never has to pass through the main API server.
+- Save Tool: Once the upload succeeds, the frontend tells the backend the permanent link to the image.
 
 ## API Specifications
 Open http://localhost:5000/docs
