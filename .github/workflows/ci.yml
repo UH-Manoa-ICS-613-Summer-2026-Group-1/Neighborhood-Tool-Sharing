@@ -35,7 +35,7 @@ jobs:
           MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
           MINIO_INTERNAL_ENDPOINT: ${{ secrets.STORAGE_INTERNAL_ENDPOINT }}
-          MINIO_EXTERNAL_ENDPOINT: ${{ secrets.STORAGE_INTERNAL_ENDPOINT }}
+          MINIO_EXTERNAL_ENDPOINT: ${{ secrets.STORAGE_EXTERNAL_ENDPOINT }}
           MINIO_BUCKET_NAME: ${{ secrets.MINIO_BUCKET_NAME }}
         run: |
           docker compose run --rm web pytest
