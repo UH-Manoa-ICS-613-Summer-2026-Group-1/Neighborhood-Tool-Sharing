@@ -161,6 +161,15 @@ To keep the server fast, the frontend does not send image files to the API. Inst
 - Direct Upload: The frontend gets the ticket and sends the image file straight to MinIO. The images never has to pass through the main API server.
 - Save Tool: Once the upload succeeds, the frontend tells the backend the permanent link to the image.
 
+### Local Administration Web UI (MinIO Console)
+To inspect, delete, or monitor raw binary assets manually during local environment testing and debugging:
+
+Open your browser and navigate to the MinIO Console dashboard address (http://localhost:9001).
+
+Log in using your root credentials defined inside your .env configuration file:
+- MINIO_ROOT_USER
+- MINIO_ROOT_PASSWORD
+
 ## API Specifications
 Open http://localhost:5000/docs
 
