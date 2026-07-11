@@ -14,7 +14,7 @@ if [[ ! -d "node_modules" ]]; then
 fi
 
 echo "Running frontend tests..."
-npm run test
+npm run test:coverage
 
 echo "Running ESLint..."
 npm run lint
