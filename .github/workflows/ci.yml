@@ -52,7 +52,7 @@ jobs:
       - name: Run Bandit tests (medium/high severity, high confidence) 
         run: |
           python -m bandit \
-          -r app -ll -iii
+          -r backend/app -ll -iii
 
       - name: Run SQLFluff linter 
         run: python -m sqlfluff lint .
