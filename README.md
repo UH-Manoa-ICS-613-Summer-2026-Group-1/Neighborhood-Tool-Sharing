@@ -185,7 +185,8 @@ Open http://localhost:5000/docs
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [ruff](https://docs.astral.sh/ruff/): python linter
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
-        -   [Bandit](https://bandit.readthedocs.io/en/latest/) python security linter - currently configured to include only medium and high severity, high confidence findings to reduce developer friction
+        -   [Bandit](https://bandit.readthedocs.io/en/latest/) python security linter
+            - \*Note: Bandit is currently configured to include only medium and high severity, high confidence findings
     -   #### Test Definitions
         -   The backend python tests reside in the [backend/tests folder](./backend/tests)
 -   ### Frontend Tests
