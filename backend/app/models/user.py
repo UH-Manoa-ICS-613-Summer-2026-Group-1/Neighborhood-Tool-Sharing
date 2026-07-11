@@ -20,11 +20,12 @@ from app.database import Base
 if TYPE_CHECKING:
     from .invitation import Invitation
     from .photo import Photo
+    from .tool import Tool
 
 # Tables:
 # - user_roles (id, code, display_name, description)
 # - user_statuses (id, code, display_name, description)
-# - users (id, name, email, password, bio, location, created_at, photo_id, role_id, status_id)
+# - users (id, first_name, last_name, middle_name, email, password, bio, location, created_at, photo_id, role_id, status_id)
 
 # Views:
 # - user_profiles_v
@@ -100,8 +101,14 @@ class User(Base):
         server_default=text("gen_random_uuid()"),
         comment="Unique identifier for each user",
     )
-    name: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="Full name of the user"
+    first_name: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="First name of the user"
+    )
+    last_name: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="Last name of the user"
+    )
+    middle_name: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, comment="Middle name of the user"
     )
     email: Mapped[str] = mapped_column(
         String(255),
@@ -149,9 +156,7 @@ class User(Base):
     # Relationships: user.
     role: Mapped["UserRole"] = relationship("UserRole", back_populates="users")
     status: Mapped["UserStatus"] = relationship("UserStatus", back_populates="users")
-
     photo: Mapped["Photo | None"] = relationship("Photo", back_populates="user")
-
     sent_invitations: Mapped[list["Invitation"]] = relationship(
         "Invitation", foreign_keys="[Invitation.sender_id]", back_populates="sender"
     )
@@ -160,13 +165,16 @@ class User(Base):
         foreign_keys="[Invitation.recipient_id]",
         back_populates="recipient",
     )
+    tools: Mapped[list["Tool"]] = relationship("Tool", back_populates="owner")
 
 
 class UserProfileView(Base):
     __tablename__ = "user_profiles_v"
 
     user_id = Column(UUID(as_uuid=True), primary_key=True)
-    user_name = Column(String)
+    user_first_name = Column(String)
+    user_last_name = Column(String)
+    user_middle_name = Column(String, nullable=True)
     user_email = Column(String)
     user_bio = Column(Text, nullable=True)
     user_location = Column(String, nullable=True)

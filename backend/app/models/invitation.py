@@ -78,7 +78,7 @@ class Invitation(Base):
     status: Mapped[InvitationStatus] = mapped_column(
         SAEnum(InvitationStatus, native_enum=False),
         default=InvitationStatus.PENDING,
-        server_default=text("'PENDING'"),  # Keeps the DB server fallback safe
+        server_default=text("'PENDING'"),
         nullable=False,
         comment="The status of the invite token",
     )

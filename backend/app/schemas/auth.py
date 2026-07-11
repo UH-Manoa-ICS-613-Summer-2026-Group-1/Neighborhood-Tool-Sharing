@@ -17,6 +17,15 @@ class UserRegisterRequest(BaseModel):
         description="Password must be between 8 and 64 characters long.",
         examples=["Mysecurepassword1!"],
     )
+    first_name: str = Field(
+        ..., min_length=1, max_length=255, description="User's first name"
+    )
+    last_name: str = Field(
+        ..., min_length=1, max_length=255, description="User's last name"
+    )
+    middle_name: str | None = Field(
+        None, max_length=255, description="User's middle name (optional)"
+    )
 
     @field_validator("email", mode="before")
     @classmethod
@@ -39,7 +48,7 @@ class UserRegisterRequest(BaseModel):
 
 class UserLoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1, examples=["Mysecurepassword1!"])
+    password: str = Field(..., min_length=1, examples=["ValidPassword1!"])
 
     @field_validator("email", mode="before")
     @classmethod

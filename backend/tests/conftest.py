@@ -29,6 +29,18 @@ if not database_exists(engine.url):
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def get_auth_headers(client, email, password):
+    """
+    Helper function to get auth headers for a user.
+    """
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": email, "password": password},
+    )
+    jwt_token = login_response.json()["access_token"]
+    return {"Authorization": f"Bearer {jwt_token}"}
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database_schema():
     """
@@ -122,7 +134,8 @@ def seed_user(db_session):
     test_user = User(
         email="someemail@mail.com",
         password=hashed_password,
-        name="Test User",
+        first_name="UserFirst",
+        last_name="UserLast",
         status=test_user_status,
         role=test_user_role,
     )
@@ -146,7 +159,8 @@ def seed_suspended_user(db_session):
     test_user = User(
         email="somesuspendedemail@mail.com",
         password=hashed_password,
-        name="Test Suspended User",
+        first_name="Firstname Test Suspended User",
+        last_name="Lastname Test Suspended User",
         status=test_user_status,
         role=test_user_role,
     )
@@ -172,3 +186,24 @@ def seed_invitation(db_session, seed_user):
     db_session.commit()
     db_session.refresh(invite)
     return invite
+
+
+@pytest.fixture
+def seed_tool_id(client, seed_user):
+    """
+    Seed a tool and return its ID
+    The owner of the tool a seed_user ("someemail@mail.com", "Correctpassword123!").
+    """
+    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    payload = {
+        "title": "Stihl Grass Eater",
+        "description": "Gas trimmer engine edger.",
+        "condition": "GOOD",
+        "tool_type_code": "GARDENING",
+        "pickup_notes": "Meet by garage.",
+        "return_notes": "Clean grass off guards.",
+        "loan_duration_limit": 3,
+        "photo_urls": ["https://images.unsplash.com/photo-1617576683096-00fc8eecb3af"],
+    }
+    res = client.post("/api/tools", headers=headers, json=payload)
+    return res.json()["id"]

@@ -36,6 +36,18 @@ def run_lookup_seeds(db: Session):
         """)
     )
 
+    # Seed tool_types
+    db.execute(
+        text("""
+            INSERT INTO tool_types (code, display_name, description) VALUES
+            ('POWER_TOOLS', 'Power Tools', 'Drills, saws, sanders, and other electrical equipment.'),
+            ('GARDENING', 'Gardening & Outdoor', 'Lawnmowers, shovels, shears, and yard care tools.'),
+            ('HAND_TOOLS', 'Hand Tools', 'Wrenches, hammers, screwdrivers, and manual implements.'),
+            ('AUTOMOTIVE', 'Automotive', 'Car jacks, diagnostic scanners, and specialized vehicle tools.')
+        ON CONFLICT (code) DO NOTHING;
+        """)
+    )
+
     db.commit()
 
 
@@ -44,29 +56,29 @@ def run_users_seeds(db: Session):
     Seed the users table with initial data.
     """
     sql_query = text("""
-        INSERT INTO users (name, email, password, bio, location, status_id, role_id) VALUES
+        INSERT INTO users (first_name, last_name, middle_name, email, password, bio, location, status_id, role_id) VALUES
         (
-            'Seed User 1', 'seed1@example.com', :pass, 'Bio 1', 'Location 1',
+            'SeedFirst1', 'SeedLast1', NULL, 'seed1@example.com', :pass, 'Bio 1', 'Location 1',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 2', 'seed2@example.com', :pass, 'Bio 2', NULL,
+            'SeedFirst2', 'SeedLast2', 'MiddleA', 'seed2@example.com', :pass, 'Bio 2', NULL,
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 3', 'seed3@example.com', :pass, NULL, 'Location 3',
+            'SeedFirst3', 'SeedLast3', NULL, 'seed3@example.com', :pass, NULL, 'Location 3',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 4', 'seed4@example.com', :pass, 'Bio 4', 'Location 4',
+            'SeedFirst4', 'SeedLast4', NULL, 'seed4@example.com', :pass, 'Bio 4', 'Location 4',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         ),
         (
-            'Seed User 5', 'seed5@example.com', :pass, 'Bio 5', 'Location 5',
+            'SeedFirst5', 'SeedLast5', 'MiddleB', 'seed5@example.com', :pass, 'Bio 5', 'Location 5',
             (SELECT id FROM user_statuses WHERE code = 'SUSPENDED'),
             (SELECT id FROM user_roles WHERE code = 'USER')
         )
@@ -87,9 +99,9 @@ def run_admin_seeds(db: Session):
         raise ValueError("ADMIN_PASSWORD environment variable is not set")
 
     sql_query = text("""
-        INSERT INTO users (name, email, password, status_id, role_id) VALUES
+        INSERT INTO users (first_name,last_name, email, password, status_id, role_id) VALUES
         (
-            'Admin 1', 'admin_email@example.com', :pass,
+            'Admin First Name', 'Admin Last Name', 'admin_email@example.com', :pass,
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
             (SELECT id FROM user_roles WHERE code = 'ADMIN')
         )
@@ -139,4 +151,156 @@ def run_invitaions_seeds(db: Session):
         ON CONFLICT (invitation_token) DO NOTHING;
     """)
     db.execute(sql_query)
+    db.commit()
+
+
+def run_tools_seeds(db: Session):
+    """
+    Seed the tools, photos (only photos related to tools), tool_photos tables.
+    """
+    db.execute(
+        text("""
+            INSERT INTO photos (id, url) VALUES
+            ('f0000001-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1504148455328-c376907d081c'),
+            ('f0000001-0000-0000-0000-000000000002', 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407'),
+            ('f0000001-0000-0000-0000-000000000003', 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407'),
+            ('f0000001-0000-0000-0000-000000000004', 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407'),
+            ('f0000001-0000-0000-0000-000000000005', 'https://images.unsplash.com/photo-1642006953663-06f0387f5652?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000006', 'https://images.unsplash.com/photo-1640090813342-21cc245b85b4?q=80&w=1176&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000007', 'https://images.unsplash.com/photo-1675974242316-ab4fd7b7708c?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000008', 'https://images.unsplash.com/photo-1458245201577-fc8a130b8829?q=80&w=1176&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000009', 'https://images.unsplash.com/photo-1690068023694-053da714f95f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000010', 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8'),
+            ('f0000001-0000-0000-0000-000000000011', 'https://images.unsplash.com/photo-1585569695919-db237e7cc455?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000012', 'https://images.unsplash.com/photo-1580402427914-a6cc60d7d44f?q=80&w=1177&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000013', 'https://images.unsplash.com/photo-1708716334127-251478e5ff37?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000014', 'https://images.unsplash.com/photo-1513467655676-561b7d489a88?q=80&w=1332&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000015', 'https://images.unsplash.com/photo-1578583444045-69c6e71c520b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000016', 'https://images.unsplash.com/photo-1578583444045-69c6e71c520b?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000017', 'https://images.unsplash.com/photo-1681083465785-2c31e4bc27dd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000018', 'https://images.unsplash.com/photo-1681083465785-2c31e4bc27dd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000019', 'https://images.unsplash.com/photo-1681083465785-2c31e4bc27dd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000020', 'https://images.unsplash.com/photo-1702200047649-ddefe9d4faa9?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000000000021', 'https://images.unsplash.com/photo-1653607240501-92c08ed94c7f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')
+            ON CONFLICT (id) DO NOTHING;
+        """)
+    )
+    db.execute(
+        text("""
+            INSERT INTO tools (id, owner_id, tool_type_id, title, description, condition, pickup_notes, return_notes, loan_duration_limit, status) VALUES
+            -- User 1 Listings ('seed1@example.com')
+            (
+                'e0000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'POWER_TOOLS'), 'DeWalt 20V Cordless Drill Set',
+                'High performance brushless motor drill. Perfect for drilling holes or driving screws into wood and metal.',
+                'GOOD', 'Available for pick up on weeknights. Message before arriving.', 'Please brush off any dust.', 7, 'AVAILABLE'
+            ),
+            (
+                'e0000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'GARDENING'), 'Professional Lawn Aerator',
+                'Manual spike aerator to open up your lawn soil. Heavy duty steel build.',
+                'GOOD', 'Leave it on the porch when returning.', 'Clean any mud blocks off the spikes.', 3, 'AVAILABLE'
+            ),
+            (
+                'e0000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'HAND_TOOLS'), 'Hammer',
+                'Cool hammer',
+                'FAIR', 'Located in garage bin #2.', 'Standard return.', 5, 'HIDDEN' -- Hidden testing
+            ),
+
+            -- User 2 Listings ('seed2@example.com')
+            (
+                'e0000000-0000-0000-0000-000000000004', (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'HAND_TOOLS'), 'Metric & Imperial Socket Set',
+                '150-piece chrome vanadium steel tool set with structural carrying case.',
+                'GOOD', 'Knock on front door.', 'Put every adapter piece back into its specific mold.', 14, 'AVAILABLE'
+            ),
+            (
+                'e0000000-0000-0000-0000-000000000005', (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'AUTOMOTIVE'), '3-Ton Hydraulic Floor Jack',
+                'Low profile car lift jack, perfect for quick tire swaps or detailing changes.',
+                'GOOD', 'Very heavy asset, bring a trunk or spacious car floor.', 'Wipe off excess fluid leakage.', 4, 'AVAILABLE'
+            ),
+
+            -- User 3 Listings ('seed3@example.com')
+            (
+                'e0000000-0000-0000-0000-000000000006', (SELECT id FROM users WHERE email = 'seed3@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'POWER_TOOLS'), 'Circular Woodworking Saw',
+                'Corded high-torque laser guided circular saw. High speed cutting accuracy.',
+                'GOOD', 'Will hand over personally with manuals.', 'Unplug blade before transport.', 7, 'AVAILABLE'
+            ),
+            (
+                'e0000000-0000-0000-0000-000000000007', (SELECT id FROM users WHERE email = 'seed3@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'GARDENING'), 'Gas-Powered String Trimmer',
+                'Straight shaft lawn edger weed-whacker. Runs on standard mixed fuel.',
+                'FAIR', 'Fuel reservoir is empty. Bring 2-cycle oil mix.', 'Empty any debris guard lines.', 2, 'SUSPENDED'
+            ),
+
+            -- User 4 Listings ('seed4@example.com')
+            (
+                'e0000000-0000-0000-0000-000000000008', (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'AUTOMOTIVE'), 'OBD2 Bluetooth Engine Scanner',
+                'Diagnostic code reader. Connects straight to your smartphone to clear check engine lights.',
+                'GOOD', 'Small device, can pass it through mail slot.', 'Do not lose the protective cap pin.', 1, 'AVAILABLE'
+            ),
+            (
+                'e0000000-0000-0000-0000-000000000009', (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                (SELECT id FROM tool_types WHERE code = 'AUTOMOTIVE'), 'Scanner',
+                'Do nothing, just a scanner.',
+                'POOR', 'Small device, can pass it through mail slot.', 'Do not lose the protective cap pin.', 1, 'DELETED'
+            )
+            ON CONFLICT (id) DO NOTHING;
+        """)
+    )
+    db.execute(
+        text("""
+            INSERT INTO tool_photos (tool_id, photo_id)
+            SELECT data.tool_id::uuid, data.photo_id::uuid
+            FROM (
+                VALUES
+                -- Tool 1 (4 Photos - Power Drill)
+                ('e0000000-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001'),
+                ('e0000000-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000002'),
+                ('e0000000-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000003'),
+                ('e0000000-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000004'),
+
+                -- Tool 2 (2 Photos - Aerator)
+                ('e0000000-0000-0000-0000-000000000002', 'f0000001-0000-0000-0000-000000000006'),
+                ('e0000000-0000-0000-0000-000000000002', 'f0000001-0000-0000-0000-000000000007'),
+
+                -- Tool 3 (1 Photo - Hammer)
+                ('e0000000-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000010'),
+
+                -- Tool 4 (3 Photos - Socket Set)
+                ('e0000000-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000011'),
+                ('e0000000-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000012'),
+                ('e0000000-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000013'),
+
+                -- Tool 5 (2 Photos - Hydraulic Jack)
+                ('e0000000-0000-0000-0000-000000000005', 'f0000001-0000-0000-0000-000000000015'),
+                ('e0000000-0000-0000-0000-000000000005', 'f0000001-0000-0000-0000-000000000016'),
+
+                -- Tool 6 (3 Photos - Circular Saw)
+                ('e0000000-0000-0000-0000-000000000006', 'f0000001-0000-0000-0000-000000000005'),
+                ('e0000000-0000-0000-0000-000000000006', 'f0000001-0000-0000-0000-000000000014'),
+                ('e0000000-0000-0000-0000-000000000006', 'f0000001-0000-0000-0000-000000000020'),
+
+                -- Tool 7 (2 Photos - Trimmer)
+                ('e0000000-0000-0000-0000-000000000007', 'f0000001-0000-0000-0000-000000000008'),
+                ('e0000000-0000-0000-0000-000000000007', 'f0000001-0000-0000-0000-000000000009'),
+
+                -- Tool 8 (3 Photos - Scanner)
+                ('e0000000-0000-0000-0000-000000000008', 'f0000001-0000-0000-0000-000000000017'),
+                ('e0000000-0000-0000-0000-000000000008', 'f0000001-0000-0000-0000-000000000018'),
+                ('e0000000-0000-0000-0000-000000000008', 'f0000001-0000-0000-0000-000000000019'),
+                -- Tool 9 (1 Photo - Scanner)
+                ('e0000000-0000-0000-0000-000000000009', 'f0000001-0000-0000-0000-000000000021')
+            ) AS data(tool_id, photo_id)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM tool_photos
+                WHERE tool_photos.tool_id = data.tool_id::uuid AND tool_photos.photo_id = data.photo_id::uuid
+            );
+        """)
+    )
+
     db.commit()

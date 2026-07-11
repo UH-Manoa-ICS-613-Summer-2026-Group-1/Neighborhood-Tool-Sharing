@@ -1,7 +1,9 @@
 CREATE OR REPLACE VIEW user_profiles_v AS
 SELECT
     users.id AS user_id,
-    users.name AS user_name,
+    users.first_name AS user_first_name,
+    users.last_name AS user_last_name,
+    users.middle_name AS user_middle_name,
     users.email AS user_email,
     users.bio AS user_bio,
     users.location AS user_location,
@@ -19,7 +21,9 @@ JOIN user_roles ON users.role_id = user_roles.id
 JOIN user_statuses ON users.status_id = user_statuses.id;
 COMMENT ON VIEW user_profiles_v IS 'View for user profiles';
 COMMENT ON COLUMN user_profiles_v.user_id IS 'Unique identifier for each user';
-COMMENT ON COLUMN user_profiles_v.user_name IS 'Full name of the user';
+COMMENT ON COLUMN user_profiles_v.user_first_name IS 'User''s first name';
+COMMENT ON COLUMN user_profiles_v.user_last_name IS 'User''s last name';
+COMMENT ON COLUMN user_profiles_v.user_middle_name IS 'User''s middle name';
 COMMENT ON COLUMN user_profiles_v.user_email IS 'User''s unique email address used for system login';
 COMMENT ON COLUMN user_profiles_v.user_bio IS 'Brief personal bio or introduction written by the user';
 COMMENT ON COLUMN user_profiles_v.user_location IS 'Location of the user';

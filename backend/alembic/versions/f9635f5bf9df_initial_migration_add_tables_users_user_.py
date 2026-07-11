@@ -24,7 +24,11 @@ def upgrade() -> None:
     op.create_table(
         "photos",
         sa.Column(
-            "id", sa.UUID(), nullable=False, comment="Unique identifier for a image"
+            "id",
+            sa.UUID(),
+            nullable=False,
+            comment="Unique identifier for a image",
+            server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column(
             "url",
@@ -114,10 +118,22 @@ def upgrade() -> None:
             comment="Unique identifier for each user",
         ),
         sa.Column(
-            "name",
+            "first_name",
             sa.String(length=255),
             nullable=False,
-            comment="Full name of the user",
+            comment="First name of the user",
+        ),
+        sa.Column(
+            "last_name",
+            sa.String(length=255),
+            nullable=False,
+            comment="Last name of the user",
+        ),
+        sa.Column(
+            "middle_name",
+            sa.String(length=255),
+            nullable=True,
+            comment="Middle name of the user",
         ),
         sa.Column(
             "email",

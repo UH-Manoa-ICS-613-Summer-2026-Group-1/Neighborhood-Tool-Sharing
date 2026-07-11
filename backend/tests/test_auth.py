@@ -8,14 +8,16 @@ from sqlalchemy.orm import Session
 # Seed user data={
 # "email": "someemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test User",
+# "first_name"="UserFirst",
+# "last_name"="UserLast",
 # "status_id": 1,                       Active
 # "role_id": 1}                         User
 
 # Seed suspended user data={
 # "email": "somesuspendedemail@mail.com",
 # "password": "Correctpassword123!",
-# "name": "Test Suspended User",
+# first_name="Firstname Test Suspended User",
+# last_name="Lastname Test Suspended User",
 # "status_id": 2,                       Suspended
 # "role_id": 1}                         User
 
@@ -165,7 +167,8 @@ def test_protected_route_with_token(client, seed_user):
     assert response.status_code == 200
 
     assert profile["user_email"] == seed_user.email
-    assert profile["user_name"] == seed_user.name
+    assert profile["user_first_name"] == seed_user.first_name
+    assert profile["user_last_name"] == seed_user.last_name
     assert profile["status_code"] == seed_user.status.code
     assert profile["role_code"] == seed_user.role.code
 
@@ -255,6 +258,8 @@ def test_register_success(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "Securepassword123!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
             "invite_token": invite_token,
         },
     )
@@ -271,13 +276,34 @@ def test_register_success(client, db_session: Session, seed_invitation):
 # US 11. Scenario 2: Invitation link invalid
 def test_register_invalid_invitation(client):
     """
-    Scenario 2: Invitation link invalid
-        Given the invitation was received via email
-        And the invitation link does not match an invitation record
-        When the user clicks the invitation link
-        Then the system rejects the user action and an error message is displayed
+    Test that attempting to register with an invalid invite token is rejected.
     """
-    pass
+    fake_token = "this-token-does-not-exist-in-db"
+
+    # Test that validating the fake token fails
+    validate_response = client.get(f"/api/invitations/validate?token={fake_token}")
+    assert validate_response.status_code == 404
+    assert (
+        validate_response.json()["detail"]
+        == "This invitation link is invalid or does not exist. Please request a new invitation."
+    )
+
+    # Test that attempting to register with this fake token is rejected
+    register_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@mail.com",
+            "password": "SomeValidPassword1!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
+            "invite_token": fake_token,
+        },
+    )
+    assert register_response.status_code == 404
+    assert (
+        register_response.json()["detail"]
+        == "This invitation link is invalid or does not exist. Please request a new invitation."
+    )
 
 
 # US 11. Scenario 3: User already exists
@@ -295,6 +321,8 @@ def test_register_duplicate_email(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "SomeValidPassword1!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
             "invite_token": invite_token,
         },
     )
@@ -308,6 +336,8 @@ def test_register_duplicate_email(client, db_session: Session, seed_invitation):
         json={
             "email": "newuser@mail.com",
             "password": "SomeValidPassword2!",
+            "first_name": "New User First Name",
+            "last_name": "New User Last Name",
             "invite_token": invite_token,
         },
     )
@@ -317,13 +347,37 @@ def test_register_duplicate_email(client, db_session: Session, seed_invitation):
 
 
 # US 11. Scenario 4: Invitation link has expired
-def test_register_expired_invitation(client):
+def test_register_expired_invitation(client, db_session: Session, seed_invitation):
     """
-    Scenario 4: Invitation link has expired
-        Given the invitation link was sent more than 7 days ago
-        When the user clicks the invitation link
-        Then the system rejects the action
-        And displays an error message indicating the invitation has expired
-        And prompts the user to contact the person who invited them for a new link
+    Test that attempting to register with an expired invite token is rejected.
     """
-    pass
+    invite_token = seed_invitation.invitation_token
+
+    # Set the token to expired
+    seed_invitation.status = "EXPIRED"
+    db_session.commit()
+
+    # Verify validation endpoint catches the expiration flag
+    validate_response = client.get(f"/api/invitations/validate?token={invite_token}")
+    assert validate_response.status_code == 400
+    assert (
+        validate_response.json()["detail"]
+        == "This invitation link has expired. Please request a new invitation."
+    )
+
+    # Verify registration endpoint catches the expiration flag
+    register_response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "newuser@mail.com",
+            "password": "SomeValidPassword1!",
+            "first_name": "User First Name",
+            "last_name": "User Last Name",
+            "invite_token": invite_token,
+        },
+    )
+    assert register_response.status_code == 400
+    assert (
+        register_response.json()["detail"]
+        == "This invitation link has expired. Please request a new invitation."
+    )
