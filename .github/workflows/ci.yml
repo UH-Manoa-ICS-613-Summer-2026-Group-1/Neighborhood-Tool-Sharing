@@ -38,7 +38,7 @@ jobs:
           STORAGE_EXTERNAL_ENDPOINT: ${{ secrets.STORAGE_EXTERNAL_ENDPOINT }}
           MINIO_BUCKET_NAME: ${{ secrets.MINIO_BUCKET_NAME }}
         run: |
-          docker compose run --rm web \ 
+          docker compose run --rm web \
           python -m pytest tests \
           --cov=app \
           --cov-branch \
@@ -51,7 +51,7 @@ jobs:
       # Bandit tests with Docker
       - name: Run Bandit tests (medium/high severity, high confidence) 
         run: |
-          docker compose run --rm web \ 
+          docker compose run --rm web \
           python -m bandit \
           -r app -ll -iii
 
