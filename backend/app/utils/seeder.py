@@ -53,34 +53,53 @@ def run_lookup_seeds(db: Session):
 
 def run_users_seeds(db: Session):
     """
-    Seed the users table with initial data.
+    Seed the users table and users photos.
     """
+    db.execute(
+        text("""
+            INSERT INTO photos (id, url) VALUES
+            ('f0000001-0000-0000-0000-000100000001', 'https://images.unsplash.com/photo-1740252117070-7aa2955b25f8?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000002', 'https://images.unsplash.com/photo-1740252117027-4275d3f84385?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000003', 'https://images.unsplash.com/photo-1740252117013-4fb21771e7ca?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000004', 'https://images.unsplash.com/photo-1740252117012-bb53ad05e370?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000005', 'https://images.unsplash.com/photo-1772371272141-0fbd644b65c4?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000006', 'https://images.unsplash.com/photo-1772371272228-f4a8247cfe6d?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000007', 'https://images.unsplash.com/photo-1751093383900-dbf2a79169f8?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'),
+            ('f0000001-0000-0000-0000-000100000008', 'https://images.unsplash.com/photo-1772371272208-412168748f2a?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')
+            ON CONFLICT (id) DO NOTHING;
+        """)
+    )
     sql_query = text("""
-        INSERT INTO users (first_name, last_name, middle_name, email, password, bio, location, status_id, role_id) VALUES
+        INSERT INTO users (first_name, last_name, middle_name, email, password, bio, location, status_id, role_id, photo_id) VALUES
         (
             'SeedFirst1', 'SeedLast1', NULL, 'seed1@example.com', :pass, 'Bio 1', 'Location 1',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
-            (SELECT id FROM user_roles WHERE code = 'USER')
+            (SELECT id FROM user_roles WHERE code = 'USER'),
+            'f0000001-0000-0000-0000-000100000001'
         ),
         (
             'SeedFirst2', 'SeedLast2', 'MiddleA', 'seed2@example.com', :pass, 'Bio 2', NULL,
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
-            (SELECT id FROM user_roles WHERE code = 'USER')
+            (SELECT id FROM user_roles WHERE code = 'USER'),
+            'f0000001-0000-0000-0000-000100000002'
         ),
         (
             'SeedFirst3', 'SeedLast3', NULL, 'seed3@example.com', :pass, NULL, 'Location 3',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
-            (SELECT id FROM user_roles WHERE code = 'USER')
+            (SELECT id FROM user_roles WHERE code = 'USER'),
+            'f0000001-0000-0000-0000-000100000003'
         ),
         (
             'SeedFirst4', 'SeedLast4', NULL, 'seed4@example.com', :pass, 'Bio 4', 'Location 4',
             (SELECT id FROM user_statuses WHERE code = 'ACTIVE'),
-            (SELECT id FROM user_roles WHERE code = 'USER')
+            (SELECT id FROM user_roles WHERE code = 'USER'),
+            'f0000001-0000-0000-0000-000100000004'
         ),
         (
             'SeedFirst5', 'SeedLast5', 'MiddleB', 'seed5@example.com', :pass, 'Bio 5', 'Location 5',
             (SELECT id FROM user_statuses WHERE code = 'SUSPENDED'),
-            (SELECT id FROM user_roles WHERE code = 'USER')
+            (SELECT id FROM user_roles WHERE code = 'USER'),
+            'f0000001-0000-0000-0000-000100000005'
         )
         ON CONFLICT (email) DO NOTHING;
     """)
