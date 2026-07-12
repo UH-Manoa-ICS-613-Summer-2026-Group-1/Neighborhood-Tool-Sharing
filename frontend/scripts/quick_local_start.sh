@@ -12,4 +12,3 @@ npm install
 echo "running npm frontend server"
 # run NPM server
 npm run dev
-4
