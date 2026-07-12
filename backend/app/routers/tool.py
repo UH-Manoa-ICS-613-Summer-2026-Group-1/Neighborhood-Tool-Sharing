@@ -97,13 +97,21 @@ def create_tool(
             detail="A tool listing requires at least one uploaded photo.",
         )
 
+    # Handle optional fields: pickup_notes, return_notes
+    pickup_notes = None
+    if tool_data.pickup_notes is not None:
+        pickup_notes = tool_data.pickup_notes if tool_data.pickup_notes != "" else None
+    return_notes = None
+    if tool_data.return_notes is not None:
+        return_notes = tool_data.return_notes if tool_data.return_notes != "" else None
+
     new_tool = Tool(
         tool_type_id=tool_type_exists.id,
         title=tool_data.title,
         description=tool_data.description,
         condition=tool_data.condition,
-        pickup_notes=tool_data.pickup_notes,
-        return_notes=tool_data.return_notes,
+        pickup_notes=pickup_notes,
+        return_notes=return_notes,
         loan_duration_limit=tool_data.loan_duration_limit,
         owner_id=current_user.id,
     )

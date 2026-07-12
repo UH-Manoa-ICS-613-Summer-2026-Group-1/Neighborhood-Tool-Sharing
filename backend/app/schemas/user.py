@@ -4,21 +4,25 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from .common import CleanStr
+
 # REQUEST SCHEMAS
 
 
 class UserProfileUpdateRequest(BaseModel):
-    first_name: str | None = Field(
+    first_name: CleanStr | None = Field(
         None, min_length=1, max_length=255, description="User's first name"
     )
-    last_name: str | None = Field(
+    last_name: CleanStr | None = Field(
         None, min_length=1, max_length=255, description="User's last name"
     )
-    middle_name: str | None = Field(
-        None, min_length=1, max_length=255, description="User's middle name"
+    middle_name: CleanStr | None = Field(
+        None, max_length=255, description="User's middle name"
     )
-    bio: str | None = Field(None, max_length=2000, description="User's bio")
-    location: str | None = Field(None, max_length=255, description="User's location")
+    bio: CleanStr | None = Field(None, max_length=2000, description="User's bio")
+    location: CleanStr | None = Field(
+        None, max_length=255, description="User's location"
+    )
     photo_url: str | None = Field(
         None, description="Permanent URL returned from /api/media/upload"
     )

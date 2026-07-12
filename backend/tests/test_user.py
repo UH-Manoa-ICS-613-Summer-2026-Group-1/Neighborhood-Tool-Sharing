@@ -70,11 +70,13 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user):
     # Update user profile
     response = client.patch("/api/users/me", json=patch_payload, headers=headers)
 
+    # There is a user photo
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
     assert seed_user.photo_id is not None
     assert seed_user.photo.url == "NEW_PHOTO_URL"
 
+    # Delete user photo
     patch_payload = {
         "photo_url": None,
     }
@@ -82,6 +84,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user):
     # Update user profile
     response = client.patch("/api/users/me", json=patch_payload, headers=headers)
 
+    # There is no user photo
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
     assert seed_user.photo_id is None

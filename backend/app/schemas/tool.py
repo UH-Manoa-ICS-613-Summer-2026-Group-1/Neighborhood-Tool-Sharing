@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition
 from app.schemas.photo import PhotoSchema
 
+from .common import CleanStr
+
 # REQUEST SCHEMAS
 
 
@@ -15,13 +17,13 @@ class ToolRequest(BaseModel):
         description="Tool category code (e.g., POWER_TOOLS).",
         examples=["POWER_TOOLS"],
     )
-    title: str = Field(
+    title: CleanStr = Field(
         ...,
         min_length=3,
         max_length=255,
         description="Title must be between 3 and 255 characters long.",
     )
-    description: str = Field(
+    description: CleanStr = Field(
         ...,
         min_length=5,
         max_length=2000,
@@ -34,8 +36,8 @@ class ToolRequest(BaseModel):
         max_length=5,
         description="A tool must have 1 to 5 photos.",
     )
-    pickup_notes: str | None = Field(default=None, max_length=2000)
-    return_notes: str | None = Field(default=None, max_length=2000)
+    pickup_notes: CleanStr | None = Field(default=None, max_length=2000)
+    return_notes: CleanStr | None = Field(default=None, max_length=2000)
     loan_duration_limit: int = Field(
         DEFAULT_LOAN_DURATION_LIMIT,
         ge=1,

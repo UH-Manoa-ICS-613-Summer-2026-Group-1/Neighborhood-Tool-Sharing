@@ -73,19 +73,24 @@ def update_user_profile(
     """
     Update a user profile.
     """
-    # Handle name
+    # Handle first and last name
     if user_details.first_name is not None:
-        current_user.first_name = user_details.first_name.strip()
+        current_user.first_name = user_details.first_name
     if user_details.last_name is not None:
-        current_user.last_name = user_details.last_name.strip()
-    if user_details.middle_name is not None:
-        current_user.middle_name = user_details.middle_name.strip()
+        current_user.last_name = user_details.last_name
 
-    # Update bio and location
+    # Handle middle name, bio, and location
+    # If the user sent an empty string, save it as None
+    if user_details.middle_name is not None:
+        current_user.middle_name = (
+            user_details.middle_name if user_details.middle_name != "" else None
+        )
     if user_details.bio is not None:
-        current_user.bio = user_details.bio.strip()
+        current_user.bio = user_details.bio if user_details.bio != "" else None
     if user_details.location is not None:
-        current_user.location = user_details.location.strip()
+        current_user.location = (
+            user_details.location if user_details.location != "" else None
+        )
 
     # Handle photo url
     # If frontend explicitly sends "photo_url": null, we want to clear the profile picture
@@ -96,7 +101,7 @@ def update_user_profile(
     if "photo_url" in sent_data:
         # There is a photo_url key and user_details.photo_url is not null
         if user_details.photo_url:
-            new_photo = Photo(url=user_details.photo_url.strip())
+            new_photo = Photo(url=user_details.photo_url)
             db.add(new_photo)
             db.flush()
             current_user.photo_id = new_photo.id
