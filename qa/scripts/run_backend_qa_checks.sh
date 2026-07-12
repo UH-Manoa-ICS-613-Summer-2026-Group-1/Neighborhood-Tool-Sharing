@@ -40,7 +40,7 @@ python -m bandit -r app -ll -iii
 # python -m pip_audit
 
 echo "Running mypy static type checker..."
-python -m mypy app \
+python -m mypy . \
 --check-untyped-defs \
 --warn-unused-ignores
 

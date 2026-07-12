@@ -58,7 +58,7 @@ jobs:
 #        run: python -m pip_audit
 
       - name: Run mypy static type checker 
-        run: python -m mypy app --check-untyped-defs --warn-unused-ignores 
+        run: python -m mypy . --check-untyped-defs --warn-unused-ignores 
 
       - name: Run SQLFluff linter 
         run: python -m sqlfluff lint .

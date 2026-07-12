@@ -195,7 +195,7 @@ Open http://localhost:5000/docs
         -   [Ruff](https://docs.astral.sh/ruff/): python linter
             -   \*Note: Ruff linter fixes that can be automatically resolved can be done with the following command: `python -m ruff check --fix .`
             -   Ruff format checking has been enabled
-                -\*Note: Ruff format issues that can be automatically resolved can be done with the following command: `ruff format .`
+                -\*Note: Ruff format issues that can be automatically resolved can be done with the following command: `python -m ruff format .`
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
         -   [Bandit](https://bandit.readthedocs.io/en/latest/) python security linter
             - \*Note: Bandit is currently configured to include only medium and high severity, high confidence findings
