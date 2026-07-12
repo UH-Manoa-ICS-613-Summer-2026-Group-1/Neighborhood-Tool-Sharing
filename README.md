@@ -41,7 +41,15 @@ Also, the server logs are visible in the docker desktop application.
 ## Local Frontend Setup
  
 The frontend is a React + TypeScript app built with [Vite](https://vite.dev/).
- 
+
+Quick local start:
+ ```bash
+./frontend/scripts/quick_local_start.sh
+```
+The script:
+- Installs/upgrades npm and dependencies
+- Run frontend node server
+
 Prerequisites:
 - [Node.js](https://nodejs.org/) (LTS version recommended) and npm
 Navigate to the frontend directory (`cd frontend`)
