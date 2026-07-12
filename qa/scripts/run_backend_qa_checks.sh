@@ -28,20 +28,23 @@ docker compose exec web pytest tests \
 --cov-branch \
 --cov-report=term-missing  
 
+echo "Checking Ruff formatting..."
+python -m ruff format --check .
+
 # include only medium and high severity, high confidence findings
 echo "Running Bandit linter..."
 docker compose exec web \
 python -m bandit -r app -ll -iii
 
-echo "Chceking Ruff formatting..."
-python -m ruff format --check .
-
 # echo "Running pip_audit linter..."
 # python -m pip_audit
 
+echo "Running mypy static type checker..."
+python -m mypy app \
+--check-untyped-defs \
+--warn-unused-ignores
+
 echo "Running SQLFluff linter..."
 python -m sqlfluff lint .
-
-
 
 echo "All checks passed."

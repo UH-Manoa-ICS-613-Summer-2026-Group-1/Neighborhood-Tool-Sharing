@@ -8,3 +8,4 @@ ruff
 sqlfluff
 pytest-cov
 bandit
+mypy

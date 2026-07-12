@@ -45,17 +45,20 @@ jobs:
           --cov-report=term-missing
           docker compose down --volumes
         
-      - name: Run Ruff linter 
-        run: python -m ruff check . 
+      - name: Run Ruff format checker 
+        run: python -m ruff format --check . 
 
       # Bandit tests with Docker
       - name: Run Bandit tests (medium/high severity, high confidence) 
         run: |
           python -m bandit \
           -r backend/app -ll -iii
-
+          
 #      - name: Run pip-audit linter
 #        run: python -m pip_audit
+
+      - name: Run mypy static type checker 
+        run: python -m mypy app --check-untyped-defs --warn-unused-ignores 
 
       - name: Run SQLFluff linter 
         run: python -m sqlfluff lint .
