@@ -31,7 +31,7 @@ class ChangePasswordRequest(BaseModel):
         min_length=8,
         max_length=64,
         description="Password must be between 8 and 64 characters long.",
-        examples=["Mysecurepassword1!"],
+        examples=["ValidPassword1!"],
     )
 
     @field_validator("new_password")

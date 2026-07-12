@@ -12,7 +12,7 @@ from app.models.user import (
     User,
     UserProfileView,
 )
-from app.schemas.common import DetailError
+from app.schemas.common import DetailError, MessageResponse
 from app.schemas.user import (
     ChangePasswordRequest,
     UserProfileResponse,
@@ -61,7 +61,6 @@ def get_user_profile(
     "/me",
     response_model=UserProfileResponse,
     responses={
-        400: {"model": DetailError},
         401: {"model": DetailError},
         403: {"model": DetailError},
     },
@@ -113,3 +112,45 @@ def update_user_profile(
         .first()
     )
     return profile
+
+
+@router.patch(
+    "/me/change-password",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+    },
+)
+def change_user_password(
+    user_password_data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a user password
+    """
+    user_current_password = user_password_data.current_password
+    user_new_password = user_password_data.new_password
+
+    # Check current password
+    if not verify_password(user_current_password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password.",
+        )
+
+    # Prevent reusing the same identical password
+    if verify_password(user_new_password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be identical to your current password.",
+        )
+
+    # Hash and store new secret key
+    current_user.password = get_password_hash(user_new_password)
+    db.commit()
+
+    return {"message": "Password updated successfully."}
