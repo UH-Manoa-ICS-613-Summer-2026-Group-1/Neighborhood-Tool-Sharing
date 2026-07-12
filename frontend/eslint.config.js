@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import noUnsanitized from "eslint-plugin-no-unsanitized";
 
 export default defineConfig([
   globalIgnores([
@@ -13,6 +14,13 @@ export default defineConfig([
   ]),
   {
     files: ['**/*.{ts,tsx}'],
+    plugins: {
+      "no-unsanitized": noUnsanitized,
+    },
+    rules: {
+      "no-unsanitized/method": "error",
+      "no-unsanitized/property": "error",
+    },
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,

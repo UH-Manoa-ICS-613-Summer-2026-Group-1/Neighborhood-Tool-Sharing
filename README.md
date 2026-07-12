@@ -205,6 +205,7 @@ Open http://localhost:5000/docs
     -   #### Testing Types
         -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
         -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
+            -   The [No Unsanitized](https://github.com/mozilla/eslint-plugin-no-unsanitized/blob/main/README.md)" ESLint plugin is used to detect unsafe DOM injection patterns to reduce the risk of cross-site scripting (XSS)
         -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
     -   #### Test Definitions
         -   The frontend React tests and the vitest configuration file reside in the [frontend/tests folder](./frontend/tests/)

@@ -19,6 +19,9 @@ npm run test:coverage
 echo "Running ESLint..."
 npm run lint
 
+echo "Running typecheck"
+npm run typecheck
+
 echo "Running production build..."
 npm run build
 

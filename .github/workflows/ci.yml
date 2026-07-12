@@ -88,5 +88,8 @@ jobs:
       - name: Run linter 
         run: npm run lint 
 
-      - name: Run build
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run production build
         run: npm run build
