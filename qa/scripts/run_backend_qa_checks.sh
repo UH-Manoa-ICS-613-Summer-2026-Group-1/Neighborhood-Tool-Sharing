@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# determine the path of this script
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+# change to the repository root directory
+cd "${SCRIPT_DIR}/../.."
+
 # upgrade pip
 python -m pip install --upgrade pip
 
