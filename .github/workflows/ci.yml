@@ -54,12 +54,12 @@ jobs:
           python -m bandit \
           -r backend/app -ll -iii
 
-      - name: Run SQLFluff linter 
-        run: python -m sqlfluff lint .
-        
 #      - name: Run pip-audit linter
 #        run: python -m pip_audit
 
+      - name: Run SQLFluff linter 
+        run: python -m sqlfluff lint .
+        
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest
