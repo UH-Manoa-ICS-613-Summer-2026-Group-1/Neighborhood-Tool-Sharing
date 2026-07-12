@@ -149,7 +149,7 @@ def change_user_password(
             detail="New password cannot be identical to your current password.",
         )
 
-    # Hash and store new secret key
+    # Hash and store new password
     current_user.password = get_password_hash(user_new_password)
     db.commit()
 

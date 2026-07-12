@@ -1,4 +1,4 @@
-from app.models.tool import Tool, ToolStatus, ToolType
+from app.models.tool import Tool, ToolStatus
 from app.models.user import UserStatus
 from app.utils.seeder import run_tools_seeds, run_users_seeds
 from sqlalchemy.orm import Session
