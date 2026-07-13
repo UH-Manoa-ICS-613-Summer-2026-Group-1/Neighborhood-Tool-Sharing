@@ -1,4 +1,4 @@
-from app.models.tool import Tool, ToolStatus, ToolType
+from app.models.tool import Tool, ToolStatus
 from app.models.user import UserStatus
 from app.utils.seeder import run_tools_seeds, run_users_seeds
 from sqlalchemy.orm import Session
@@ -12,11 +12,6 @@ def test_add_tool_success(client, db_session: Session, seed_user):
     Test that a user can successfully add a new tool.
     """
     headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
-    print(headers)
-    print(
-        "AVAILABLE TOOL TYPES:",
-        [(tt.id, tt.code) for tt in db_session.query(ToolType).all()],
-    )
     payload = {
         "title": "DeWalt Cordless Drill",
         "description": "20V max brushless compact drill driver.",
@@ -27,8 +22,6 @@ def test_add_tool_success(client, db_session: Session, seed_user):
         "loan_duration_limit": 7,
         "photo_urls": ["https://images.unsplash.com/photo-1504148455328-c376907d081c"],
     }
-
-    print(payload)
     response = client.post("/api/tools", headers=headers, json=payload)
     assert response.status_code == 201
 

@@ -109,7 +109,7 @@ Run docker container and use the following command in separate terminal to seed 
 ```bash
 docker compose exec web python seed.py
 ```
-Seed include: user_roles, user_statuses, users, invitations
+Seed include: user_roles, user_statuses, users, invitations, tool_types, tools_photos, tools, photos
 
 ## Backend Scripts
 

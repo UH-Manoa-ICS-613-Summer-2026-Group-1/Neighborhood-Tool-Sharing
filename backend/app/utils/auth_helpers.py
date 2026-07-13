@@ -73,3 +73,10 @@ def normalize_email(value: str) -> str:
     if isinstance(value, str):
         return value.strip().lower()
     return value
+
+
+def strip_spaces(value: str) -> str:
+    """Helper function to strip spaces from strings."""
+    if isinstance(value, str):
+        return value.strip()
+    return value

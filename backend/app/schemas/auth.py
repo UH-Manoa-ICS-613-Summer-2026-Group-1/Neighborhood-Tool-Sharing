@@ -4,6 +4,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.utils.auth_helpers import normalize_email
 
+from .common import CleanStr
+
 # REQUEST SCHEMAS
 
 
@@ -15,15 +17,15 @@ class UserRegisterRequest(BaseModel):
         min_length=8,
         max_length=64,
         description="Password must be between 8 and 64 characters long.",
-        examples=["Mysecurepassword1!"],
+        examples=["ValidPassword1!"],
     )
-    first_name: str = Field(
+    first_name: CleanStr = Field(
         ..., min_length=1, max_length=255, description="User's first name"
     )
-    last_name: str = Field(
+    last_name: CleanStr = Field(
         ..., min_length=1, max_length=255, description="User's last name"
     )
-    middle_name: str | None = Field(
+    middle_name: CleanStr | None = Field(
         None, max_length=255, description="User's middle name (optional)"
     )
 

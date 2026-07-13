@@ -62,13 +62,19 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
     default_role = db.query(UserRole).filter(UserRole.code == "USER").first()
     default_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
 
+    # Handle middle name is empty string
+    middle_name = None
+    if user_data.middle_name is not None:
+        middle_name = user_data.middle_name if user_data.middle_name != "" else None
+
+    # Hash password
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
         password=hashed_password,
-        first_name=user_data.first_name.strip(),
-        last_name=user_data.last_name.strip(),
-        middle_name=user_data.middle_name.strip() if user_data.middle_name else None,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        middle_name=middle_name,
         status=default_status,  # ACTIVE status
         role=default_role,  # USER role
     )

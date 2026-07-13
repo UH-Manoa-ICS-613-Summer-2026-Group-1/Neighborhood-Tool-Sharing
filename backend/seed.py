@@ -18,7 +18,7 @@ def seed_database():
     try:
         print("Seed: start seeding lookup tables (user_roles, user_statuses).")
         run_lookup_seeds(db)
-        print("Seed: start seeding users table.")
+        print("Seed: start seeding users table with photos.")
         run_users_seeds(db)
         print("Seed: start seeding admin in users table.")
         run_admin_seeds(db)
