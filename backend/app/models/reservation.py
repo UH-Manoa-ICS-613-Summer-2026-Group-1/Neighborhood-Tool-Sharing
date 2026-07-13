@@ -17,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SAEnum,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -27,10 +28,13 @@ if TYPE_CHECKING:
     from .user import User
 
 # Tables:
-# -
+# - resevations (id, tool_id, borrower_id, pickup_notes, return_notes, start_date, end_date, status, created_at)
 
 # Views:
-# -
+# - reservations_v (reservation_id, status, start_date, end_date, pickup_notes, return_notes, created_at, tool_id,
+# tool_title, tool_description, tool_condition, tool_type_id, tool_type_code, tool_type_name, borrower_id,
+# borrower_first_name, borrower_last_name, borrower_middle_name, owner_id, owner_first_name, owner_last_name,
+# owner_middle_name, tool_photos)
 
 
 class ReservationStatus(str, enum.Enum):
@@ -110,3 +114,35 @@ class Reservation(Base):
     borrower: Mapped["User"] = relationship(
         "User", foreign_keys=[borrower_id], back_populates="borrowed_reservations"
     )
+
+
+class ReservationView(Base):
+    __tablename__ = "reservations_v"
+
+    reservation_id = Column(UUID(as_uuid=True), primary_key=True)
+    status = Column(String)
+    start_date = Column(DateTime(timezone=True))
+    end_date = Column(DateTime(timezone=True))
+    pickup_notes = Column(
+        Text, nullable=True
+    )  # Could be not the same as in tools table
+    return_notes = Column(
+        Text, nullable=True
+    )  # Could be not the same as in tools table
+    created_at = Column(DateTime(timezone=True))
+    tool_id = Column(UUID(as_uuid=True))
+    tool_title = Column(String)
+    tool_description = Column(String)
+    tool_condition = Column(String)
+    tool_type_id = Column(Integer)
+    tool_type_code = Column(String)
+    tool_type_name = Column(String)
+    borrower_id = Column(UUID(as_uuid=True))
+    borrower_first_name = Column(String)
+    borrower_last_name = Column(String)
+    borrower_middle_name = Column(String, nullable=True)
+    owner_id = Column(UUID(as_uuid=True))
+    owner_first_name = Column(String)
+    owner_last_name = Column(String)
+    owner_middle_name = Column(String, nullable=True)
+    tool_photos = Column(JSONB)
