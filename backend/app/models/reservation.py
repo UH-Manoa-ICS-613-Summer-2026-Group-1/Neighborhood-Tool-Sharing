@@ -23,7 +23,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    from .photo import Photo
     from .tool import Tool
     from .user import User
 
@@ -120,16 +119,14 @@ class ReservationView(Base):
     __tablename__ = "reservations_v"
 
     reservation_id = Column(UUID(as_uuid=True), primary_key=True)
-    status = Column(String)
-    start_date = Column(DateTime(timezone=True))
-    end_date = Column(DateTime(timezone=True))
-    pickup_notes = Column(
-        Text, nullable=True
-    )  # Could be not the same as in tools table
-    return_notes = Column(
-        Text, nullable=True
-    )  # Could be not the same as in tools table
-    created_at = Column(DateTime(timezone=True))
+    reservation_status = Column(String)
+    reservation_start_date = Column(DateTime(timezone=True))
+    reservation_end_date = Column(DateTime(timezone=True))
+    # Could be not the same as in tools table
+    reservation_pickup_notes = Column(Text, nullable=True)
+    # Could be not the same as in tools table
+    reservation_return_notes = Column(Text, nullable=True)
+    reservation_created_at = Column(DateTime(timezone=True))
     tool_id = Column(UUID(as_uuid=True))
     tool_title = Column(String)
     tool_description = Column(String)

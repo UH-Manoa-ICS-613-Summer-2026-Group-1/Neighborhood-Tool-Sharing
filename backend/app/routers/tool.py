@@ -4,16 +4,19 @@ Handles creating, viewing, and updating tools.
 """
 
 import uuid
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import case
+from sqlalchemy import and_, case
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.photo import Photo, ToolPhoto
+from app.models.reservation import Reservation, ReservationStatus
 from app.models.tool import Tool, ToolCondition, ToolStatus, ToolType, ToolView
 from app.models.user import User
 from app.schemas.common import DetailError
+from app.schemas.reservation import APP_TIMEZONE
 from app.schemas.tool import (
     ToolDetailsResponse,
     ToolRequest,
@@ -269,3 +272,66 @@ def get_tool_by_id(
         )
 
     return tool
+
+
+@router.get(
+    "/{tool_id}/availability",
+    status_code=status.HTTP_200_OK,
+    response_model=list[
+        str
+    ],  # Returns a list like ["2026-07-14", "2026-07-15"] ('YYYY-MM-DD')
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_tool_availability(
+    tool_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrive a list of "APPROVED" or "PICKED_UP" dates to block out on the frontend calendar UI.
+    Format ('YYYY-MM-DD').
+    """
+    # Verify the tool exists
+    tool_exists = db.query(Tool).filter(Tool.id == tool_id).first()
+    if not tool_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool not found.",
+        )
+
+    # Grab the APPROVED adn PICKED_UP reservations for the tool
+    active_reservations = (
+        db.query(Reservation)
+        .filter(
+            and_(
+                Reservation.tool_id == tool_id,
+                Reservation.status.in_(
+                    [
+                        ReservationStatus.APPROVED,
+                        ReservationStatus.PICKED_UP,
+                    ]
+                ),
+            )
+        )
+        .all()
+    )
+
+    # Transforms datetime blocks into an array of individual 'YYYY-MM-DD' strings.
+    # This tells the frontend calendar exactly which grid boxes to disable. All dates are in the local timezone.
+    blocked_dates = set()
+    for reservation in active_reservations:
+        # Convert UTC back to the app's regional local time matrix
+        local_start = reservation.start_date.astimezone(APP_TIMEZONE).date()
+        local_end = reservation.end_date.astimezone(APP_TIMEZONE).date()
+
+        # Loop through every day from start to end inclusive and append it
+        current_day = local_start
+        while current_day <= local_end:
+            blocked_dates.add(current_day.isoformat())
+            current_day += timedelta(days=1)
+
+    return sorted(list(blocked_dates))
