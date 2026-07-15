@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SAEnum,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -48,9 +48,19 @@ class ReservationStatus(str, enum.Enum):
 class Reservation(Base):
     __tablename__ = "reservations"
 
-    __table_args__ = {
-        "comment": "Table for managing the borrowing/lending cycle of tools"
-    }
+    __table_args__ = (
+        # Add exclude constraint that prevents overlapping active reservations on db level
+        ExcludeConstraint(
+            ("tool_id", "="),
+            (text("tstzrange(start_date, end_date)"), "&&"),
+            name="no_overlapping_active_reservations",
+            using="gist",
+            where=text("status IN ('APPROVED', 'PICKED_UP')"),
+        ),
+        {
+            "comment": "Table for managing the borrowing/lending cycle of tools",
+        },
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
