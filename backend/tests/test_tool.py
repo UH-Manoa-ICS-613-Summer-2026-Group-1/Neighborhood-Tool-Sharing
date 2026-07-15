@@ -1,5 +1,9 @@
+from datetime import timedelta
+
+from app.models.reservation import ReservationStatus
 from app.models.tool import Tool, ToolStatus
 from app.models.user import UserStatus
+from app.schemas.reservation import APP_TIMEZONE
 from app.utils.seeder import run_tools_seeds, run_users_seeds
 from sqlalchemy.orm import Session
 
@@ -147,13 +151,13 @@ def test_add_tool_suspended_user(client, db_session: Session, seed_user):
 
 
 # US 6 Scenario 1 and 3: View tool details (including lending rules)
-def test_view_tool_details(client, seed_user, seed_tool_id):
+def test_view_tool_details(client, seed_user, seed_tool):
     """
     Test that a user can view a tool's details
     """
     headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
 
-    response = client.get(f"/api/tools/{seed_tool_id}", headers=headers)
+    response = client.get(f"/api/tools/{seed_tool.id}", headers=headers)
     assert response.status_code == 200
 
     data = response.json()
@@ -165,14 +169,38 @@ def test_view_tool_details(client, seed_user, seed_tool_id):
     assert len(data["tool_photos"]) == 1
 
 
-# US 6 Scenario 2: View availability information (create when availability endpoint is implemented)
-def test_view_tool_availability(client, seed_user, seed_tool_id):
+# US 6 Scenario 2: View availability information
+def test_view_tool_availability(db_session, client, seed_user3, seed_reservation):
     """
-    Given a tool listing exists
-    When the user views the tool details page
-    Then the system displays the tool availability and any existing approved reservation periods
+    Tests that tool availability endpoint returns correct list of blocked dates.
     """
-    pass
+    headers = get_auth_headers(client, "someemail3@mail.com", "Correctpassword123!")
+
+    # Set the reservation status to approved that the reservation becomes active
+    seed_reservation.status = ReservationStatus.APPROVED
+    db_session.commit()
+
+    # The endpoint returns a list of blocked dates for active reservations
+    response = client.get(
+        f"/api/tools/{seed_reservation.tool_id}/availability", headers=headers
+    )
+
+    # seed_reservation is the reservation for two days (today and tomorrow)
+    assert response.status_code == 200
+    blocked_dates = response.json()
+
+    # The tool has a reservation for two days
+    assert len(blocked_dates) == 2
+
+    # The days are today (start_date) and tomorrow (end_date)
+    # Get UTC start date -> convert to local time zone -> grab isoformat date
+    assert blocked_dates[0] == (
+        seed_reservation.start_date.astimezone(APP_TIMEZONE).date().isoformat()
+    )
+    assert (
+        blocked_dates[1]
+        == seed_reservation.end_date.astimezone(APP_TIMEZONE).date().isoformat()
+    )
 
 
 # US 6 Scenario 4: View tool listing not exist
@@ -190,7 +218,7 @@ def test_view_tool_listing_not_found(client, seed_user):
 
 
 # US 21 Scenario 1: Successful search
-def test_search_tools_by_keyword_and_category(client, seed_user, seed_tool_id):
+def test_search_tools_by_keyword_and_category(client, seed_user, seed_tool):
     """criteria extraction"""
     headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
 

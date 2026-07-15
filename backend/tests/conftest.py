@@ -1,5 +1,7 @@
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 import sqlalchemy as sa
@@ -8,7 +10,11 @@ from alembic.config import Config
 from app.database import get_db
 from app.main import app
 from app.models.invitation import Invitation
+from app.models.photo import Photo, ToolPhoto
+from app.models.reservation import Reservation
+from app.models.tool import Tool, ToolType
 from app.models.user import User, UserRole, UserStatus
+from app.schemas.reservation import APP_TIMEZONE
 from app.utils.auth_helpers import get_password_hash
 from app.utils.seeder import run_lookup_seeds
 from fastapi.testclient import TestClient
@@ -146,6 +152,58 @@ def seed_user(db_session):
 
 
 @pytest.fixture()
+def seed_user2(db_session):
+    """
+    Seeds a single valid user into the test database.
+    Usually used for testing as the second participant in reserveation, messages, reviews.
+    """
+    hashed_password = get_password_hash("Correctpassword123!")
+    test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
+    test_user_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+    )
+
+    test_user = User(
+        email="someemail2@mail.com",
+        password=hashed_password,
+        first_name="UserFirst2",
+        last_name="UserLast2",
+        status=test_user_status,
+        role=test_user_role,
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    return test_user
+
+
+@pytest.fixture()
+def seed_user3(db_session):
+    """
+    Seeds a single valid user into the test database.
+    Usually used for testing that the user who is not related to the tool/reservation/message/review cannot access them.
+    """
+    hashed_password = get_password_hash("Correctpassword123!")
+    test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
+    test_user_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+    )
+
+    test_user = User(
+        email="someemail3@mail.com",
+        password=hashed_password,
+        first_name="UserFirst3",
+        last_name="UserLast3",
+        status=test_user_status,
+        role=test_user_role,
+    )
+    db_session.add(test_user)
+    db_session.commit()
+    db_session.refresh(test_user)
+    return test_user
+
+
+@pytest.fixture()
 def seed_suspended_user(db_session):
     """
     Seeds a single suspended user into the test database.
@@ -189,21 +247,60 @@ def seed_invitation(db_session, seed_user):
 
 
 @pytest.fixture
-def seed_tool_id(client, seed_user):
+def seed_tool(db_session, seed_user):
     """
-    Seed a tool and return its ID
+    Seed a tool into the test database.
     The owner of the tool a seed_user ("someemail@mail.com", "Correctpassword123!").
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
-    payload = {
-        "title": "Stihl Grass Eater",
-        "description": "Gas trimmer engine edger.",
-        "condition": "GOOD",
-        "tool_type_code": "GARDENING",
-        "pickup_notes": "Meet by garage.",
-        "return_notes": "Clean grass off guards.",
-        "loan_duration_limit": 3,
-        "photo_urls": ["https://images.unsplash.com/photo-1617576683096-00fc8eecb3af"],
-    }
-    res = client.post("/api/tools", headers=headers, json=payload)
-    return res.json()["id"]
+    tool_type = db_session.query(ToolType).filter(ToolType.code == "GARDENING").first()
+    tool = Tool(
+        owner_id=seed_user.id,
+        tool_type_id=tool_type.id,
+        title="Stihl Grass Eater",
+        description="Gas trimmer engine edger.",
+        condition="GOOD",
+        loan_duration_limit=3,
+        return_notes="Clean grass off guards.",
+        pickup_notes="Meet by garage.",
+    )
+
+    db_session.add(tool)
+    db_session.flush()  # Generates new_tool.id within the open transaction
+    tool_photo = Photo(
+        url="https://images.unsplash.com/photo-1617576683096-00fc8eecb3af"
+    )
+    db_session.add(tool_photo)
+    db_session.flush()  # Generates db_photo.id
+
+    # Form relationship link row in intersection table
+    db_link = ToolPhoto(tool_id=tool.id, photo_id=tool_photo.id)
+    db_session.add(db_link)
+    db_session.commit()
+    db_session.refresh(tool)
+    return tool
+
+
+@pytest.fixture()
+def seed_reservation(db_session, seed_tool, seed_user2):
+    """
+    Seeds a single reservation with REQUESTED status into the test database.
+    """
+    # Create a reservation
+    reservation = Reservation(
+        tool_id=seed_tool.id,  # The owner is seed_user
+        borrower_id=seed_user2.id,
+        loan_duration_limit=seed_tool.loan_duration_limit,
+        # Get current local datetime; set time to 00:00; convert to UTC
+        start_date=datetime.now(APP_TIMEZONE)
+        .replace(hour=0, minute=0, second=0)
+        .astimezone(ZoneInfo("UTC")),
+        # Get current local datetime; set time to 23:59; convert to UTC + 1 day
+        end_date=datetime.now(APP_TIMEZONE)
+        .replace(hour=23, minute=59, second=59)
+        .astimezone(ZoneInfo("UTC"))
+        + timedelta(days=1),
+    )
+    db_session.add(reservation)
+    db_session.commit()
+    db_session.refresh(reservation)
+    return reservation
