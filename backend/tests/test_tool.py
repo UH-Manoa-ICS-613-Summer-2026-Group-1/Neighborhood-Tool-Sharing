@@ -1,10 +1,9 @@
-from datetime import timedelta
-
 from app.models.reservation import ReservationStatus
 from app.models.tool import Tool, ToolStatus
 from app.models.user import UserStatus
 from app.schemas.reservation import APP_TIMEZONE
 from app.utils.seeder import run_tools_seeds, run_users_seeds
+from app.utils.storage import DUMMY_IMAGE_URL
 from sqlalchemy.orm import Session
 
 from tests.conftest import get_auth_headers
@@ -24,7 +23,7 @@ def test_add_tool_success(client, db_session: Session, seed_user):
         "pickup_notes": "Pick up from front porch container.",
         "return_notes": "Please clean before return.",
         "loan_duration_limit": 7,
-        "photo_urls": ["https://images.unsplash.com/photo-1504148455328-c376907d081c"],
+        "photo_urls": [DUMMY_IMAGE_URL],
     }
     response = client.post("/api/tools", headers=headers, json=payload)
     assert response.status_code == 201
@@ -47,7 +46,7 @@ def test_add_tool_missing_required_fields(client, seed_user):
         "description": "Just a tool with missing properties.",
         "tool_type_code": "POWER_TOOLS",
         "loan_duration_limit": 5,
-        "photo_urls": ["https://example.com/photo.jpg"],
+        "photo_urls": [DUMMY_IMAGE_URL],
     }
 
     response = client.post("/api/tools", headers=headers, json=incomplete_payload)
@@ -67,7 +66,7 @@ def test_add_tool_invalid_text_fields(client, seed_user):
         "condition": "GOOD",
         "tool_type_code": "POWER_TOOLS",
         "loan_duration_limit": 7,
-        "photo_urls": ["https://example.com/photo.jpg"],
+        "photo_urls": [DUMMY_IMAGE_URL],
     }
 
     response = client.post("/api/tools", headers=headers, json=payload)
@@ -109,7 +108,7 @@ def test_add_tool_not_logged_in(client):
         "condition": "FAIR",
         "tool_type_code": "POWER_TOOLS",
         "loan_duration_limit": 7,
-        "photo_urls": ["https://example.com/photo.jpg"],
+        "photo_urls": [DUMMY_IMAGE_URL],
     }
 
     response = client.post("/api/tools", json=payload)  # Missing auth headers
@@ -138,7 +137,7 @@ def test_add_tool_suspended_user(client, db_session: Session, seed_user):
         "condition": "GOOD",
         "tool_type_code": "POWER_TOOLS",
         "loan_duration_limit": 4,
-        "photo_urls": ["https://example.com/photo.jpg"],
+        "photo_urls": [DUMMY_IMAGE_URL],
     }
 
     # Suspended user try to add a tool

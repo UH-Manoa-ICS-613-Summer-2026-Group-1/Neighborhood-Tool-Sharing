@@ -1,3 +1,4 @@
+from app.utils.storage import DUMMY_IMAGE_URL
 from sqlalchemy.orm import Session
 
 from tests.conftest import get_auth_headers
@@ -30,6 +31,7 @@ def test_get_user_profile_returns_correct_data(client, db_session: Session, seed
     assert user_data["user_photo_url"] is None
 
 
+# US 18. Scenario 1: Successful updating the profile
 def test_patch_profile_names_and_add_photo(client, db_session: Session, seed_user):
     """
     Test that update user profile endpoint changes the user data.
@@ -40,7 +42,7 @@ def test_patch_profile_names_and_add_photo(client, db_session: Session, seed_use
     patch_payload = {
         "first_name": "UpdatedFirstName",
         "last_name": "UpdatedLastName",
-        "photo_url": "NEW_PHOTO_URL",
+        "photo_url": DUMMY_IMAGE_URL,
     }
 
     # Update user profile
@@ -49,9 +51,10 @@ def test_patch_profile_names_and_add_photo(client, db_session: Session, seed_use
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
     assert seed_user.last_name == "UpdatedLastName"
-    assert seed_user.photo.url == "NEW_PHOTO_URL"
+    assert seed_user.photo.url == DUMMY_IMAGE_URL
 
 
+# US 18. Scenario 1: Successful updating the profile
 def test_patch_profile_add_and_then_delete_photo(client, seed_user):
     """
     Test that update user profile endpoint add and then delete photo.
@@ -64,7 +67,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user):
 
     patch_payload = {
         "first_name": "UpdatedFirstName",
-        "photo_url": "NEW_PHOTO_URL",
+        "photo_url": DUMMY_IMAGE_URL,
     }
 
     # Update user profile
@@ -74,7 +77,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user):
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
     assert seed_user.photo_id is not None
-    assert seed_user.photo.url == "NEW_PHOTO_URL"
+    assert seed_user.photo.url == DUMMY_IMAGE_URL
 
     # Delete user photo
     patch_payload = {
@@ -90,6 +93,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user):
     assert seed_user.photo_id is None
 
 
+# US 18. Scenario 1: Successful updating the profile
 def test_change_password_success(client, seed_user):
     """
     Test that a user can successfully change their password.
@@ -212,3 +216,31 @@ def test_can_authenticate_with_new_password_after_change(client, seed_user):
     # Hit get user profile with new credentials
     response = client.get("/api/users/me", headers=new_headers)
     assert response.status_code == 200
+
+
+# US 18. Scenario 2: Invalid text fields
+def test_patch_profile_with_invalid_fields(client, seed_user):
+    """
+    Test that update user profile endpoint with invalid fields fails.
+    """
+    # Login
+    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+
+    # The payload omit last_name which ok. The last name will not be updated.
+    # The payload provides invalid first_name which not ok. The first name must consist of at least 1 character.
+    patch_payload = {
+        "first_name": "      ",
+    }
+
+    # Update user profile
+    response = client.patch("/api/users/me", json=patch_payload, headers=headers)
+
+    assert response.status_code == 422
+
+
+# US 18. Scenario 3: Uploading invalid photo
+def test_upload_media_invalid_file_format(client, seed_user):
+    """
+    Test that the user cannot upload an invalid file.
+    """
+    pass

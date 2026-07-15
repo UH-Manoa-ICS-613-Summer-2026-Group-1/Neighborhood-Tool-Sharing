@@ -4,7 +4,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from .common import CleanStr
+from app.utils.storage import DUMMY_IMAGE_URL
+
+from .common import CleanStr, TrustedMediaUrl
 
 # REQUEST SCHEMAS
 
@@ -23,8 +25,10 @@ class UserProfileUpdateRequest(BaseModel):
     location: CleanStr | None = Field(
         None, max_length=255, description="User's location"
     )
-    photo_url: str | None = Field(
-        None, description="Permanent URL returned from /api/media/upload"
+    photo_url: TrustedMediaUrl | None = Field(
+        None,
+        description="Permanent URL returned from /api/media/upload",
+        examples=[DUMMY_IMAGE_URL],
     )
 
 

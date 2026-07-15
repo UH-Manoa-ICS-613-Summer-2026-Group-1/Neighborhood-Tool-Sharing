@@ -5,8 +5,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition, ToolStatus
 from app.schemas.photo import PhotoSchema
+from app.utils.storage import DUMMY_IMAGE_URL
 
-from .common import CleanStr
+from .common import CleanStr, TrustedMediaUrlsList
 
 # REQUEST SCHEMAS
 
@@ -30,11 +31,12 @@ class ToolRequest(BaseModel):
         description="Description must be between 5 and 2000 characters long.",
     )
     condition: ToolCondition
-    photo_urls: list[str] = Field(
+    photo_urls: TrustedMediaUrlsList = Field(
         ...,
         min_length=1,
         max_length=5,
         description="A tool must have 1 to 5 photos.",
+        examples=[[DUMMY_IMAGE_URL]],
     )
     pickup_notes: CleanStr | None = Field(default=None, max_length=2000)
     return_notes: CleanStr | None = Field(default=None, max_length=2000)
@@ -53,11 +55,12 @@ class ToolUpdateRequest(BaseModel):
     title: CleanStr | None = Field(default=None, min_length=3, max_length=255)
     description: CleanStr | None = Field(default=None, min_length=5, max_length=2000)
     condition: ToolCondition | None = Field(default=None)
-    photo_urls: list[str] | None = Field(
+    photo_urls: TrustedMediaUrlsList | None = Field(
         default=None,
         min_length=1,
         max_length=5,
         description="Updated list of 1 to 5 photo URLs.",
+        examples=[[DUMMY_IMAGE_URL]],
     )
     pickup_notes: CleanStr | None = Field(default=None, max_length=2000)
     return_notes: CleanStr | None = Field(default=None, max_length=2000)
