@@ -13,6 +13,9 @@ interface RegisterPayload {
     email: string
     password: string
     inviteToken: string
+    firstName: string
+    lastName: string
+    middleName?: string
 }
 
 // service
@@ -42,7 +45,14 @@ export const logoutUser = async (): Promise<void> => {
 
 // Creates an account using an invite token. Throws an Error with the
 // backend's message (or a fallback) on failure.
-export const registerUser = async ({ email, password, inviteToken }: RegisterPayload): Promise<RegisterResponse> => {
+export const registerUser = async ({ 
+    email, 
+    password, 
+    inviteToken,
+    firstName,
+    lastName,
+    middleName
+ }: RegisterPayload): Promise<RegisterResponse> => {
     const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,6 +60,10 @@ export const registerUser = async ({ email, password, inviteToken }: RegisterPay
             email,
             password,
             invite_token: inviteToken,
+            first_name: firstName,
+            last_name: lastName,
+            // Backend treats missing/null middle name as "no middle name"
+            middle_name: middleName || null,
         }),
     })
 

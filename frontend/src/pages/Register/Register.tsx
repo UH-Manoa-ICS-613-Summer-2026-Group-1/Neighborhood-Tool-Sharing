@@ -15,6 +15,9 @@ const Register = () => {
 
     // Form state
     const [email, setEmail] = useState('')
+    const [firstName, setFirstName] = useState('')
+    const [lastName, setLastName] = useState('')
+    const [middleName, setMiddleName] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -52,6 +55,16 @@ const Register = () => {
         e.preventDefault()
         setError('')
 
+        if (!firstName.trim()) {
+            setError('First name is required.')
+            return
+        }
+
+        if (!lastName.trim()) {
+            setError('Last name is required.')
+            return
+        }
+
         // Password match validation
         if (password !== confirmPassword) {
             setError('Passwords do not match.')
@@ -84,7 +97,14 @@ const Register = () => {
 
         try {
             setLoading(true)
-            await registerUser({ email, password, inviteToken})
+            await registerUser({ 
+                email, 
+                password, 
+                inviteToken,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                middleName: middleName.trim() || undefined,
+            })
 
             // Success — redirect to login page
             navigate('/login?registered=true')
@@ -170,6 +190,49 @@ const Register = () => {
                                 value={email}
                                 readOnly
                                 aria-label="Email address (pre-filled from invitation)"
+                            />
+                        </div>
+
+                        {/* First name */}
+                        <div className="flex mb-4">
+                            <input
+                                id="first-name"
+                                className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
+                                placeholder="First name"
+                                type="text"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                maxLength={255}
+                                required
+                                aria-required="true"
+                            />
+                        </div>
+
+                        {/* Middle name (optional)*/}
+                        <div className="flex mb-4">
+                            <input
+                                id="middle-name"
+                                className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
+                                placeholder="Middle name (optional)"
+                                type="text"
+                                value={middleName}
+                                onChange={(e) => setMiddleName(e.target.value)}
+                                maxLength={255}
+                            />
+                        </div>
+
+                        {/* Last name */}
+                        <div className="flex mb-4">
+                            <input
+                                id="last-name"
+                                className="flex-1 px-2 sm:px-3 py-2 sm:py-3 border-0 text-[#8f8f8f] text-sm sm:text-base min-w-0 focus:outline-none focus:ring-2 focus:ring-[#e8a838] transition-colors duration-150"
+                                placeholder="Last name"
+                                type="text"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                maxLength={255}
+                                required
+                                aria-required="true"
                             />
                         </div>
 

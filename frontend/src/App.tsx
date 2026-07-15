@@ -5,7 +5,9 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import SendInvite from "./pages/Invite/SendInvite";
 import Register from "./pages/Register/Register";
-import UploadTest from "./components/UploadTest"; // Please delete when implement the upload feature
+import AddTool from "./pages/Tools/AddTool";
+import ToolDetail from "./pages/Tools/ToolDetail";
+import Profile from "./pages/Profile/Profile";
 
 function App() {
 
@@ -18,7 +20,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/invite" element={<SendInvite />} />
-          <Route path="/test-upload" element={<UploadTest />} /> // Please delete when implement the upload feature
+          <Route path="/tools/new" element={<AddTool />} />
+          <Route path="/tools/:toolId" element={<ToolDetail />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>
     </BrowserRouter>
