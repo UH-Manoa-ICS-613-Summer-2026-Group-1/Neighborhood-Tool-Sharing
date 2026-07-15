@@ -4,6 +4,7 @@ SELECT
     reservations.status AS reservation_status,
     reservations.start_date AS reservation_start_date,
     reservations.end_date AS reservation_end_date,
+    reservations.loan_duration_limit AS reservation_loan_duration_limit,
     reservations.pickup_notes AS reservation_pickup_notes,
     reservations.return_notes AS reservation_return_notes,
     reservations.created_at AS reservation_created_at,
@@ -49,8 +50,12 @@ COMMENT ON COLUMN reservations_v.reservation_id IS 'Unique identifier for a rese
 COMMENT ON COLUMN reservations_v.tool_id IS 'Unique identifier for a tool';
 COMMENT ON COLUMN reservations_v.borrower_id IS 'Unique identifier for a user requesting a tool';
 COMMENT ON COLUMN reservations_v.owner_id IS 'Unique identifier for a tool owner';
-COMMENT ON COLUMN reservations_v.reservation_pickup_notes IS 'Instructions for picking up the tool; can be differ from tools.pickup_notes since the user can modify this attribute independently';
-COMMENT ON COLUMN reservations_v.reservation_return_notes IS 'Instructions for returning the tool; can be differ from tools.return_notes since the user can modify this attribute independently';
+COMMENT ON COLUMN reservations_v.reservation_loan_duration_limit IS 'Maximum number of days the tool can be 
+loaned for (can be differ from tools.loan_duration_limit since the user can modify this attribute independently)';
+COMMENT ON COLUMN reservations_v.reservation_pickup_notes IS 'Instructions for picking up the tool; can be differ
+ from tools.pickup_notes since the user can modify this attribute independently';
+COMMENT ON COLUMN reservations_v.reservation_return_notes IS 'Instructions for returning the tool; can be differ 
+from tools.return_notes since the user can modify this attribute independently';
 COMMENT ON COLUMN reservations_v.reservation_status IS 'The current status of the reservation';
 COMMENT ON COLUMN reservations_v.reservation_start_date IS 'Planned calendar reservation start date';
 COMMENT ON COLUMN reservations_v.reservation_end_date IS 'Planned calendar reservation return date';

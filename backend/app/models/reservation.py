@@ -71,8 +71,17 @@ class Reservation(Base):
         nullable=False,
         comment="Links the reservation to the user requesting the tool",
     )
+    # loan duration limit
+    # The attribute serves as a snapshot of the tool loan duration limit at the time of the reservation is created
+    # This value will be set in the reservation router and equal the tool loan duration limit at the time of the reservation is created.
+    # The owner cannot modify this attribute after the reservation is created
+    loan_duration_limit: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        comment="Maximum continuous days the user can request the tool (snapshot of the tool loan duration limit at the time of the reservation is created)",
+    )
 
-    # The same attributes as in the tools table
+    # Pickup and return notes
     # The owner can modify these attributes independently from the tool loan notes
     pickup_notes: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Instructions for picking up the tool"
@@ -80,6 +89,7 @@ class Reservation(Base):
     return_notes: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="Instructions for returning the tool"
     )
+
     status: Mapped[ReservationStatus] = mapped_column(
         SAEnum(ReservationStatus, native_enum=False),
         nullable=False,
@@ -122,6 +132,7 @@ class ReservationView(Base):
     reservation_status = Column(String)
     reservation_start_date = Column(DateTime(timezone=True))
     reservation_end_date = Column(DateTime(timezone=True))
+    reservation_loan_duration_limit = Column(Integer)
     # Could be not the same as in tools table
     reservation_pickup_notes = Column(Text, nullable=True)
     # Could be not the same as in tools table

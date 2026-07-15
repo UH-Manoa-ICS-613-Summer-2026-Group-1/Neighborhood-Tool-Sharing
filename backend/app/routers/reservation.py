@@ -110,6 +110,7 @@ def create_reservation(
         start_date=reservation_data.start_date,  # UTC
         end_date=reservation_data.end_date,  # UTC
         status=ReservationStatus.REQUESTED,
+        loan_duration_limit=tool.loan_duration_limit,
         pickup_notes=tool.pickup_notes,
         return_notes=tool.return_notes,
     )

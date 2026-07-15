@@ -74,6 +74,7 @@ class ReservationResponse(BaseModel):
     id: uuid.UUID
     tool_id: uuid.UUID
     borrower_id: uuid.UUID
+    loan_duration_limit: int
     pickup_notes: str | None
     return_notes: str | None
     status: ReservationStatus
@@ -93,6 +94,7 @@ class ReservationDetailsResponse(BaseModel):
     reservation_status: ReservationStatus
     reservation_start_date: datetime
     reservation_end_date: datetime
+    reservation_loan_duration_limit: int
     reservation_pickup_notes: str | None
     reservation_return_notes: str | None
     reservation_created_at: datetime

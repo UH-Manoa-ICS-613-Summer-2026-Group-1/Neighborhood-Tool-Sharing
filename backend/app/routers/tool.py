@@ -22,6 +22,7 @@ from app.schemas.tool import (
     ToolRequest,
     ToolResponse,
     ToolTypeResponse,
+    ToolUpdateRequest,
 )
 from app.utils.dependencies import get_current_user
 
@@ -406,4 +407,162 @@ def delete_tool(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete the tool listing due to an internal server error.",
+        )
+
+
+@router.patch(
+    "/{tool_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=ToolResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def patch_tool(
+    tool_id: uuid.UUID,
+    tool_data: ToolUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a tool.
+    """
+    # Fetch the tool entity (excluding deleted listings)
+    tool = (
+        db.query(Tool)
+        .filter(and_(Tool.id == tool_id, Tool.status != ToolStatus.DELETED))
+        .first()
+    )
+    if not tool:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or has been deleted.",
+        )
+
+    # Only the owner can modify this tool
+    if tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have administrative permission to modify this tool listing.",
+        )
+
+    # Check if the tool has active reservations
+    active_reservation = (
+        db.query(Reservation)
+        .filter(
+            and_(
+                Reservation.tool_id == tool_id,
+                Reservation.status.in_(
+                    [ReservationStatus.APPROVED, ReservationStatus.PICKED_UP]
+                ),
+            )
+        )
+        .first()
+    )
+
+    # If threre is an active reservation, and tool data consist of any of the restricted fields, deny the request
+    if active_reservation:
+        restricted_fields_attempted = [
+            tool_data.tool_type_code,
+            tool_data.title,
+            tool_data.description,
+            tool_data.condition,
+        ]
+        if any(field is not None for field in restricted_fields_attempted):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This tool is currently linked to an active reservation. "
+                "You can only modify the loan duration limit, pickup notes, return notes, photos, and status of the tool.",
+            )
+
+    # If there is no active reservation, update the tool
+    if not active_reservation:
+        if tool_data.tool_type_code is not None:
+            tool_type_exists = (
+                db.query(ToolType)
+                .filter(ToolType.code == tool_data.tool_type_code)
+                .first()
+            )
+            if not tool_type_exists:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid tool_type_code: {tool_data.tool_type_code}. Category not found.",
+                )
+            tool.tool_type_id = tool_type_exists.id
+
+        if tool_data.title is not None:
+            tool.title = tool_data.title
+        if tool_data.description is not None:
+            tool.description = tool_data.description
+        if tool_data.condition is not None:
+            tool.condition = tool_data.condition
+
+    #  Update the fields that are always can be updated (regardless of reservation state)
+
+    # Handle updating status
+    if tool_data.status is not None:
+        # Just doble check
+        if tool_data.status.upper() not in [
+            ToolStatus.AVAILABLE,
+            ToolStatus.HIDDEN,
+        ]:
+            raise HTTPException(
+                status_code=400,
+                detail="Status updates must be 'AVAILABLE' or 'HIDDEN'.",
+            )
+        tool.status = tool_data.status
+
+    # Handle updating photos if provided
+    if tool_data.photo_urls is not None:
+        if len(tool_data.photo_urls) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="A tool listing requires at least one photo.",
+            )
+
+        # Wipe old links to photos
+        db.query(ToolPhoto).filter(ToolPhoto.tool_id == tool.id).delete()
+
+        # Build new photo mappings
+        for url in tool_data.photo_urls:
+            db_photo = Photo(url=url)
+            db.add(db_photo)
+            db.flush()
+            db.add(ToolPhoto(tool_id=tool.id, photo_id=db_photo.id))
+
+    if tool_data.loan_duration_limit is not None:
+        tool.loan_duration_limit = tool_data.loan_duration_limit
+
+    if tool_data.pickup_notes is not None:
+        tool.pickup_notes = (
+            tool_data.pickup_notes if tool_data.pickup_notes != "" else None
+        )
+
+    if tool_data.return_notes is not None:
+        tool.return_notes = (
+            tool_data.return_notes if tool_data.return_notes != "" else None
+        )
+
+    try:
+        db.commit()
+
+        # Return the updated tool
+        updated_tool_with_photos = (
+            db.query(Tool)
+            .options(joinedload(Tool.photos))
+            .filter(Tool.id == tool.id)
+            .first()
+        )
+
+        return updated_tool_with_photos
+
+    except Exception as e:
+        db.rollback()
+        print(f"Database write failure during tool PATCH pipeline: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update tool listing details.",
         )

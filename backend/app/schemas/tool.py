@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition
+from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition, ToolStatus
 from app.schemas.photo import PhotoSchema
 
 from .common import CleanStr
@@ -44,6 +44,39 @@ class ToolRequest(BaseModel):
         le=365,
         description="Loan limit in days (1 to 365 days).",
     )
+
+
+class ToolUpdateRequest(BaseModel):
+    tool_type_code: str | None = Field(
+        default=None, description="Tool category code (e.g., POWER_TOOLS)."
+    )
+    title: CleanStr | None = Field(default=None, min_length=3, max_length=255)
+    description: CleanStr | None = Field(default=None, min_length=5, max_length=2000)
+    condition: ToolCondition | None = Field(default=None)
+    photo_urls: list[str] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=5,
+        description="Updated list of 1 to 5 photo URLs.",
+    )
+    pickup_notes: CleanStr | None = Field(default=None, max_length=2000)
+    return_notes: CleanStr | None = Field(default=None, max_length=2000)
+    loan_duration_limit: int | None = Field(default=None, ge=1, le=365)
+    # The owner of the tool can only set the status to "AVAILABLE" or "HIDDEN".
+    # The status deleted handled separately.
+    status: ToolStatus | None = Field(
+        default=None, description="Set to 'AVAILABLE' or 'HIDDEN'."
+    )
+
+    @field_validator("status")
+    @classmethod
+    def ensure_tool_status_is_valid(cls, value: ToolStatus) -> ToolStatus:
+        """
+        The status field can only be set to "AVAILABLE" or "HIDDEN".
+        """
+        if value not in [ToolStatus.AVAILABLE, ToolStatus.HIDDEN]:
+            raise ValueError("status must be 'AVAILABLE' or 'HIDDEN'")
+        return value
 
 
 # RESPONSE SCHEMAS

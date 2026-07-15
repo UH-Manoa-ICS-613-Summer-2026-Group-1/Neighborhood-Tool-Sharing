@@ -43,6 +43,12 @@ def upgrade() -> None:
             comment="Links the reservation to the user requesting the tool",
         ),
         sa.Column(
+            "loan_duration_limit",
+            sa.Integer(),
+            nullable=False,
+            comment="Maximum continuous days the user can request the tool (snapshot of the tool loan duration limit at the time of the reservation is created)",
+        ),
+        sa.Column(
             "pickup_notes",
             sa.Text(),
             nullable=True,
