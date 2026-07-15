@@ -1,6 +1,6 @@
 """
 Tool routers.
-Handles creating, viewing, and updating tools.
+Handles creating, viewing, updating, and deleting tools. Also handles getting tool types, conditions, and availability.
 """
 
 import uuid
@@ -15,7 +15,7 @@ from app.models.photo import Photo, ToolPhoto
 from app.models.reservation import Reservation, ReservationStatus
 from app.models.tool import Tool, ToolCondition, ToolStatus, ToolType, ToolView
 from app.models.user import User
-from app.schemas.common import DetailError
+from app.schemas.common import DetailError, MessageResponse
 from app.schemas.reservation import APP_TIMEZONE
 from app.schemas.tool import (
     ToolDetailsResponse,
@@ -335,3 +335,75 @@ def get_tool_availability(
             current_day += timedelta(days=1)
 
     return sorted(list(blocked_dates))
+
+
+@router.delete(
+    "/{tool_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+        400: {"model": DetailError},
+    },
+)
+def delete_tool(
+    tool_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a tool (soft deleting).
+    """
+    # Fetch the tool entity
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+
+    # If it doesn't exist or is already marked as deleted, return a 404
+    if not tool or tool.status == ToolStatus.DELETED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or has already been deleted.",
+        )
+
+    # Verify ownership
+    if tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have administrative permission to delete this tool listing.",
+        )
+
+    # Check for active reservations before allowing a soft delete
+    active_reservation = (
+        db.query(Reservation)
+        .filter(
+            and_(
+                Reservation.tool_id == tool_id,
+                Reservation.status.in_(
+                    [ReservationStatus.APPROVED, ReservationStatus.PICKED_UP]
+                ),
+            )
+        )
+        .first()
+    )
+
+    if active_reservation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete this tool. The tool currently has an active approved or picked up reservation.",
+        )
+
+    try:
+        # Perform the soft delete
+        tool.status = ToolStatus.DELETED
+        db.commit()
+
+        return {"message": "Tool listing was successfully removed from the platform."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Database write failure during tool DELETE pipeline: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete the tool listing due to an internal server error.",
+        )

@@ -255,6 +255,7 @@ def get_reservation_by_id(
     status_code=status.HTTP_200_OK,
     response_model=MessageResponse,
     responses={
+        400: {"model": DetailError},
         401: {"model": DetailError},
         403: {"model": DetailError},
         404: {"model": DetailError},
