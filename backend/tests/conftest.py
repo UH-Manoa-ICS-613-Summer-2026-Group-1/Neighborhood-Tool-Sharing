@@ -47,6 +47,14 @@ def get_auth_headers(client, email, password):
     return {"Authorization": f"Bearer {jwt_token}"}
 
 
+@pytest.fixture(scope="session")
+def hashed_password():
+    """
+    Computes the hash once per entire test suite run.
+    """
+    return get_password_hash("Correctpassword123!")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_database_schema():
     """
@@ -127,11 +135,10 @@ def client(db_session):
 
 
 @pytest.fixture()
-def seed_user(db_session):
+def seed_user(db_session, hashed_password):
     """
     Seeds a single valid user into the test database.
     """
-    hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
     test_user_status = (
         db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
@@ -152,12 +159,11 @@ def seed_user(db_session):
 
 
 @pytest.fixture()
-def seed_user2(db_session):
+def seed_user2(db_session, hashed_password):
     """
     Seeds a single valid user into the test database.
     Usually used for testing as the second participant in reserveation, messages, reviews.
     """
-    hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
     test_user_status = (
         db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
@@ -178,12 +184,11 @@ def seed_user2(db_session):
 
 
 @pytest.fixture()
-def seed_user3(db_session):
+def seed_user3(db_session, hashed_password):
     """
     Seeds a single valid user into the test database.
     Usually used for testing that the user who is not related to the tool/reservation/message/review cannot access them.
     """
-    hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
     test_user_status = (
         db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
@@ -204,11 +209,10 @@ def seed_user3(db_session):
 
 
 @pytest.fixture()
-def seed_suspended_user(db_session):
+def seed_suspended_user(db_session, hashed_password):
     """
     Seeds a single suspended user into the test database.
     """
-    hashed_password = get_password_hash("Correctpassword123!")
     test_user_role = db_session.query(UserRole).filter(UserRole.code == "USER").first()
     test_user_status = (
         db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
