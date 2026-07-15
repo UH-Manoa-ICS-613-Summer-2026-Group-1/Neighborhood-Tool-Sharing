@@ -19,6 +19,7 @@ from app.schemas.reservation import (
     ReservationDetailsResponse,
     ReservationRequest,
     ReservationResponse,
+    ReservationUpdateRequest,
 )
 from app.utils.dependencies import get_current_user
 
@@ -320,4 +321,79 @@ def approve_reservation(
         print(f"Failed to process approval action: {e}")
         raise HTTPException(
             status_code=500, detail="Failed to process approval action."
+        )
+
+
+@router.patch(
+    "/{reservation_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=ReservationResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def update_reservation(
+    reservation_id: uuid.UUID,
+    patch_data: ReservationUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a reservation.
+    """
+    # Fetch the reservation entity
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation record not found.",
+        )
+
+    # Only the tool owner can modify these notes
+    is_owner = bool(reservation.tool.owner_id == current_user.id)
+
+    if not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this reservation.",
+        )
+
+    # Prevent modifications on inactive (canceled, denied, returned) reservations
+    inactive_statuses = {
+        ReservationStatus.DENIED,
+        ReservationStatus.CANCELED,
+        ReservationStatus.RETURNED,
+    }
+    if reservation.status in inactive_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot update loan notes on a reservation with a status of '{reservation.status.value}'.",
+        )
+
+    # Apply partial updates (only if the field is explicitly provided in the request)
+    # Also prevent saving empty strings; if empty stirings are provided -> save None
+    if patch_data.pickup_notes is not None:
+        reservation.pickup_notes = (
+            patch_data.pickup_notes if patch_data.pickup_notes != "" else None
+        )
+
+    if patch_data.return_notes is not None:
+        reservation.return_notes = (
+            patch_data.return_notes if patch_data.return_notes != "" else None
+        )
+
+    try:
+        db.commit()
+
+        return reservation
+
+    except Exception as e:
+        db.rollback()
+        print(f"Database write failure during reservation PATCH pipeline: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update reservation notes.",
         )
