@@ -4,6 +4,7 @@ Handles creating, viewing, and updating reservations.
 """
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, or_
@@ -251,81 +252,6 @@ def get_reservation_by_id(
     return reservation
 
 
-@router.post(
-    "/{reservation_id}/approve",
-    status_code=status.HTTP_200_OK,
-    response_model=MessageResponse,
-    responses={
-        400: {"model": DetailError},
-        401: {"model": DetailError},
-        403: {"model": DetailError},
-        404: {"model": DetailError},
-    },
-)
-def approve_reservation(
-    reservation_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Update the status of a reservation to "APPROVED".
-    """
-    # Fetch the targeted reservation
-    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found.")
-
-    # Ensure the person approving it owns the tool
-    if reservation.tool.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="Only the tool owner can approve requests."
-        )
-
-    # Check if the reseravation is not in status REQUESTED
-    if reservation.status != ReservationStatus.REQUESTED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"You cannot approve this reservation. The status of the reservation is {reservation.status.value}.",
-        )
-
-    try:
-        # Update this request to APPROVED
-        reservation.status = ReservationStatus.APPROVED
-        db.flush()
-
-        # Auto-deny competing REQUESTED reservations that overlap
-        competing_reservations = (
-            db.query(Reservation)
-            .filter(
-                and_(
-                    Reservation.tool_id == reservation.tool_id,
-                    # Don't reject the one we just approved
-                    Reservation.id != reservation.id,
-                    Reservation.status == ReservationStatus.REQUESTED,
-                    # If both conditions are true, the dates overlap
-                    Reservation.start_date < reservation.end_date,
-                    Reservation.end_date > reservation.start_date,
-                )
-            )
-            .all()
-        )
-
-        for competing_reservation in competing_reservations:
-            competing_reservation.status = ReservationStatus.DENIED
-
-        db.commit()
-        return {
-            "message": f"Reservation approved. {len(competing_reservations)} overlapping requests were auto-denied."
-        }
-
-    except Exception as e:
-        db.rollback()
-        print(f"Failed to process approval action: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to process approval action."
-        )
-
-
 @router.patch(
     "/{reservation_id}",
     status_code=status.HTTP_200_OK,
@@ -398,4 +324,325 @@ def update_reservation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update reservation notes.",
+        )
+
+
+@router.post(
+    "/{reservation_id}/approve",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def approve_reservation(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the status of a reservation to "APPROVED".
+    """
+    # Fetch the targeted reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found."
+        )
+
+    # Ensure the person approving it owns the tool
+    if reservation.tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the tool owner can approve requests.",
+        )
+
+    # Check if the reseravation is not in status REQUESTED
+    if reservation.status != ReservationStatus.REQUESTED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You cannot approve this reservation. The status of the reservation is {reservation.status.value}.",
+        )
+
+    try:
+        # Update this request to APPROVED
+        reservation.status = ReservationStatus.APPROVED
+        db.flush()
+
+        # Auto-deny competing REQUESTED reservations that overlap
+        competing_reservations = (
+            db.query(Reservation)
+            .filter(
+                and_(
+                    Reservation.tool_id == reservation.tool_id,
+                    # Don't reject the one we just approved
+                    Reservation.id != reservation.id,
+                    Reservation.status == ReservationStatus.REQUESTED,
+                    # If both conditions are true, the dates overlap
+                    Reservation.start_date < reservation.end_date,
+                    Reservation.end_date > reservation.start_date,
+                )
+            )
+            .all()
+        )
+
+        for competing_reservation in competing_reservations:
+            competing_reservation.status = ReservationStatus.DENIED
+
+        db.commit()
+        return {
+            "message": f"Reservation approved. {len(competing_reservations)} overlapping requests were auto-denied."
+        }
+
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to process approval action: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process approval action.",
+        )
+
+
+@router.post(
+    "/{reservation_id}/deny",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def deny_reservation(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the status of a reservation to "DENIED".
+    """
+    # Fetch the targeted reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found."
+        )
+
+    # Ensure the person denying it owns the tool
+    if reservation.tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the tool owner can approve requests.",
+        )
+
+    # Check if the reseravation is not in status REQUESTED
+    if reservation.status != ReservationStatus.REQUESTED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You cannot deny this reservation. The status of the reservation is {reservation.status.value}.",
+        )
+
+    try:
+        # Update this request to DENIED
+        reservation.status = ReservationStatus.DENIED
+
+        db.commit()
+        return {"message": "Reservation has been denied."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to process denial action: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process denial action.",
+        )
+
+
+@router.post(
+    "/{reservation_id}/pickup",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def pickup_reservation(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the status of a reservation to "PICKED_UP".
+    """
+    # Fetch the targeted reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found."
+        )
+
+    # Only the borrower can mark as picked up
+    if reservation.borrower_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the borrowing user can confirm this tool pickup.",
+        )
+
+    # Can only pick up from APPROVED status
+    if reservation.status != ReservationStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You cannot pick up this reservation. The status of the reservation is {reservation.status.value}.",
+        )
+
+    # Get the current datetime UTC (reservation datetimes is in UTC also)
+    now = datetime.now(timezone.utc)
+
+    # Check if we are trying to pick up before the start date or after the end date
+    if now < reservation.start_date or now > reservation.end_date:
+        local_start = reservation.start_date.astimezone(APP_TIMEZONE).date()
+        local_end = reservation.end_date.astimezone(APP_TIMEZONE).date()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Pickup can only be confirmed during the scheduled reservation period: from {local_start} to {local_end}.",
+        )
+
+    try:
+        # Update this request to PICKED_UP
+        reservation.status = ReservationStatus.PICKED_UP
+        db.commit()
+
+        return {"message": "Tool pickup successfully registered."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to process pickup action: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process pickup action.",
+        )
+
+
+@router.post(
+    "/{reservation_id}/return",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def return_reservation(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the status of a reservation to "RETURNED".
+    """
+    # Fetch the targeted reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found."
+        )
+
+    # Only the owner can mark as returned
+    if reservation.tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the tool owner can confirm return.",
+        )
+
+    # Can only return from picked up status
+    if reservation.status != ReservationStatus.PICKED_UP:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You cannot return this reservation. The status of the reservation is {reservation.status.value}.",
+        )
+
+    try:
+        # Update this request to RETURNED
+        reservation.status = ReservationStatus.RETURNED
+        db.commit()
+
+        return {"message": "Tool return successfully registered."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to process return action: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process return action.",
+        )
+
+
+@router.post(
+    "/{reservation_id}/cancel",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def cancel_reservation(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update the status of a reservation to "CANCELLED".
+    """
+    # Fetch the targeted reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found."
+        )
+
+    # Only the owner or the borrower can cancel
+    is_owner = bool(reservation.tool.owner_id == current_user.id)
+    is_borrower = bool(reservation.borrower_id == current_user.id)
+
+    if not (is_owner or is_borrower):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to cancel this reservation.",
+        )
+
+    # Can only cancel from requested or approved status
+    if reservation.status not in [
+        ReservationStatus.REQUESTED,
+        ReservationStatus.APPROVED,
+    ]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You cannot cancal this reservation. The status of the reservation is {reservation.status.value}.",
+        )
+
+    try:
+        # Update this request to CANCELLED
+        reservation.status = ReservationStatus.CANCELED
+        db.commit()
+
+        return {"message": "Reservation has been cancelled."}
+
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to process cancel action: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process cancel action.",
         )
