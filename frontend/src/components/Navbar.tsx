@@ -48,6 +48,8 @@ export default function Navbar({ user: userProp }: NavbarProps) {
         const data = await fetchCurrentUser()
         setFetchedUser(data)
       } catch {
+        // Not fatal, the navbar just renders without user details
+        // (initials fall back to "?" and the menu header is hidden).
       }
     }
     loadUser()

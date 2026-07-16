@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import ToolCard from '../../components/ToolCard'
@@ -10,20 +10,20 @@ import {
     type ToolDetails,
     type ToolType,
 } from '../../api/tools'
- 
+
 type Tab = 'my-tools' | 'neighborhood' | 'transactions'
- 
+
 const PAGE_SIZE = 12
- 
+
 export default function Dashboard() {
     const navigate = useNavigate()
     const location = useLocation()
- 
+
     // User profile
     const [user, setUser] = useState<UserProfile | null>(null)
     const [profileLoading, setProfileLoading] = useState(true)
     const [profileError, setProfileError] = useState('')
- 
+
     // Tabs
     // The active tab lives in the URL (?tab=...) so the Navbar's Search and
     // Calendar links can deep-link to a tab and highlight correctly. It also
@@ -32,15 +32,14 @@ export default function Dashboard() {
     const tabParam = searchParams.get('tab')
     const activeTab: Tab =
         tabParam === 'neighborhood' || tabParam === 'transactions' ? tabParam : 'my-tools'
- 
-    // Tool list state 
+
+    // Tool list state
     const [tools, setTools] = useState<ToolDetails[]>([])
-    const [toolsLoading, setToolsLoading] = useState(false)
     const [toolsError, setToolsError] = useState('')
     const [offset, setOffset] = useState(0)
     // If the API returns a full page, there may be more results
     const [hasMore, setHasMore] = useState(false)
- 
+
     // Filters
     const [search, setSearch] = useState('')
     const [searchInput, setSearchInput] = useState('')
@@ -48,12 +47,29 @@ export default function Dashboard() {
     const [conditionFilter, setConditionFilter] = useState('')
     const [toolTypes, setToolTypes] = useState<ToolType[]>([])
     const [conditions, setConditions] = useState<string[]>([])
- 
+
     // Success banner after publishing a new tool (passed via navigate state)
     const [successBanner, setSuccessBanner] = useState(
         (location.state as { toolCreated?: string } | null)?.toolCreated || ''
     )
- 
+
+    // Reset paging whenever the tab changes, including when Navbar links
+    // update the URL directly. Adjusting state during render (instead of in
+    // an effect) avoids the extra cascading re-render the lint rule flags.
+
+    const [prevTab, setPrevTab] = useState(activeTab)
+    if (prevTab !== activeTab) {
+        setPrevTab(activeTab)
+        setOffset(0)
+    }
+
+    // Everything that identifies the current tool query. While the last
+    // finished query differs from this one, we're loading — so the loading
+    // flag is derived and never needs to be set synchronously in an effect.
+    const queryKey = [activeTab, offset, search, typeFilter, conditionFilter].join('|')
+    const [loadedQueryKey, setLoadedQueryKey] = useState<string | null>(null)
+    const toolsLoading = activeTab !== 'transactions' && loadedQueryKey !== queryKey
+
     // Load the user profile once
     useEffect(() => {
         const token = localStorage.getItem('access_token')
@@ -61,7 +77,7 @@ export default function Dashboard() {
             navigate('/login')
             return
         }
- 
+
         const loadUserProfile = async () => {
             try {
                 const data = await fetchCurrentUser()
@@ -75,8 +91,8 @@ export default function Dashboard() {
         }
         loadUserProfile()
     }, [navigate])
- 
-    // Load filter dropdown options once 
+
+    // Load filter dropdown options once
     useEffect(() => {
         const loadLookups = async () => {
             try {
@@ -89,74 +105,77 @@ export default function Dashboard() {
         }
         loadLookups()
     }, [])
- 
-    // Load tools whenever the tab, filters, or page change 
-    const loadTools = useCallback(async () => {
-        if (activeTab === 'transactions') return
- 
-        setToolsLoading(true)
-        setToolsError('')
-        try {
-            const results = await fetchTools({
-                isMine: activeTab === 'my-tools',
-                limit: PAGE_SIZE,
-                offset,
-                search: search || undefined,
-                toolType: typeFilter || undefined,
-                toolCondition: conditionFilter || undefined,
-            })
-            setTools(results)
-            setHasMore(results.length === PAGE_SIZE)
-        } catch (err) {
-            setToolsError(err instanceof Error ? err.message : 'Failed to load tools.')
-        } finally {
-            setToolsLoading(false)
-        }
-    }, [activeTab, offset, search, typeFilter, conditionFilter])
- 
+
+    // Load tools whenever the tab, filters, or page change.
+    // The cancelled flag ignores responses from stale requests so a slow
+    // response for an old tab/filter can't overwrite newer results.
     useEffect(() => {
+        if (activeTab === 'transactions') return
+
+        let cancelled = false
+        const loadTools = async () => {
+            try {
+                const results = await fetchTools({
+                    isMine: activeTab === 'my-tools',
+                    limit: PAGE_SIZE,
+                    offset,
+                    search: search || undefined,
+                    toolType: typeFilter || undefined,
+                    toolCondition: conditionFilter || undefined,
+                })
+                if (cancelled) return
+                setTools(results)
+                setHasMore(results.length === PAGE_SIZE)
+                setToolsError('')
+            } catch (err) {
+                if (cancelled) return
+                setToolsError(err instanceof Error ? err.message : 'Failed to load tools.')
+            } finally {
+                // Mark this query as finished — this is what turns off the
+                // derived toolsLoading flag.
+                if (!cancelled) setLoadedQueryKey(queryKey)
+            }
+        }
         loadTools()
-    }, [loadTools])
- 
-    // Reset paging when switching tab or filters
+
+        return () => {
+            cancelled = true
+        }
+    }, [activeTab, offset, search, typeFilter, conditionFilter, queryKey])
+
+    // Switch tab via the tab buttons (Navbar links update the URL directly;
+    // the render-time adjustment above resets paging for both paths).
     const switchTab = (tab: Tab) => {
         if (tab === 'my-tools') {
             setSearchParams({}) // default tab needs no query param
         } else {
             setSearchParams({ tab })
         }
-        setOffset(0)
     }
- 
-    // Also reset paging when the tab changes via the Navbar links
-    // (which update the URL directly, bypassing switchTab)
-    useEffect(() => {
-        setOffset(0)
-    }, [activeTab])
- 
+
     const applySearch = (e: React.FormEvent) => {
         e.preventDefault()
         setOffset(0)
         setSearch(searchInput.trim())
     }
- 
+
     const tabButtonClass = (tab: Tab) =>
         `px-4 py-2 text-xs sm:text-sm font-semibold rounded-t transition-colors duration-150 cursor-pointer ${
             activeTab === tab
                 ? 'bg-black/25 text-[#e8a838] border-b-2 border-[#e8a838]'
                 : 'text-gray-400 hover:text-white'
         }`
- 
+
     return (
         <div className="min-h-screen text-white bg-[#1a1f26]">
             {/* Pass the profile down so Navbar doesn't re-fetch /api/users/me */}
             <Navbar user={user} />
- 
+
             <main className="max-w-7xl mx-auto p-6">
                 {profileLoading && (
                     <p className="text-center text-gray-400 mt-10">Loading your space...</p>
                 )}
- 
+
                 {profileError && (
                     <div className="text-center mt-10">
                         <p className="text-red-400 mb-4">{profileError}</p>
@@ -168,7 +187,7 @@ export default function Dashboard() {
                         </button>
                     </div>
                 )}
- 
+
                 {!profileLoading && !profileError && user && (
                     <div className="mt-4">
                         {/* Header + primary action */}
@@ -182,7 +201,7 @@ export default function Dashboard() {
                                 </p>
                             </div>
                         </div>
- 
+
                         {/* Success banner after publishing a tool */}
                         {successBanner && (
                             <div
@@ -199,7 +218,7 @@ export default function Dashboard() {
                                 </button>
                             </div>
                         )}
- 
+
                         {/* Tabs */}
                         <div className="flex gap-1 border-b border-white/10 mb-6">
                             <button className={tabButtonClass('my-tools')} onClick={() => switchTab('my-tools')}>
@@ -212,7 +231,7 @@ export default function Dashboard() {
                                 Transactions
                             </button>
                         </div>
- 
+
                         {/* Transactions*/}
                         {activeTab === 'transactions' && (
                             <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
@@ -225,7 +244,7 @@ export default function Dashboard() {
                                 </p>
                             </div>
                         )}
- 
+
                         {/* Tool lists */}
                         {activeTab !== 'transactions' && (
                             <>
@@ -264,15 +283,16 @@ export default function Dashboard() {
                                         Search
                                     </button>
                                 </form>
- 
+
                                 {toolsLoading && (
                                     <p className="text-center text-gray-400 py-10">Loading tools...</p>
                                 )}
- 
-                                {toolsError && (
+
+                                {/* Hide stale errors while a new query is in flight */}
+                                {!toolsLoading && toolsError && (
                                     <p role="alert" className="text-center text-red-400 py-10">{toolsError}</p>
                                 )}
- 
+
                                 {/* Empty states */}
                                 {!toolsLoading && !toolsError && tools.length === 0 && (
                                     <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
@@ -307,7 +327,7 @@ export default function Dashboard() {
                                         )}
                                     </div>
                                 )}
- 
+
                                 {/* Tool grid */}
                                 {!toolsLoading && !toolsError && tools.length > 0 && (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -322,7 +342,7 @@ export default function Dashboard() {
                                         ))}
                                     </div>
                                 )}
- 
+
                                 {/* Pagination */}
                                 {!toolsLoading && !toolsError && (offset > 0 || hasMore) && (
                                     <div className="flex justify-center items-center gap-4 mt-8">
