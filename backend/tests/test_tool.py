@@ -6,15 +6,13 @@ from app.utils.seeder import run_tools_seeds, run_users_seeds
 from app.utils.storage import DUMMY_IMAGE_URL
 from sqlalchemy.orm import Session
 
-from tests.conftest import get_auth_headers
-
 
 # US 19 Scenario 1: Successful adding a new tool
-def test_add_tool_success(client, db_session: Session, seed_user):
+def test_add_tool_success(client, db_session: Session, seed_user, get_auth_headers):
     """
     Test that a user can successfully add a new tool.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
     payload = {
         "title": "DeWalt Cordless Drill",
         "description": "20V max brushless compact drill driver.",
@@ -35,11 +33,11 @@ def test_add_tool_success(client, db_session: Session, seed_user):
 
 
 # US 19 Scenario 2: Missing required fields
-def test_add_tool_missing_required_fields(client, seed_user):
+def test_add_tool_missing_required_fields(client, seed_user, get_auth_headers):
     """
     Test that a user cannot add a tool with missing required fields.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Payload missing 'title' and 'condition'
     incomplete_payload = {
@@ -54,11 +52,11 @@ def test_add_tool_missing_required_fields(client, seed_user):
 
 
 # US 19 Scenario 3: Invalid text fields
-def test_add_tool_invalid_text_fields(client, seed_user):
+def test_add_tool_invalid_text_fields(client, seed_user, get_auth_headers):
     """
     Test that a user cannot add a tool with invalid text fields.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     payload = {
         "title": "",  # Empty titles are invalid
@@ -74,12 +72,12 @@ def test_add_tool_invalid_text_fields(client, seed_user):
 
 
 # US 19 Scenario 4: Uploading invalid file
-def test_upload_media_invalid_file_format(client, seed_user):
+def test_upload_media_invalid_file_format(client, seed_user, get_auth_headers):
     """
     Test that the system blocks generation of an upload ticket
     for insecure or invalid file extensions.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # The payload targeting MediaUploadRequest schema
     payload = {"filename": "malicious_file.exe"}
@@ -116,12 +114,14 @@ def test_add_tool_not_logged_in(client):
 
 
 # US 19 Scenario 6: Suspended user
-def test_add_tool_suspended_user(client, db_session: Session, seed_user):
+def test_add_tool_suspended_user(
+    client, db_session: Session, seed_user, get_auth_headers
+):
     """
     Test that a suspended user cannot add a tool.
     """
     # Log in to get a valid token while user is active
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Simulate an admin suspending the user (will be a route later)
     suspended_status = (
@@ -150,11 +150,11 @@ def test_add_tool_suspended_user(client, db_session: Session, seed_user):
 
 
 # US 6 Scenario 1 and 3: View tool details (including lending rules)
-def test_view_tool_details(client, seed_user, seed_tool):
+def test_view_tool_details(client, seed_user, seed_tool, get_auth_headers):
     """
     Test that a user can view a tool's details
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     response = client.get(f"/api/tools/{seed_tool.id}", headers=headers)
     assert response.status_code == 200
@@ -169,11 +169,13 @@ def test_view_tool_details(client, seed_user, seed_tool):
 
 
 # US 6 Scenario 2: View availability information
-def test_view_tool_availability(db_session, client, seed_user3, seed_reservation):
+def test_view_tool_availability(
+    db_session, client, seed_user3, seed_reservation, get_auth_headers
+):
     """
     Tests that tool availability endpoint returns correct list of blocked dates.
     """
-    headers = get_auth_headers(client, "someemail3@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user3.id)
 
     # Set the reservation status to approved that the reservation becomes active
     seed_reservation.status = ReservationStatus.APPROVED
@@ -203,11 +205,11 @@ def test_view_tool_availability(db_session, client, seed_user3, seed_reservation
 
 
 # US 6 Scenario 4: View tool listing not exist
-def test_view_tool_listing_not_found(client, seed_user):
+def test_view_tool_listing_not_found(client, seed_user, get_auth_headers):
     """
     Test that a user got a 404 error when view a tool that does not exist.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Query an invalid non-existent UUID string
     missing_uuid = "e0000000-0000-0000-0000-000000000999"
@@ -217,9 +219,11 @@ def test_view_tool_listing_not_found(client, seed_user):
 
 
 # US 21 Scenario 1: Successful search
-def test_search_tools_by_keyword_and_category(client, seed_user, seed_tool):
+def test_search_tools_by_keyword_and_category(
+    client, seed_user, seed_tool, get_auth_headers
+):
     """criteria extraction"""
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Search by keyword match ("grass")
     # The title of the tool contains "Grass"; the search should work in case-insensitive manner
@@ -235,11 +239,13 @@ def test_search_tools_by_keyword_and_category(client, seed_user, seed_tool):
 
 
 # US 21 Scenario 2: Unavailable tools (hidden/suspended/deleted status values filtered out)
-def test_search_filters_out_unavailable_tools(client, db_session: Session, seed_user):
+def test_search_filters_out_unavailable_tools(
+    client, db_session: Session, seed_user, get_auth_headers
+):
     """
     Test that a user cannot view unavailable tools when browsing tools.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Seed some users for testing to create some tools
     run_users_seeds(db_session)
@@ -284,12 +290,12 @@ def test_search_filters_out_unavailable_tools(client, db_session: Session, seed_
 
 
 # US 21 Scenario 3: No results
-def test_search_no_results_found(client, seed_user):
+def test_search_no_results_found(client, seed_user, get_auth_headers):
     """
     When there is no result found, return an empty list.
     The message "No results found." should will be handled in frontend.
     """
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     response = client.get(
         "/api/tools?keyword=UnobtainableSpaceshipTool", headers=headers

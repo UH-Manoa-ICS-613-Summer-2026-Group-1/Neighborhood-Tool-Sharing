@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -15,7 +16,7 @@ from app.models.reservation import Reservation
 from app.models.tool import Tool, ToolType
 from app.models.user import User, UserRole, UserStatus
 from app.schemas.reservation import APP_TIMEZONE
-from app.utils.auth_helpers import get_password_hash
+from app.utils.auth_helpers import create_access_token, get_password_hash
 from app.utils.seeder import run_lookup_seeds
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -35,16 +36,19 @@ if not database_exists(engine.url):
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_auth_headers(client, email, password):
+@pytest.fixture
+def get_auth_headers():
     """
-    Helper function to get auth headers for a user.
+    Returns a helper function to generate auth headers instantly
+    without hitting the database or hashing passwords to speed up tests.
     """
-    login_response = client.post(
-        "/api/auth/login",
-        json={"email": email, "password": password},
-    )
-    jwt_token = login_response.json()["access_token"]
-    return {"Authorization": f"Bearer {jwt_token}"}
+
+    def _headers(user_id: str | uuid.UUID):
+        # Manually generate the JWT
+        token = create_access_token(data={"sub": str(user_id)})
+        return {"Authorization": f"Bearer {token}"}
+
+    return _headers
 
 
 @pytest.fixture(scope="session")

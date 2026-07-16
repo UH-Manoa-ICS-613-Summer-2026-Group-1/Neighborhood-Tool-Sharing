@@ -26,9 +26,7 @@ def validate_trusted_media_url(value: str | None) -> str | None:
     parsed_url = urlparse(value.strip())
 
     if parsed_url.netloc not in ALLOWED_DOMAINS:
-        raise ValueError(
-            f"Untrusted image source domain. Allowed: {', '.join(ALLOWED_DOMAINS)}"
-        )
+        raise ValueError("Untrusted image source domain.")
 
     return value
 
