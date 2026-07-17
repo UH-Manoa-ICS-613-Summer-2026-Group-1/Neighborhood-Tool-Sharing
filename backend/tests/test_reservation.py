@@ -231,7 +231,7 @@ def test_incomplete_reservation_request(
     assert response.json()["detail"][0]["msg"] == "Field required"
 
 
-# Scenario 4: Reservation request overlaps an existing approved reservation
+# US 2 Scenario 4: Reservation request overlaps an existing approved reservation
 def test_overlapping_approved_reservation_request(
     db_session: Session,
     client,
@@ -269,7 +269,7 @@ def test_overlapping_approved_reservation_request(
     assert "The tool is already reserved" in response.json()["detail"]
 
 
-# Scenario 5: Reservation request overlaps an existing PICKED_UP reservation
+# US 2 Scenario 5: Reservation request overlaps an existing PICKED_UP reservation
 def test_overlapping_picked_up_reservation_request(
     db_session: Session,
     client,
@@ -307,7 +307,7 @@ def test_overlapping_picked_up_reservation_request(
     assert "The tool is already reserved" in response.json()["detail"]
 
 
-# Scenario 6: Reservation request contains past dates
+# US 2 Scenario 6: Reservation request contains past dates
 def test_past_date_reservation_request(client, seed_user3, seed_tool, get_auth_headers):
     """
     Test that user cannot create a reservation request with past dates.
@@ -749,7 +749,7 @@ def test_deny_reservation_with_canceled_status(
     assert seed_reservation.status == ReservationStatus.CANCELED
 
 
-# Scenario 7: Approving a reservation auto-denies overlapping requests
+# US 4 Scenario 7: Approving a reservation auto-denies overlapping requests
 def test_approve_reservation_auto_denies_overlapping_requests(
     db_session: Session,
     client,
@@ -924,7 +924,7 @@ def test_borrower_picks_up_already_picked_up_reservation(
     assert seed_reservation.status == ReservationStatus.PICKED_UP
 
 
-# Scenario 5: Pickup attempt outside reservation date range
+# US 7 Scenario 5: Pickup attempt outside reservation date range
 def test_borrower_picks_up_outside_reservation_date_range(
     db_session: Session,
     client,
@@ -990,7 +990,7 @@ def test_owner_confirms_return(
     assert seed_reservation.status == ReservationStatus.RETURNED
 
 
-# Scenario 2: Non-owner cannot confirm a return
+# US 5 Scenario 2: Non-owner cannot confirm a return
 def test_not_owner_confirms_return(
     db_session: Session,
     client,
@@ -1020,7 +1020,7 @@ def test_not_owner_confirms_return(
     assert seed_reservation.status == ReservationStatus.PICKED_UP
 
 
-# Scenario 3: Cannot confirm return unless the status is PICKED_UP
+# US 5 Scenario 3: Cannot confirm return unless the status is PICKED_UP
 def test_owner_confirms_return_not_picked_up_reservation(
     db_session: Session,
     client,
@@ -1138,7 +1138,7 @@ def test_owner_cancels_reservation_after_pickup(
         assert seed_reservation.status == status
 
 
-# Scenario 5: Valid tool cancellation
+# US 3 Scenario 5: Valid tool cancellation
 def test_borrower_cancels_reservation(
     db_session: Session,
     client,
