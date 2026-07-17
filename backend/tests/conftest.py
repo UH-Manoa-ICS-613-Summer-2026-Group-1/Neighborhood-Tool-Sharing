@@ -292,6 +292,9 @@ def seed_tool(db_session, seed_user):
 def seed_reservation(db_session, seed_tool, seed_user2):
     """
     Seeds a single reservation with REQUESTED status into the test database.
+    The reservation is between a seed_user as an owner ("someemail@mail.com", "Correctpassword123!")
+    and a seed_user2 as a borrower ("someemail2@mail.com", "Correctpassword123!").
+    The reservation starts today and ends tomorrow (independent of what day you are testing it).
     """
     # Create a reservation
     reservation = Reservation(

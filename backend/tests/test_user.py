@@ -1,3 +1,4 @@
+from app.models.user import UserStatus
 from app.utils.storage import DUMMY_IMAGE_URL
 from sqlalchemy.orm import Session
 
@@ -242,7 +243,7 @@ def test_patch_profile_with_invalid_fields(client, seed_user, get_auth_headers):
 
 
 # US 18. Scenario 3: Uploading invalid photo
-def test_upload_media_invalid_file_format(client, seed_user, get_auth_headers):
+def test_updated_profile_with_invalid_image_format(client, seed_user, get_auth_headers):
     """
     Test that the user cannot upload an invalid file.
     """
@@ -251,6 +252,7 @@ def test_upload_media_invalid_file_format(client, seed_user, get_auth_headers):
 
     headers = get_auth_headers(seed_user.id)
 
+    # No valid domain name
     payload = {"photo_url": "https://malicious_domain_name/malicious_file.exe"}
 
     # Hit the update user profile endpoint
@@ -262,3 +264,43 @@ def test_upload_media_invalid_file_format(client, seed_user, get_auth_headers):
         response.json()["detail"][0]["msg"]
         == "Value error, Untrusted image source domain."
     )
+
+
+# US 18. Scenario 5: Not logged in
+def test_patch_profile_unauthorized(client):
+    """
+    Test that the user cannot change profile being not logged in.
+    """
+    # Valid payload
+    payload = {"first_name": "UpdatedFirstName"}
+
+    # Hit the update user profile endpoint
+    response = client.patch("/api/users/me", json=payload)
+
+    # 401: Unauthorized
+    assert response.status_code == 401
+
+
+# Scenario 6: Suspended user
+def test_patch_profile_suspended_user(
+    db_session: Session, client, seed_user, get_auth_headers
+):
+    """
+    Test that update user profile endpoint fails for suspended user.
+    """
+    # Login
+    headers = get_auth_headers(seed_user.id)
+
+    # Suspend the user
+    seed_user.status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "SUSPENDED").first()
+    )
+    db_session.commit()
+
+    payload = {
+        "first_name": "UpdatedFirstName",
+    }
+    # Update user profile
+    response = client.patch("/api/users/me", json=payload, headers=headers)
+    # 403: Forbidden
+    assert response.status_code == 403

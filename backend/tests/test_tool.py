@@ -168,7 +168,7 @@ def test_view_tool_details(client, seed_user, seed_tool, get_auth_headers):
     assert len(data["tool_photos"]) == 1
 
 
-# US 6 Scenario 2: View availability information
+# US 6 Scenario 2: View availability information; US 27: Scenario 1: View reserved dates
 def test_view_tool_availability(
     db_session, client, seed_user3, seed_reservation, get_auth_headers
 ):
@@ -305,3 +305,59 @@ def test_search_no_results_found(client, seed_user, get_auth_headers):
     assert response.status_code == 200
     # return an empty list
     assert response.json() == []
+
+
+# US 23 Scenario 1: Successful tool deletion
+def test_succesful_tool_deletion(client, seed_user, seed_tool, get_auth_headers):
+    """
+    Test that a user can successfully delete a tool.
+    """
+    headers = get_auth_headers(seed_user.id)
+
+    response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
+    assert response.status_code == 200
+
+    assert seed_tool.status == ToolStatus.DELETED
+
+    # Hit show my tools, should not contain the deleted tool
+    response = client.get("/api/tools", headers=headers)
+
+    tools = response.json()
+    for tool in tools:
+        assert tool["id"] != str(seed_tool.id)
+
+
+# US 23 Scenario 2: Deleting the tool that is not yours
+def test_delete_not_your_tool(client, seed_user2, seed_tool, get_auth_headers):
+    """
+    Test that a user cannot delete a tool that is not theirs.
+    """
+    # The onwer of the seed_tool is seed_user
+    # We login as seed_user2
+    headers = get_auth_headers(seed_user2.id)
+
+    response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
+    assert response.status_code == 403
+    assert seed_tool.status == ToolStatus.AVAILABLE
+
+
+# US 23 Scenario 3: Deleting the tool with reservation
+def test_delete_reserved_tool(
+    db_session: Session,
+    client,
+    seed_user,
+    seed_tool,
+    seed_reservation,
+    get_auth_headers,
+):
+    """
+    Test that a user cannot delete a tool that has an active reservation.
+    """
+    headers = get_auth_headers(seed_user.id)
+
+    seed_reservation.status = ReservationStatus.APPROVED
+    db_session.commit()
+
+    response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
+    assert response.status_code == 400
+    assert seed_tool.status == ToolStatus.AVAILABLE
