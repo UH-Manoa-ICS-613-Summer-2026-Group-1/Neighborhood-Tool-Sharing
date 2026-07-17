@@ -1,5 +1,5 @@
 from app.models.reservation import ReservationStatus
-from app.models.tool import Tool, ToolStatus
+from app.models.tool import Tool, ToolStatus, ToolType
 from app.models.user import UserStatus
 from app.schemas.reservation import APP_TIMEZONE
 from app.utils.seeder import run_tools_seeds, run_users_seeds
@@ -447,3 +447,114 @@ def test_cannot_hide_unhide_not_your_tool(
     response = client.post(f"/api/tools/{str(seed_tool.id)}/unhide", headers=headers)
     assert response.status_code == 403
     assert seed_tool.status == ToolStatus.AVAILABLE
+
+
+# US 20 Scenario 1: Successful updating a tool
+def test_successful_tool_update(
+    client, db_session: Session, seed_user, seed_tool, get_auth_headers
+):
+    """
+    Test that a user can successfully update a tool.
+    The tool should be updated in the database.
+    """
+    # seed_user logs in
+    headers = get_auth_headers(seed_user.id)
+
+    # Seed tool info:
+    # seed_tool = Tool(
+    #         owner_id=seed_user.id,
+    #         tool_type_id=tool_type.id,
+    #         title="Stihl Grass Eater",
+    #         description="Gas trimmer engine edger.",
+    #         condition="GOOD",
+    #         loan_duration_limit=3,
+    #         return_notes="Clean grass off guards.",
+    #         pickup_notes="Meet by garage.",
+    #     )
+
+    # Update the tool
+    new_tool_type = (
+        db_session.query(ToolType).filter(ToolType.code == "POWER_TOOLS").first()
+    )
+    assert new_tool_type is not None
+
+    payload = {
+        "title": "DeWalt Cordless Drill",
+        "description": "20V max brushless compact drill driver.",
+        "condition": "GOOD",
+        "tool_type_code": new_tool_type.code,
+        "pickup_notes": "Pick up from front porch container.",
+        "return_notes": "Please clean before return.",
+        "loan_duration_limit": 7,
+        "photo_urls": [DUMMY_IMAGE_URL],
+    }
+    response = client.patch(
+        f"/api/tools/{str(seed_tool.id)}", headers=headers, json=payload
+    )
+    assert response.status_code == 200
+
+    assert seed_tool.title == "DeWalt Cordless Drill"
+    assert seed_tool.condition == "GOOD"
+    assert seed_tool.tool_type == new_tool_type
+    assert seed_tool.return_notes == "Please clean before return."
+
+
+# US 20 Scenario 2: Editing information of the tool that is not yours
+def test_cannot_edit_not_your_tool(client, seed_user2, seed_tool, get_auth_headers):
+    """
+    Test that a user cannot edit a tool that is not theirs.
+    """
+    # The onwer of the seed_tool is seed_user
+    # We login as seed_user2
+    headers = get_auth_headers(seed_user2.id)
+
+    # Edit the tool
+    response = client.patch(f"/api/tools/{str(seed_tool.id)}", headers=headers, json={})
+    assert response.status_code == 403
+
+
+# Scenario 3: Invalid text fields
+def test_patch_tool_with_invalid_text_fields(
+    client, seed_user, seed_tool, get_auth_headers
+):
+    """
+    Test that a user cannot update a tool with invalid text fields.
+    """
+    # Login
+    headers = get_auth_headers(seed_user.id)
+
+    # The payload provides invalid title. The title name must consist of at least 3 character.
+    payload = {
+        "title": "         ",
+    }
+
+    # Update tool
+    response = client.patch(
+        f"/api/tools/{str(seed_tool.id)}", json=payload, headers=headers
+    )
+
+    assert response.status_code == 422
+
+
+# Scenario 4: Uploading invalid file
+def test_patch_tool_with_invalid_file(client, seed_user, seed_tool, get_auth_headers):
+    """
+    Test that the user cannot upload an invalid file.
+    """
+    # if the image bypass api/upload and in the stroage bucket it means the image is valid
+    # patch api/tools/{tool_id}: photo_urls request body value must consist of domain name of dev local srotage or production S3 bucket
+
+    headers = get_auth_headers(seed_user.id)
+
+    # No valid domain name
+    payload = {"photo_urls": ["https://malicious_domain_name/malicious_file.exe"]}
+
+    # Hit the update tool endpoint
+    response = client.patch(f"/api/tools/{seed_tool.id}", headers=headers, json=payload)
+
+    # 422 Pydentic schema error
+    assert response.status_code == 422
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, Untrusted image source domain."
+    )
