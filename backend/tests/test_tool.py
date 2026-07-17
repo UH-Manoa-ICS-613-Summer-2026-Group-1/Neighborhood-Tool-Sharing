@@ -418,13 +418,13 @@ def test_successful_tool_unhiding(
     # Hit show all tools, should contain the unhidden tool
     response = client.get("/api/tools?is_mine=false", headers=headers)
 
-    is_unhidden_tool = False
+    unhidden_tool_exists = False
     tools = response.json()
     for tool in tools:
         if tool["tool_id"] == str(seed_tool.id):
-            is_unhidden_tool = True
-            assert is_unhidden_tool
+            unhidden_tool_exists = True
             break
+    assert unhidden_tool_exists
 
 
 # US 22 Scenario 3: Hiding/unhiding the tool that is not yours
@@ -513,7 +513,7 @@ def test_cannot_edit_not_your_tool(client, seed_user2, seed_tool, get_auth_heade
     assert response.status_code == 403
 
 
-# Scenario 3: Invalid text fields
+# US 20 Scenario 3: Invalid text fields
 def test_patch_tool_with_invalid_text_fields(
     client, seed_user, seed_tool, get_auth_headers
 ):
@@ -536,7 +536,7 @@ def test_patch_tool_with_invalid_text_fields(
     assert response.status_code == 422
 
 
-# Scenario 4: Uploading invalid file
+# US 20 Scenario 4: Uploading invalid file
 def test_patch_tool_with_invalid_file(client, seed_user, seed_tool, get_auth_headers):
     """
     Test that the user cannot upload an invalid file.
