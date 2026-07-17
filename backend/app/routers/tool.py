@@ -410,6 +410,106 @@ def delete_tool(
         )
 
 
+@router.post(
+    "/{tool_id}/hide",
+    status_code=status.HTTP_200_OK,
+    response_model=ToolResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def hide_tool(
+    tool_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Hide the tool from the public view.
+    The tool cannot be reserved by other users.
+    However, active reservations related to the tool can still be processed.
+    """
+    # Fetch the tool entity (excluding deleted listings)
+    tool = (
+        db.query(Tool)
+        .filter(and_(Tool.id == tool_id, Tool.status != ToolStatus.DELETED))
+        .first()
+    )
+    if not tool:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or has been deleted.",
+        )
+
+    # Only the owner can unhide the tool
+    if tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have administrative permission to hide this tool listing.",
+        )
+
+    # Hiding if already hidden
+    if tool.status == ToolStatus.HIDDEN:
+        return tool
+
+    # Hide the tool
+    tool.status = ToolStatus.HIDDEN
+    db.commit()
+    db.refresh(tool)
+    return tool
+
+
+@router.post(
+    "/{tool_id}/unhide",
+    status_code=status.HTTP_200_OK,
+    response_model=ToolResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def unhide_tool(
+    tool_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """ "
+    Unhide the tool. The tool can be visivle in public view and reserved by other users.
+    """
+    # Fetch the tool entity (excluding deleted listings)
+    tool = (
+        db.query(Tool)
+        .filter(and_(Tool.id == tool_id, Tool.status != ToolStatus.DELETED))
+        .first()
+    )
+    if not tool:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tool listing not found or has been deleted.",
+        )
+
+    # Only the owner can unhide the tool
+    if tool.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have administrative permission to unhide this tool listing.",
+        )
+
+    # Unhiding if already unhidden
+    if tool.status == ToolStatus.AVAILABLE:
+        return tool
+
+    # Hide the tool
+    tool.status = ToolStatus.AVAILABLE
+    db.commit()
+    db.refresh(tool)
+    return tool
+
+
 @router.patch(
     "/{tool_id}",
     status_code=status.HTTP_200_OK,
@@ -475,7 +575,7 @@ def patch_tool(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This tool is currently linked to an active reservation. "
-                "You can only modify the loan duration limit, pickup notes, return notes, photos, and status of the tool.",
+                "You can only modify the loan duration limit, pickup notes, return notes, and photos.",
             )
 
     # If there is no active reservation, update the tool
@@ -501,19 +601,6 @@ def patch_tool(
             tool.condition = tool_data.condition
 
     #  Update the fields that are always can be updated (regardless of reservation state)
-
-    # Handle updating status
-    if tool_data.status is not None:
-        # Just doble check
-        if tool_data.status.upper() not in [
-            ToolStatus.AVAILABLE,
-            ToolStatus.HIDDEN,
-        ]:
-            raise HTTPException(
-                status_code=400,
-                detail="Status updates must be 'AVAILABLE' or 'HIDDEN'.",
-            )
-        tool.status = tool_data.status
 
     # Handle updating photos if provided
     if tool_data.photo_urls is not None:

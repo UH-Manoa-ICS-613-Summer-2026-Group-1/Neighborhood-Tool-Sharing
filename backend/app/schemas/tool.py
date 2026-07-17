@@ -65,21 +65,6 @@ class ToolUpdateRequest(BaseModel):
     pickup_notes: CleanStr | None = Field(default=None, max_length=2000)
     return_notes: CleanStr | None = Field(default=None, max_length=2000)
     loan_duration_limit: int | None = Field(default=None, ge=1, le=365)
-    # The owner of the tool can only set the status to "AVAILABLE" or "HIDDEN".
-    # The status deleted handled separately.
-    status: ToolStatus | None = Field(
-        default=None, description="Set to 'AVAILABLE' or 'HIDDEN'."
-    )
-
-    @field_validator("status")
-    @classmethod
-    def ensure_tool_status_is_valid(cls, value: ToolStatus) -> ToolStatus:
-        """
-        The status field can only be set to "AVAILABLE" or "HIDDEN".
-        """
-        if value not in [ToolStatus.AVAILABLE, ToolStatus.HIDDEN]:
-            raise ValueError("status must be 'AVAILABLE' or 'HIDDEN'")
-        return value
 
 
 # RESPONSE SCHEMAS
