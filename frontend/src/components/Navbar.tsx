@@ -1,35 +1,92 @@
+import { useEffect, useState } from 'react'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, MagnifyingGlassIcon, CalendarIcon } from '@heroicons/react/24/outline'
-import { useNavigate } from 'react-router-dom'
+import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../api/auth'
+import { fetchCurrentUser, type UserProfile } from '../api/users'
 
 
-const navigation = [
-  { name: 'Home', href: '#', icon: HomeIcon, current: true },
-  { name: 'Add Tool', href: '#', icon: PlusCircleIcon, current: false },
-  { name: 'Search', href: '#', icon: MagnifyingGlassIcon, current: false },
-  { name: 'Calendar', href: '#', icon: CalendarIcon, current: false },
+const navigation =  [
+  { name: 'Home', href: '/dashboard', pathname: '/dashboard', tab: 'my-tools', icon: HomeIcon },
+  { name: 'Add Tool', href: '/tools/new', pathname: '/tools/new', tab: null, icon: PlusCircleIcon },
+  { name: 'Calendar', href: '/dashboard?tab=transactions', pathname: '/dashboard', tab: 'transactions', icon: CalendarIcon },
 ]
+
+type NavItem = (typeof navigation)[number]
 
 function classNames(...classes: (string | undefined | null | boolean)[]) {
   return classes.filter(Boolean).join(' ')
 }
 
+function getInitials(user: UserProfile | null): string {
+  if (!user) return '?'
+  const first = user.user_first_name?.[0] ?? ''
+  const last = user.user_last_name?.[0] ?? ''
+  return (first + last).toUpperCase() || '?'
+}
+ 
+interface NavbarProps {
+  // Optional: pass the already-fetched profile to skip the extra API call
+  user?: UserProfile | null
+}
+
 // Top navigation bar for logged-in users.
-export default function Navbar() {
+export default function Navbar({ user: userProp }: NavbarProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const [fetchedUser, setFetchedUser] = useState<UserProfile | null>(null)
+
+  const user = userProp !== undefined ? userProp : fetchedUser
+ 
+  useEffect(() => {
+    // Parent owns the profile fetch
+    if (userProp !== undefined) return
+  
+    const loadUser = async () => {
+      try {
+        const data = await fetchCurrentUser()
+        setFetchedUser(data)
+      } catch {
+        // Not fatal, the navbar just renders without user details
+        // (initials fall back to "?" and the menu header is hidden).
+      }
+    }
+    loadUser()
+  }, [userProp])
 
   // Logs the user out via the API, clears the local token, and
   // returns them to the public landing page.
   const handleSignOut = async () => {
     try {
       await logoutUser()
+    } catch (err) {
+      // Even if the API call fails, still clear local state and leave.
+      console.error(err instanceof Error ? err.message : 'Logout failed.')
+    } finally {
       localStorage.removeItem('access_token')
       navigate('/')
-    } catch (err) {
-      console.error(err instanceof Error ? err.message : 'Logout failed.')
     }
   }
+
+ const isCurrent = (item: NavItem) => {
+    if (location.pathname !== item.pathname) return false
+    if (item.tab === null) return true // non-dashboard route: pathname match is enough
+    const activeTab = new URLSearchParams(location.search).get('tab') ?? 'my-tools'
+    return activeTab === item.tab
+  }
+
+  const avatar = user?.user_photo_url ? (
+    <img
+      alt={`${user.user_first_name} ${user.user_last_name}`}
+      src={user.user_photo_url}
+      className="size-8 rounded-full bg-gray-800 object-cover outline -outline-offset-1 outline-white/10"
+    />
+  ) : (
+    <span className="flex size-8 items-center justify-center rounded-full bg-[#e8a838] text-xs font-bold text-white outline -outline-offset-1 outline-white/10">
+      {getInitials(user)}
+    </span>
+  )
 
   return (
     <Disclosure as="nav" className="relative bg-gray-800">
@@ -47,18 +104,19 @@ export default function Navbar() {
           <div className="flex flex-1 items-center justify-center">
             <div className="hidden sm:flex space-x-4">
                 {navigation.map((item) => (
-                  <a
+                  <button
                     key={item.name}
-                    href={item.href}
-                    aria-current={item.current ? 'page' : undefined}
+                    type="button"
+                    onClick={() => navigate(item.href)}
+                    aria-current={isCurrent(item) ? 'page' : undefined}
                     className={classNames(
-                      item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                      'rounded-md px-3 py-2 text-sm font-medium',
+                      isCurrent(item) ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
+                      'flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium cursor-pointer',
                     )}
                   >
                     <item.icon className="size-5" aria-hidden="true" />
                     {item.name}
-                  </a>
+                  </button>
                 ))}
             </div>
           </div>
@@ -68,24 +126,30 @@ export default function Navbar() {
               <MenuButton className="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
                 <span className="absolute -inset-1.5" />
                 <span className="sr-only">Open user menu</span>
-                <img
-                  alt=""
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Red_rose.jpg/500px-Red_rose.jpg"
-                  className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
-                />
+                {avatar}
               </MenuButton>
 
               <MenuItems
                 transition
                 className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
               >
+                {/* Signed-in user header */}
+                {user && (
+                  <div className="border-b border-gray-100 px-4 py-3">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {user.user_first_name} {user.user_last_name}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">{user.user_email}</p>
+                  </div>
+                )}
+ 
                 <MenuItem>
-                  <a
-                    href="#"
-                    className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden"
                   >
                     Your profile
-                  </a>
+                  </button>
                 </MenuItem>
                 <MenuItem>
                   <button
@@ -114,12 +178,12 @@ export default function Navbar() {
           {navigation.map((item) => (
             <DisclosureButton
               key={item.name}
-              as="a"
-              href={item.href}
-              aria-current={item.current ? 'page' : undefined}
+              as="button"
+              onClick={() => navigate(item.href)}
+              aria-current={isCurrent(item) ? 'page' : undefined}
               className={classNames(
-                item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                'block rounded-md px-3 py-2 text-base font-medium',
+                isCurrent(item) ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
+                'block w-full text-left rounded-md px-3 py-2 text-base font-medium',
               )}
             >
               {item.name}
