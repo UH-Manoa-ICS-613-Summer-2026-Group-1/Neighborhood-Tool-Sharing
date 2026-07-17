@@ -1214,3 +1214,64 @@ def test_borrower_cancels_reservation_after_pickup(
         db_session.refresh(seed_reservation)
         assert response.status_code == 400
         assert seed_reservation.status == status
+
+
+# User can update a reservation
+def test_update_reservation(
+    db_session: Session,
+    client,
+    seed_user,
+    seed_tool,
+    seed_reservation,
+    get_auth_headers,
+):
+    """
+    Test that a user can update a reservation.
+    """
+
+    headers = get_auth_headers(seed_user.id)
+
+    # Payload for updating the reservation
+    payload = {
+        "pickup_notes": "Updated pickup notes",
+        "return_notes": "Updated return notes",
+    }
+
+    # Update the reservation
+    response = client.patch(
+        f"/api/reservations/{seed_reservation.id}", headers=headers, json=payload
+    )
+
+    db_session.refresh(seed_reservation)
+    assert response.status_code == 200
+    assert seed_reservation.pickup_notes == "Updated pickup notes"
+    assert seed_reservation.return_notes == "Updated return notes"
+
+
+# User cannot update not existing reservation
+def test_update_not_existing_reservation(
+    db_session: Session,
+    client,
+    seed_user,
+    get_auth_headers,
+):
+    """
+    Test that a user cannot update not existing reservation.
+    """
+
+    headers = get_auth_headers(seed_user.id)
+
+    # Payload for updating the reservation
+    payload = {
+        "pickup_notes": "Updated pickup notes",
+        "return_notes": "Updated return notes",
+    }
+
+    # Update the reservation
+    response = client.patch(
+        f"/api/reservations/{'f0000000-0000-0000-0000-000099999999'}",
+        headers=headers,
+        json=payload,
+    )
+
+    assert response.status_code == 404
