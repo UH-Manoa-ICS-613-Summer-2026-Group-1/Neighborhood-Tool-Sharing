@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition, ToolStatus
+from app.models.tool import DEFAULT_LOAN_DURATION_LIMIT, ToolCondition
 from app.schemas.photo import PhotoSchema
 from app.utils.storage import DUMMY_IMAGE_URL
 

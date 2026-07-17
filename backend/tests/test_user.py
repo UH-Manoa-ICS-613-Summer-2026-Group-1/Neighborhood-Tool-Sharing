@@ -51,6 +51,7 @@ def test_patch_profile_names_and_add_photo(
     # Update user profile
     response = client.patch("/api/users/me", json=patch_payload, headers=headers)
 
+    db_session.refresh(seed_user)
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
     assert seed_user.last_name == "UpdatedLastName"
@@ -58,7 +59,9 @@ def test_patch_profile_names_and_add_photo(
 
 
 # US 18. Scenario 1: Successful updating the profile
-def test_patch_profile_add_and_then_delete_photo(client, seed_user, get_auth_headers):
+def test_patch_profile_add_and_then_delete_photo(
+    db_session: Session, client, seed_user, get_auth_headers
+):
     """
     Test that update user profile endpoint add and then delete photo.
     """
@@ -76,6 +79,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user, get_auth_hea
     # Update user profile
     response = client.patch("/api/users/me", json=patch_payload, headers=headers)
 
+    db_session.refresh(seed_user)
     # There is a user photo
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"
@@ -90,6 +94,7 @@ def test_patch_profile_add_and_then_delete_photo(client, seed_user, get_auth_hea
     # Update user profile
     response = client.patch("/api/users/me", json=patch_payload, headers=headers)
 
+    db_session.refresh(seed_user)
     # There is no user photo
     assert response.status_code == 200
     assert seed_user.first_name == "UpdatedFirstName"

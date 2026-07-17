@@ -186,6 +186,7 @@ def test_view_tool_availability(
         f"/api/tools/{seed_reservation.tool_id}/availability", headers=headers
     )
 
+    db_session.refresh(seed_reservation)
     # seed_reservation is the reservation for two days (today and tomorrow)
     assert response.status_code == 200
     blocked_dates = response.json()
@@ -308,7 +309,9 @@ def test_search_no_results_found(client, seed_user, get_auth_headers):
 
 
 # US 23 Scenario 1: Successful tool deletion
-def test_succesful_tool_deletion(client, seed_user, seed_tool, get_auth_headers):
+def test_succesful_tool_deletion(
+    db_session: Session, client, seed_user, seed_tool, get_auth_headers
+):
     """
     Test that a user can successfully delete a tool.
     """
@@ -317,6 +320,7 @@ def test_succesful_tool_deletion(client, seed_user, seed_tool, get_auth_headers)
     response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
     assert response.status_code == 200
 
+    db_session.refresh(seed_tool)
     assert seed_tool.status == ToolStatus.DELETED
 
     # Hit show my tools, should not contain the deleted tool
@@ -328,7 +332,9 @@ def test_succesful_tool_deletion(client, seed_user, seed_tool, get_auth_headers)
 
 
 # US 23 Scenario 2: Deleting the tool that is not yours
-def test_delete_not_your_tool(client, seed_user2, seed_tool, get_auth_headers):
+def test_delete_not_your_tool(
+    db_session: Session, client, seed_user2, seed_tool, get_auth_headers
+):
     """
     Test that a user cannot delete a tool that is not theirs.
     """
@@ -337,6 +343,7 @@ def test_delete_not_your_tool(client, seed_user2, seed_tool, get_auth_headers):
     headers = get_auth_headers(seed_user2.id)
 
     response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
+    db_session.refresh(seed_tool)
     assert response.status_code == 403
     assert seed_tool.status == ToolStatus.AVAILABLE
 
@@ -359,13 +366,14 @@ def test_delete_reserved_tool(
     db_session.commit()
 
     response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
+    db_session.refresh(seed_tool)
     assert response.status_code == 400
     assert seed_tool.status == ToolStatus.AVAILABLE
 
 
 # US 22 Scenario 1: Successful tool hiding
 def test_successful_tool_hiding(
-    client, seed_user, seed_user2, seed_tool, get_auth_headers
+    db_session: Session, client, seed_user, seed_user2, seed_tool, get_auth_headers
 ):
     """
     Test that a user can successfully hide a tool.
@@ -376,6 +384,8 @@ def test_successful_tool_hiding(
 
     # Hide the tool
     response = client.post(f"/api/tools/{str(seed_tool.id)}/hide", headers=headers)
+
+    db_session.refresh(seed_tool)
     assert response.status_code == 200
 
     assert seed_tool.status == ToolStatus.HIDDEN
@@ -409,6 +419,7 @@ def test_successful_tool_unhiding(
     # Unhide the tool
     response = client.post(f"/api/tools/{str(seed_tool.id)}/unhide", headers=headers)
 
+    db_session.refresh(seed_tool)
     assert response.status_code == 200
     assert seed_tool.status == ToolStatus.AVAILABLE
 
@@ -429,7 +440,7 @@ def test_successful_tool_unhiding(
 
 # US 22 Scenario 3: Hiding/unhiding the tool that is not yours
 def test_cannot_hide_unhide_not_your_tool(
-    client, seed_user2, seed_tool, get_auth_headers
+    db_session: Session, client, seed_user2, seed_tool, get_auth_headers
 ):
     """
     Test that a user cannot hide/unhide a tool that is not theirs.
@@ -440,11 +451,13 @@ def test_cannot_hide_unhide_not_your_tool(
 
     # Hide the tool
     response = client.post(f"/api/tools/{str(seed_tool.id)}/hide", headers=headers)
+    db_session.refresh(seed_tool)
     assert response.status_code == 403
     assert seed_tool.status == ToolStatus.AVAILABLE
 
     # Unhide the tool
     response = client.post(f"/api/tools/{str(seed_tool.id)}/unhide", headers=headers)
+    db_session.refresh(seed_tool)
     assert response.status_code == 403
     assert seed_tool.status == ToolStatus.AVAILABLE
 
@@ -491,8 +504,9 @@ def test_successful_tool_update(
     response = client.patch(
         f"/api/tools/{str(seed_tool.id)}", headers=headers, json=payload
     )
-    assert response.status_code == 200
 
+    db_session.refresh(seed_tool)
+    assert response.status_code == 200
     assert seed_tool.title == "DeWalt Cordless Drill"
     assert seed_tool.condition == "GOOD"
     assert seed_tool.tool_type == new_tool_type
