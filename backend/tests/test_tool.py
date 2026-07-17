@@ -324,7 +324,7 @@ def test_succesful_tool_deletion(client, seed_user, seed_tool, get_auth_headers)
 
     tools = response.json()
     for tool in tools:
-        assert tool["id"] != str(seed_tool.id)
+        assert tool["tool_id"] != str(seed_tool.id)
 
 
 # US 23 Scenario 2: Deleting the tool that is not yours
@@ -360,4 +360,90 @@ def test_delete_reserved_tool(
 
     response = client.delete(f"/api/tools/{str(seed_tool.id)}", headers=headers)
     assert response.status_code == 400
+    assert seed_tool.status == ToolStatus.AVAILABLE
+
+
+# US 22 Scenario 1: Successful tool hiding
+def test_successful_tool_hiding(
+    client, seed_user, seed_user2, seed_tool, get_auth_headers
+):
+    """
+    Test that a user can successfully hide a tool.
+    The tool should be hidden in the database and not visible for browsing or searching.
+    """
+    # User 1 logs in
+    headers = get_auth_headers(seed_user.id)
+
+    # Hide the tool
+    response = client.post(f"/api/tools/{str(seed_tool.id)}/hide", headers=headers)
+    assert response.status_code == 200
+
+    assert seed_tool.status == ToolStatus.HIDDEN
+
+    # User 2 logs in. User 2 should not see the hidden tool
+    headers = get_auth_headers(seed_user2.id)
+
+    # Hit show all tools, should not contain the hidden tool
+    response = client.get("/api/tools?is_mine=false", headers=headers)
+
+    tools = response.json()
+    for tool in tools:
+        assert tool["tool_id"] != str(seed_tool.id)
+
+
+# US 22 Scenario 2: Successful tool unhiding
+def test_successful_tool_unhiding(
+    db_session: Session, client, seed_user, seed_user2, seed_tool, get_auth_headers
+):
+    """
+    Test that a user can successfully unhide a tool.
+    The tool should be unhidden in the database and visible for browsing or searching.
+    """
+    # set the tool status to hidden
+    seed_tool.status = ToolStatus.HIDDEN
+    db_session.commit()
+
+    # User 1 logs in
+    headers = get_auth_headers(seed_user.id)
+
+    # Unhide the tool
+    response = client.post(f"/api/tools/{str(seed_tool.id)}/unhide", headers=headers)
+
+    assert response.status_code == 200
+    assert seed_tool.status == ToolStatus.AVAILABLE
+
+    # User 2 logs in. User 2 should see the unhidden tool
+    headers = get_auth_headers(seed_user2.id)
+
+    # Hit show all tools, should contain the unhidden tool
+    response = client.get("/api/tools?is_mine=false", headers=headers)
+
+    is_unhidden_tool = False
+    tools = response.json()
+    for tool in tools:
+        if tool["tool_id"] == str(seed_tool.id):
+            is_unhidden_tool = True
+            assert is_unhidden_tool
+            break
+
+
+# US 22 Scenario 3: Hiding/unhiding the tool that is not yours
+def test_cannot_hide_unhide_not_your_tool(
+    client, seed_user2, seed_tool, get_auth_headers
+):
+    """
+    Test that a user cannot hide/unhide a tool that is not theirs.
+    """
+    # The onwer of the seed_tool is seed_user
+    # We login as seed_user2
+    headers = get_auth_headers(seed_user2.id)
+
+    # Hide the tool
+    response = client.post(f"/api/tools/{str(seed_tool.id)}/hide", headers=headers)
+    assert response.status_code == 403
+    assert seed_tool.status == ToolStatus.AVAILABLE
+
+    # Unhide the tool
+    response = client.post(f"/api/tools/{str(seed_tool.id)}/unhide", headers=headers)
+    assert response.status_code == 403
     assert seed_tool.status == ToolStatus.AVAILABLE
