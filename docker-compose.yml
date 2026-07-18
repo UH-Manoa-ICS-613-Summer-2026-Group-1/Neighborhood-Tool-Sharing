@@ -65,6 +65,12 @@ services:
             condition: service_healthy
           minio:
             condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:5000/api/health\")'"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 volumes:
   postgres_data:

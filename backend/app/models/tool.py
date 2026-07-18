@@ -24,6 +24,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from .photo import Photo
+    from .reservation import Reservation
     from .user import User
 
 DEFAULT_LOAN_DURATION_LIMIT = 7
@@ -154,6 +155,9 @@ class Tool(Base):
     tool_type: Mapped["ToolType"] = relationship("ToolType", back_populates="tools")
     photos: Mapped[list["Photo"]] = relationship(
         "Photo", secondary="tool_photos", back_populates="tools"
+    )
+    reservations: Mapped[list["Reservation"]] = relationship(
+        "Reservation", back_populates="tool"
     )
 
 

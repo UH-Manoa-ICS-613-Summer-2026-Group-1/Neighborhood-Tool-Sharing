@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
 
-from app.utils.storage import BUCKET_NAME, internal_s3
+from app.utils.storage import BUCKET_NAME, generate_dummy_image, internal_s3
 
 
 # Create a bucket for images storage if it doesn't exist
@@ -42,4 +42,5 @@ async def lifespan(app: FastAPI):
             f"Storage bucket '{BUCKET_NAME}' successfully setup with public read access."
         )
 
+    generate_dummy_image()
     yield

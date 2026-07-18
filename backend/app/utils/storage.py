@@ -3,6 +3,7 @@ Storage utilities
 """
 
 import os
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -16,6 +17,11 @@ INTERNAL_ENDPOINT = os.getenv("STORAGE_INTERNAL_ENDPOINT")
 EXTERNAL_ENDPOINT = os.getenv("STORAGE_EXTERNAL_ENDPOINT")
 
 MAX_SIZE_MB = 5  # The max size of the image that can be uploaded in MB
+
+# Dummy image link
+DUMMY_IMAGE_URL = (
+    f"{EXTERNAL_ENDPOINT}/{BUCKET_NAME}/placeholders/default-placeholder-image.jpg"
+)
 
 # Force MinIO to use path-style addressing (e.g., endpoint/bucket instead of bucket.endpoint)
 s3_config = Config(s3={"addressing_style": "path"}, signature_version="s3v4")
@@ -62,3 +68,39 @@ def generate_upload_ticket(
         ],
         ExpiresIn=expiration,  # Ticket expires in 5 minutes
     )
+
+
+def generate_dummy_image():
+    """
+    Generate placeholder image.
+    Placed in MinIO/S3
+    """
+    dummy_key = "placeholders/default-placeholder-image.jpg"
+    image_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "assets"
+        / "placeholder_image.jpg"
+    )
+
+    try:
+        # Check if it's already in MinIO/S3
+        internal_s3.head_object(Bucket=BUCKET_NAME, Key=dummy_key)
+    except Exception:
+        try:
+            # Read the file as raw bytes and upload it
+            if image_path.exists():
+                with open(image_path, "rb") as image_file:
+                    image_bytes = image_file.read()
+
+                internal_s3.put_object(
+                    Bucket=BUCKET_NAME,
+                    Key=dummy_key,
+                    Body=image_bytes,
+                    ContentType="image/jpeg",
+                )
+                print(f"Successfully seeded placeholder image from assets: {dummy_key}")
+            else:
+                print(f"Warning: Custom image not found at {image_path}")
+
+        except Exception as e:
+            print(f"Failed to write placeholder image: {str(e)}")

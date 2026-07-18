@@ -20,6 +20,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from .invitation import Invitation
     from .photo import Photo
+    from .reservation import Reservation
     from .tool import Tool
 
 # Tables:
@@ -166,6 +167,11 @@ class User(Base):
         back_populates="recipient",
     )
     tools: Mapped[list["Tool"]] = relationship("Tool", back_populates="owner")
+    borrowed_reservations: Mapped[list["Reservation"]] = relationship(
+        "Reservation",
+        foreign_keys="[Reservation.borrower_id]",
+        back_populates="borrower",
+    )
 
 
 class UserProfileView(Base):

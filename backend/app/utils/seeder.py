@@ -323,3 +323,209 @@ def run_tools_seeds(db: Session):
     )
 
     db.commit()
+
+
+def run_reservations_seeds(db: Session):
+    """
+    Timezone Strategy (Hawaii HST = UTC-10):
+    - Start Date: Local 00:00:00 -> UTC 10:00:00 (Same calendar day)
+    - End Date: Local 23:59:59 -> UTC 09:59:59 (Next calendar day)
+    """
+    db.execute(
+        text("""
+            INSERT INTO reservations (id, tool_id, borrower_id, loan_duration_limit, start_date, end_date, status) VALUES
+            -- TOOL 1 BOOKINGS (e0000000-0000-0000-0000-000000000001)
+
+            -- 1. Future, approved
+            -- Local: Tomorrow 00:00:00 to Today + 3 Days 23:59:59
+            (
+                'd0000001-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+
+            -- 2. Future, requested
+            -- Local: Tomorrow 00:00:00 to Tomorrow + 2 Days 23:59:59
+            (
+                'd0000001-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                'REQUESTED'
+            ),
+
+            -- 3. Current, picked up
+            -- Local: Yesterday 00:00:00 to Today 23:59:59
+            (
+                'd0000001-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '1 day')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '09:59:59',
+                'PICKED_UP'
+            ),
+
+            -- 4. Past, returned
+            (
+                'd0000001-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '14 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '11 days')::timestamp + TIME '09:59:59',
+                'RETURNED'
+            ),
+            -- 5. Past: canceled
+            (
+                'd0000001-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '9 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                'CANCELED'
+            ),
+            -- TOOL 2 BOOKINGS (e0000000-0000-0000-0000-000000000002)
+            -- 6. Past, denied
+            (
+                'd0000001-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '6 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                'DENIED'
+            ),
+            -- 7. Past, returned
+            (
+                'd0000001-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '2 days')::timestamp + TIME '09:59:59',
+                'RETURNED'
+            ),
+            -- 8. Future, request
+            (
+                'd0000001-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '6 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                'REQUESTED'
+            ),
+            -- 9. Future, approved
+            (
+                'd0000001-0000-0000-0000-000000000009', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '10 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '14 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+            -- TOOL 8 BOOKINGS (e0000000-0000-0000-0000-000000000008)
+            -- 10. Past,  returned
+            (
+                'd0000001-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000008',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '20 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '17 days')::timestamp + TIME '09:59:59',
+                'RETURNED'
+            ),
+            -- 11. Future, approved
+            (
+                'd0000001-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000008',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+            -- 12. Future, requested
+            (
+                'd0000001-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000008',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '7 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                'REQUESTED'
+            ),
+            -- 13. Future, approved
+            (
+                'd0000001-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000008',
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '14 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '17 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+            -- 14. Current, approved
+            -- Local: Today 00:00:00 to Today + 1 Day 23:59:59
+            (
+                'd0000001-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE)::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '2 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+            -- 15. Past, returned
+            (
+                'd0000001-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '12 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '11 days')::timestamp + TIME '09:59:59',
+                'RETURNED'
+            ),
+            -- 16. Past, canceled
+            (
+                'd0000001-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '8 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                'CANCELED'
+            ),
+            -- 17. Future: approved
+            (
+                'd0000001-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '6 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                'APPROVED'
+            ),
+            -- 18. Future, requested
+            (
+                'd0000001-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000001',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '11 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '15 days')::timestamp + TIME '09:59:59',
+                'REQUESTED'
+            ),
+            -- 19. Past, returned
+            (
+                'd0000001-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE - INTERVAL '3 days')::timestamp + TIME '09:59:59',
+                'RETURNED'
+            ),
+            -- 20. Future, requested
+            (
+                'd0000001-0000-0000-0000-000000000020', 'e0000000-0000-0000-0000-000000000002',
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                7,
+                (CURRENT_DATE + INTERVAL '16 days')::timestamp + TIME '10:00:00',
+                (CURRENT_DATE + INTERVAL '19 days')::timestamp + TIME '09:59:59',
+                'REQUESTED'
+            )
+            ON CONFLICT (id) DO NOTHING;
+        """)
+    )
+    db.commit()

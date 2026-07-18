@@ -149,7 +149,7 @@ def test_protected_route_with_expired_token(client, seed_user):
 
 
 # US 17 Scenario 5: Accessing protected pages
-def test_protected_route_with_token(client, seed_user):
+def test_protected_route_with_token(db_session: Session, client, seed_user):
     """
     Test that accessing a protected route with a valid token succeeds.
     """
@@ -164,8 +164,8 @@ def test_protected_route_with_token(client, seed_user):
 
     profile = response.json()
 
+    db_session.refresh(seed_user)
     assert response.status_code == 200
-
     assert profile["user_email"] == seed_user.email
     assert profile["user_first_name"] == seed_user.first_name
     assert profile["user_last_name"] == seed_user.last_name

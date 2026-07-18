@@ -4,8 +4,6 @@ from app.models.invitation import Invitation
 from app.models.user import User, UserStatus
 from sqlalchemy.orm import Session
 
-from tests.conftest import get_auth_headers
-
 # Seed user data={
 # "email": "someemail@mail.com",
 # "password": "Correctpassword123!",
@@ -34,12 +32,14 @@ def test_send_invitation_unauthorized(client):
 
 
 # US 12. Scenario 2: Inactive User Account
-def test_send_invitation_inactive_user(client, db_session: Session, seed_user):
+def test_send_invitation_inactive_user(
+    client, db_session: Session, seed_user, get_auth_headers
+):
     """
     Test that a suspended user cannot send invitations.
     """
     # Log in to get a token while still active
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Simulate an admin suspending the user (will be a route later)
     suspended_status = (
@@ -62,12 +62,12 @@ def test_send_invitation_inactive_user(client, db_session: Session, seed_user):
 
 
 # US 12. Scenario 3: User Account Already Exists
-def test_send_invitation_user_already_exists(client, seed_user):
+def test_send_invitation_user_already_exists(client, seed_user, get_auth_headers):
     """
     Test that you cannot send an invitation to an email already registered in the system.
     """
     # Login
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Attempting to invite 'someemail@mail.com' (which belongs to seed_user)
     response = client.post(
@@ -83,12 +83,12 @@ def test_send_invitation_user_already_exists(client, seed_user):
 
 
 # US 12. Scenario 4: Invalid Email Address
-def test_send_invitation_invalid_email(client, seed_user):
+def test_send_invitation_invalid_email(client, seed_user, get_auth_headers):
     """
     Test that an invalid or poorly formatted string triggers a validation failure.
     """
     # Login
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Attempting to invite with an invalid email
     response = client.post(
@@ -165,7 +165,9 @@ def test_send_invitation_success(client, db_session: Session, seed_user):
 
 
 # US 12. Scenario 6: Invitation already pending
-def test_send_invitation_already_pending(client, seed_user, seed_invitation):
+def test_send_invitation_already_pending(
+    client, seed_user, seed_invitation, get_auth_headers
+):
     """
     Test that a duplicate invitation is blocked if a pending one already exists.
     """
@@ -173,7 +175,7 @@ def test_send_invitation_already_pending(client, seed_user, seed_invitation):
     assert seed_invitation is not None
 
     # Login
-    headers = get_auth_headers(client, "someemail@mail.com", "Correctpassword123!")
+    headers = get_auth_headers(seed_user.id)
 
     # Attempt to invite the exact same email address again
     response = client.post(
