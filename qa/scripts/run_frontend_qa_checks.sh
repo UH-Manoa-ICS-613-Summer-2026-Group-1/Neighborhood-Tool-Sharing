@@ -14,10 +14,13 @@ if [[ ! -d "node_modules" ]]; then
 fi
 
 echo "Running frontend tests..."
-npm run test
+npm run test:coverage
 
 echo "Running ESLint..."
 npm run lint
+
+echo "Running typecheck"
+npm run typecheck
 
 echo "Running production build..."
 npm run build

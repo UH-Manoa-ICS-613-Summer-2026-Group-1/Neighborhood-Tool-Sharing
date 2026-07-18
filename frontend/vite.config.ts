@@ -10,7 +10,18 @@ export default defineConfig({
   ],
   test: {
     environment: "jsdom",
-    setupFiles: "./tests/vitest_setup.ts"
+    setupFiles: "./tests/vitest_setup.ts",
+    include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "html"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/main.tsx",
+        "src/**/*.d.ts",
+      ],
+    },
   },
   server: {
     proxy: {

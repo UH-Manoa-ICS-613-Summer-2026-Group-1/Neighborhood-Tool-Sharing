@@ -83,10 +83,13 @@ jobs:
         run: npm ci
 
       - name: Run frontend tests 
-        run: npm run test    
+        run: npm run test:coverage    
         
       - name: Run linter 
         run: npm run lint 
 
-      - name: Run build
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run production build
         run: npm run build
