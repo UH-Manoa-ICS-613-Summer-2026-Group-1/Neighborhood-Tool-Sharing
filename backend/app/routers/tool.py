@@ -24,7 +24,8 @@ from app.schemas.tool import (
     ToolTypeResponse,
     ToolUpdateRequest,
 )
-from app.utils.dependencies import get_current_user
+from app.utils.dependencies import get_current_user, validate_urls_ownership
+from app.utils.storage import BUCKET_NAME, internal_s3
 
 router = APIRouter(prefix="/api/tools", tags=["Tools"])
 
@@ -120,21 +121,23 @@ def create_tool(
         owner_id=current_user.id,
     )
 
+    # Check that the currecnt user does not use someone else's photo from storage
+    validate_urls_ownership(current_user, tool_data.photo_urls)
+
+    # Add new tool to database
+    db.add(new_tool)
+    db.flush()  # Generates new_tool.id within the open transaction
+
+    # Iterate through provided URL records and create photo entities
+    for url in tool_data.photo_urls:
+        db_photo = Photo(url=url)
+        db.add(db_photo)  # Add to database
+        db.flush()  # Generates db_photo.id
+
+        # Form relationship link row in intersection table
+        db_link = ToolPhoto(tool_id=new_tool.id, photo_id=db_photo.id)
+        db.add(db_link)
     try:
-        # Add new tool to database
-        db.add(new_tool)
-        db.flush()  # Generates new_tool.id within the open transaction
-
-        # Iterate through provided URL records and create photo entities
-        for url in tool_data.photo_urls:
-            db_photo = Photo(url=url)
-            db.add(db_photo)  # Add to database
-            db.flush()  # Generates db_photo.id
-
-            # Form relationship link row in intersection table
-            db_link = ToolPhoto(tool_id=new_tool.id, photo_id=db_photo.id)
-            db.add(db_link)
-
         # Commit
         db.commit()
         # Fetch new tool with photos
@@ -602,6 +605,9 @@ def patch_tool(
 
     #  Update the fields that are always can be updated (regardless of reservation state)
 
+    # Prepare a list of URLs to delete
+    urls_to_delete_from_storage = []
+
     # Handle updating photos if provided
     if tool_data.photo_urls is not None:
         if len(tool_data.photo_urls) == 0:
@@ -610,8 +616,31 @@ def patch_tool(
                 detail="A tool listing requires at least one photo.",
             )
 
+        # Check that the currecnt user does not use someone else's photo from storage
+        validate_urls_ownership(current_user, tool_data.photo_urls)
+
+        # Fetch old photos
+        old_photos = (
+            db.query(Photo)
+            .join(ToolPhoto, ToolPhoto.photo_id == Photo.id)
+            .filter(ToolPhoto.tool_id == tool.id)
+            .all()
+        )
+
+        # Identify items to delete from storage
+        urls_to_delete_from_storage = [
+            photo.url for photo in old_photos if photo.url not in tool_data.photo_urls
+        ]
+
         # Wipe old links to photos
         db.query(ToolPhoto).filter(ToolPhoto.tool_id == tool.id).delete()
+
+        # Delete the orphan records from the photos table
+        if old_photos:
+            old_photo_ids = [photo.id for photo in old_photos]
+            db.query(Photo).filter(Photo.id.in_(old_photo_ids)).delete(
+                synchronize_session=False
+            )
 
         # Build new photo mappings
         for url in tool_data.photo_urls:
@@ -635,6 +664,21 @@ def patch_tool(
 
     try:
         db.commit()
+
+        # Delete the orphan records from storage
+        if urls_to_delete_from_storage:
+            for url in urls_to_delete_from_storage:
+                try:
+                    # Get the object name
+                    object_name = f"{current_user.id}/{url.split('/')[-1]}"
+
+                    # Remove the object
+                    internal_s3.delete_object(Bucket=BUCKET_NAME, Key=object_name)
+                    print(
+                        f"Successfully deleted orphan asset {object_name} from storage."
+                    )
+                except Exception as e:
+                    print(f"Failed to remove asset {url} from storage: {str(e)}")
 
         # Return the updated tool
         updated_tool_with_photos = (

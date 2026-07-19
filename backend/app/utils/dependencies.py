@@ -2,6 +2,8 @@
 Dependency injection helpers.
 """
 
+from urllib.parse import urlparse
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -83,3 +85,31 @@ def get_current_user(
         )
 
     return user
+
+
+def validate_urls_ownership(current_user: User, urls: list[str]):
+    """
+    Check that the currecnt user does not use someone else's images from storage.
+    """
+    for url in urls:
+        try:
+            url_path = urlparse(url.strip()).path
+            # Split path segments and filter out empty strings caused by slashes
+            path_segments = [seg for seg in url_path.split("/") if seg]
+
+            # Check if the user is trying to use someone else's photo
+            embedded_user_id = path_segments[1]
+            # The image stores in user_id folder. Also, "placeholders" folder can be used.
+            if (
+                embedded_user_id != str(current_user.id)
+                and embedded_user_id != "placeholders"
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not authorized to link assets belonging to another account.",
+                )
+        except (IndexError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Malformed media asset URL format provided.",
+            )

@@ -25,8 +25,8 @@ def upgrade() -> None:
         "tool_photos",
         sa.Column(
             "id",
-            sa.UUID(),
-            server_default=sa.text("gen_random_uuid()"),
+            sa.Integer(),
+            autoincrement=True,
             nullable=False,
             comment="Unique identifier for a tool photo",
         ),

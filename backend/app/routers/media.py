@@ -38,7 +38,7 @@ def upload_media(file_data: MediaUploadRequest, current_user=Depends(get_current
         )
 
     # Generate a unique file path name
-    unique_storage_key = f"{uuid.uuid4()}.{file_ext}"
+    unique_storage_key = f"{current_user.id}/{uuid.uuid4()}.{file_ext}"
 
     # Generates a dictionary containing {'url': '...', 'fields': {...}}
     ticket = generate_upload_ticket(unique_storage_key)
