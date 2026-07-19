@@ -1,0 +1,991 @@
+/* =============================================================================
+   style.css — Neighborhood Tool Sharing
+   ADA / WCAG 2.1 AA compliant + fully responsive
+   Color palette: dark background #2d3436, orange accent #f0a500, white text
+   ============================================================================= */
+
+
+/* ---------------------------------------------------------------------------
+   1. CSS Custom Properties (design tokens)
+   All colors, spacing, and font sizes defined in one place for easy updates.
+   --------------------------------------------------------------------------- */
+:root {
+  /* Colors */
+  --color-bg:           #2d3436;   /* main page background */
+  --color-surface:      #3d4446;   /* cards, inputs, modals */
+  --color-surface-alt:  #4a5054;   /* hover states, table rows */
+  --color-border:       #5a6470;   /* borders and dividers */
+  --color-accent:       #f0a500;   /* orange — buttons, links, highlights */
+  --color-accent-hover: #d4920a;   /* darker orange on hover */
+  --color-accent-focus: #ffe082;   /* light gold for focus rings (high contrast) */
+  --color-text:         #f0f0f0;   /* primary text — 7:1 contrast on --color-bg */
+  --color-text-muted:   #b2bec3;   /* secondary text — 4.5:1 contrast */
+  --color-error:        #ff6b6b;   /* error messages */
+  --color-success:      #55efc4;   /* success messages */
+  --color-warning:      #fdcb6e;   /* warnings */
+
+  /* Status badge colors */
+  --status-requested:   #74b9ff;
+  --status-approved:    #55efc4;
+  --status-picked-up:   #fdcb6e;
+  --status-returned:    #a29bfe;
+  --status-denied:      #ff6b6b;
+  --status-cancelled:   #b2bec3;
+
+  /* Spacing scale */
+  --space-xs:   0.25rem;
+  --space-sm:   0.5rem;
+  --space-md:   1rem;
+  --space-lg:   1.5rem;
+  --space-xl:   2rem;
+  --space-2xl:  3rem;
+
+  /* Typography */
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+  --font-size-3xl:  2rem;
+  --font-size-4xl:  2.5rem;
+
+  /* Layout */
+  --max-width:      1100px;
+  --border-radius:  8px;
+  --border-radius-lg: 12px;
+
+  /* Transitions */
+  --transition: 0.2s ease;
+
+  /* Focus ring — visible for keyboard users (ADA) */
+  --focus-ring: 0 0 0 3px var(--color-accent-focus);
+}
+
+
+/* ---------------------------------------------------------------------------
+   2. Reset & Base
+   --------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;             /* base for all rem units */
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Roboto', Helvetica, Arial, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ADA: remove default list styling where lists are used as UI elements */
+ul, ol {
+  list-style: none;
+}
+
+
+/* ---------------------------------------------------------------------------
+   3. Skip Navigation Link (ADA — keyboard users jump to main content)
+   --------------------------------------------------------------------------- */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-md);
+  background: var(--color-accent);
+  color: #000;
+  font-weight: 700;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--border-radius);
+  z-index: 9999;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-md);   /* slides into view on Tab press */
+}
+
+
+/* ---------------------------------------------------------------------------
+   4. Typography
+   --------------------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text);
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+h1 { font-size: var(--font-size-4xl); margin-bottom: var(--space-md); }
+h2 { font-size: var(--font-size-3xl); margin-bottom: var(--space-md); }
+h3 { font-size: var(--font-size-2xl); margin-bottom: var(--space-sm); }
+h4 { font-size: var(--font-size-xl);  margin-bottom: var(--space-sm); }
+
+p  { margin-bottom: var(--space-md); color: var(--color-text); }
+
+/* ADA: links must be distinguishable without color alone */
+a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  transition: color var(--transition);
+}
+
+a:hover  { color: var(--color-accent-hover); }
+a:focus  { outline: none; box-shadow: var(--focus-ring); border-radius: 2px; }
+a:visited { color: var(--color-accent); }
+
+/* Scale down headings on small screens */
+@media (max-width: 480px) {
+  h1 { font-size: var(--font-size-3xl); }
+  h2 { font-size: var(--font-size-2xl); }
+  h3 { font-size: var(--font-size-xl);  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   5. Layout Utilities
+   --------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.page {
+  padding: var(--space-2xl) var(--space-lg);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+/* Responsive grid — collapses to single column on mobile */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-wrap { flex-wrap: wrap; gap: var(--space-md); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+
+
+/* ---------------------------------------------------------------------------
+   6. Navigation Bar
+   --------------------------------------------------------------------------- */
+.navbar {
+  background-color: var(--color-surface);
+  border-bottom: 2px solid var(--color-accent);
+  padding: var(--space-md) var(--space-lg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.navbar-brand {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.navbar-brand:hover { color: var(--color-accent-hover); }
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.navbar-links a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--border-radius);
+  transition: color var(--transition), background var(--transition);
+}
+
+.navbar-links a:hover {
+  color: var(--color-accent);
+  background: rgba(240, 165, 0, 0.1);
+}
+
+.navbar-links a:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Mobile: stack navbar vertically */
+@media (max-width: 600px) {
+  .navbar-links {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+
+/* ---------------------------------------------------------------------------
+   7. Buttons
+   ADA: minimum 44x44px tap target, visible focus ring, clear disabled state
+   --------------------------------------------------------------------------- */
+.btn,
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: 0.65rem var(--space-lg);
+  min-height: 44px;           /* ADA minimum touch target */
+  min-width: 44px;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  font-family: inherit;
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+/* Primary button — orange */
+.btn,
+.btn-primary,
+button[type="submit"] {
+  background-color: var(--color-accent);
+  color: #000;                /* black on orange = 7:1 contrast ratio */
+  border-color: var(--color-accent);
+}
+
+.btn:hover,
+.btn-primary:hover,
+button[type="submit"]:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* ADA: keyboard focus ring on all buttons */
+.btn:focus,
+button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Secondary / outline button */
+.btn-secondary {
+  background: transparent;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-secondary:hover {
+  background: rgba(240, 165, 0, 0.12);
+}
+
+/* Danger button */
+.btn-danger {
+  background-color: var(--color-error);
+  color: #000;
+  border-color: var(--color-error);
+}
+
+.btn-danger:hover { filter: brightness(0.9); }
+
+/* Ghost / text button */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: transparent;
+}
+
+.btn-ghost:hover { color: var(--color-text); background: var(--color-surface-alt); }
+
+/* Disabled state — ADA: must look and behave disabled */
+.btn:disabled,
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Small button variant */
+.btn-sm {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+}
+
+/* Full-width button */
+.btn-block { width: 100%; }
+
+
+/* ---------------------------------------------------------------------------
+   8. Forms & Inputs
+   ADA: labels always visible, error messages linked via aria-describedby,
+        focus ring on every input, color not the only error indicator
+   --------------------------------------------------------------------------- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+}
+
+label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ADA: required field indicator with aria-hidden span */
+label .required {
+  color: var(--color-error);
+  margin-left: 2px;
+  aria-hidden: true;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.65rem var(--space-md);
+  min-height: 44px;             /* ADA minimum touch target */
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  appearance: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+}
+
+/* ADA: error state uses border + icon, not color alone */
+input.input-error,
+select.input-error,
+textarea.input-error {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.3);
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b2bec3' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-md) center;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+/* Field-level error message */
+.field-error {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.field-error::before {
+  content: "⚠";               /* icon so error isn't only color */
+  font-size: 0.75rem;
+}
+
+
+/* ---------------------------------------------------------------------------
+   9. Cards
+   --------------------------------------------------------------------------- */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-lg);
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.card-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-accent);
+  margin-bottom: var(--space-sm);
+}
+
+.card-body { color: var(--color-text-muted); }
+
+/* Tool listing card */
+.tool-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  transition: border-color var(--transition), transform var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-3px);
+}
+
+.tool-card-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  background: var(--color-surface-alt);
+}
+
+.tool-card-body {
+  padding: var(--space-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.tool-card-footer {
+  padding: var(--space-sm) var(--space-md);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+
+/* ---------------------------------------------------------------------------
+   10. Auth Pages (Login, Register)
+   --------------------------------------------------------------------------- */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.auth-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-2xl);
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-card h1 {
+  font-size: var(--font-size-xl);
+  color: var(--color-accent);
+  margin-bottom: var(--space-xs);
+}
+
+.auth-card h2 {
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--space-xl);
+}
+
+
+/* ---------------------------------------------------------------------------
+   11. Landing Page
+   --------------------------------------------------------------------------- */
+.landing-hero {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.landing-hero h1 {
+  font-size: clamp(2rem, 6vw, 3.5rem);   /* fluid type — scales with viewport */
+  margin-bottom: var(--space-md);
+}
+
+.landing-hero p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  max-width: 600px;
+  margin: 0 auto var(--space-xl);
+}
+
+.feature-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  max-width: var(--max-width);
+  margin: var(--space-xl) auto;
+  padding: 0 var(--space-lg);
+}
+
+.feature-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.feature-card-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-md);
+  display: block;
+  /* ADA: decorative icons are aria-hidden in HTML */
+}
+
+.feature-card h3 {
+  color: var(--color-accent);
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-sm);
+}
+
+.feature-card p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .feature-cards { grid-template-columns: 1fr; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   12. Dashboard
+   --------------------------------------------------------------------------- */
+.dashboard {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.dashboard h1 {
+  font-size: var(--font-size-3xl);
+  border-bottom: 2px solid var(--color-accent);
+  padding-bottom: var(--space-sm);
+}
+
+.dashboard section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-lg);
+}
+
+.dashboard section h2 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-md);
+  color: var(--color-accent);
+}
+
+
+/* ---------------------------------------------------------------------------
+   13. Tables (Reservation lists)
+   ADA: tables have captions, th scope attributes in HTML
+   --------------------------------------------------------------------------- */
+.table-wrapper {
+  overflow-x: auto;           /* horizontal scroll on small screens */
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+}
+
+.reservation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.reservation-table caption {
+  caption-side: top;
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.reservation-table th {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.reservation-table td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+/* ADA: visible row hover without relying only on color */
+.reservation-table tbody tr:hover td {
+  background-color: var(--color-surface-alt);
+}
+
+.reservation-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+
+/* ---------------------------------------------------------------------------
+   14. Status Badges
+   ADA: status uses text label, not color alone
+   --------------------------------------------------------------------------- */
+.badge,
+.status {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-requested  { background: rgba(116, 185, 255, 0.2); color: var(--status-requested);  border: 1px solid var(--status-requested); }
+.status-approved   { background: rgba(85, 239, 196, 0.2);  color: var(--status-approved);   border: 1px solid var(--status-approved); }
+.status-picked_up  { background: rgba(253, 203, 110, 0.2); color: var(--status-picked-up);  border: 1px solid var(--status-picked-up); }
+.status-returned   { background: rgba(162, 155, 254, 0.2); color: var(--status-returned);   border: 1px solid var(--status-returned); }
+.status-denied     { background: rgba(255, 107, 107, 0.2); color: var(--status-denied);     border: 1px solid var(--status-denied); }
+.status-cancelled  { background: rgba(178, 190, 195, 0.2); color: var(--status-cancelled);  border: 1px solid var(--status-cancelled); }
+
+.badge-available { background: rgba(85, 239, 196, 0.15); color: var(--color-success); }
+.badge-hidden    { background: rgba(253, 203, 110, 0.15); color: var(--color-warning); }
+.badge-admin     { background: rgba(240, 165, 0, 0.15);   color: var(--color-accent); }
+
+
+/* ---------------------------------------------------------------------------
+   15. Notifications
+   --------------------------------------------------------------------------- */
+.notifications {
+  background: rgba(240, 165, 0, 0.08);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-md);
+}
+
+.notifications h2 {
+  color: var(--color-accent);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-md);
+}
+
+.notification-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  flex-wrap: wrap;
+}
+
+.notification-item:last-child { border-bottom: none; }
+
+
+/* ---------------------------------------------------------------------------
+   16. Alert / Message Banners
+   ADA: role="alert" in HTML, icon + text (not color alone)
+   --------------------------------------------------------------------------- */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--border-radius);
+  border-left: 4px solid;
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-md);
+}
+
+.alert-error   { background: rgba(255,107,107,0.1); border-color: var(--color-error);   color: var(--color-error); }
+.alert-success { background: rgba(85,239,196,0.1);  border-color: var(--color-success); color: var(--color-success); }
+.alert-warning { background: rgba(253,203,110,0.1); border-color: var(--color-warning); color: var(--color-warning); }
+.alert-info    { background: rgba(116,185,255,0.1); border-color: #74b9ff;              color: #74b9ff; }
+
+/* Backward compat with existing error-message class */
+.error-message {
+  color: var(--color-error);
+  background: rgba(255,107,107,0.1);
+  border: 1px solid var(--color-error);
+  border-radius: var(--border-radius);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-md);
+}
+
+.error-message::before { content: "⚠ "; }
+
+
+/* ---------------------------------------------------------------------------
+   17. Tool List (browse page)
+   --------------------------------------------------------------------------- */
+.tool-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-lg);
+}
+
+@media (max-width: 480px) {
+  .tool-list { grid-template-columns: 1fr; }
+}
+
+.tool-list li a {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tool-list li a:hover { color: var(--color-accent); }
+
+
+/* ---------------------------------------------------------------------------
+   18. Message Thread
+   --------------------------------------------------------------------------- */
+.message-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 500px;
+  overflow-y: auto;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+}
+
+.message-bubble {
+  max-width: 75%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--border-radius-lg);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.message-bubble.sent {
+  align-self: flex-end;
+  background: rgba(240, 165, 0, 0.2);
+  border: 1px solid var(--color-accent);
+}
+
+.message-bubble.received {
+  align-self: flex-start;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.message-meta {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.message-form {
+  display: flex;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+}
+
+.message-form textarea {
+  flex: 1;
+  min-height: 60px;
+  resize: none;
+}
+
+
+/* ---------------------------------------------------------------------------
+   19. Modals (Confirm dialogs)
+   ADA: role="dialog" aria-modal="true" aria-labelledby in HTML
+   --------------------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: var(--space-lg);
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 4px solid var(--color-accent);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-xl);
+  width: 100%;
+  max-width: 480px;
+}
+
+.modal h2 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-md);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+
+/* ---------------------------------------------------------------------------
+   20. Loading States
+   ADA: aria-live="polite" on the container in HTML
+   --------------------------------------------------------------------------- */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: var(--space-xl) auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-xl);
+}
+
+
+/* ---------------------------------------------------------------------------
+   21. Footer
+   --------------------------------------------------------------------------- */
+.footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin-top: auto;
+}
+
+
+/* ---------------------------------------------------------------------------
+   22. Utility Classes
+   --------------------------------------------------------------------------- */
+.text-center  { text-align: center; }
+.text-right   { text-align: right; }
+.text-muted   { color: var(--color-text-muted); }
+.text-accent  { color: var(--color-accent); }
+.text-error   { color: var(--color-error); }
+.text-success { color: var(--color-success); }
+.text-sm      { font-size: var(--font-size-sm); }
+.text-lg      { font-size: var(--font-size-lg); }
+.font-bold    { font-weight: 700; }
+
+.mt-sm  { margin-top: var(--space-sm); }
+.mt-md  { margin-top: var(--space-md); }
+.mt-lg  { margin-top: var(--space-lg); }
+.mb-sm  { margin-bottom: var(--space-sm); }
+.mb-md  { margin-bottom: var(--space-md); }
+.mb-lg  { margin-bottom: var(--space-lg); }
+
+.sr-only {
+  /* ADA: visually hidden but readable by screen readers */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-lg) 0;
+}
+
+
+/* ---------------------------------------------------------------------------
+   23. Print Styles (basic)
+   --------------------------------------------------------------------------- */
+@media print {
+  .navbar, .footer, .btn, button { display: none; }
+  body { background: white; color: black; }
+  a { color: black; text-decoration: underline; }
+}

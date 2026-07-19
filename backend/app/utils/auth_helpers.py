@@ -66,3 +66,17 @@ def create_access_token(data: dict[str, Any]) -> str:
     # Encode the token
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+
+def normalize_email(value: str) -> str:
+    """Helper function to strip spaces and lowercase emails."""
+    if isinstance(value, str):
+        return value.strip().lower()
+    return value
+
+
+def strip_spaces(value: str) -> str:
+    """Helper function to strip spaces from strings."""
+    if isinstance(value, str):
+        return value.strip()
+    return value

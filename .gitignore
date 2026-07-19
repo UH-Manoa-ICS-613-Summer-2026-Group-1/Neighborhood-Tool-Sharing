@@ -1,6 +1,7 @@
 # Testing cach
 /.pytest_cache
 /.ruff_cache
+backend/.coverage
 
 # Environments
 .env

@@ -32,12 +32,27 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          STORAGE_INTERNAL_ENDPOINT: ${{ secrets.STORAGE_INTERNAL_ENDPOINT }}
+          STORAGE_EXTERNAL_ENDPOINT: ${{ secrets.STORAGE_EXTERNAL_ENDPOINT }}
+          MINIO_BUCKET_NAME: ${{ secrets.MINIO_BUCKET_NAME }}
         run: |
-          docker compose run --rm web pytest
+          docker compose run --rm web \
+          python -m pytest tests \
+          --cov=app \
+          --cov-branch \
+          --cov-report=term-missing
           docker compose down --volumes
         
       - name: Run Ruff linter 
         run: python -m ruff check . 
+
+      # Bandit tests with Docker
+      - name: Run Bandit tests (medium/high severity, high confidence) 
+        run: |
+          python -m bandit \
+          -r backend/app -ll -iii
 
       - name: Run SQLFluff linter 
         run: python -m sqlfluff lint .
@@ -68,10 +83,13 @@ jobs:
         run: npm ci
 
       - name: Run frontend tests 
-        run: npm run test    
+        run: npm run test:coverage    
         
       - name: Run linter 
         run: npm run lint 
 
-      - name: Run build
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run production build
         run: npm run build

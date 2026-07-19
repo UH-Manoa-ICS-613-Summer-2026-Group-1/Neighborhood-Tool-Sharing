@@ -32,6 +32,41 @@ To stop the server press `Ctrl + C` in the termial or use:
 docker compose down
 ```
 
+To see server logs use, run:
+```bash
+docker compose logs -f
+```
+Also, the server logs are visible in the docker desktop application.
+
+## Local Frontend Setup
+ 
+The frontend is a React + TypeScript app built with [Vite](https://vite.dev/).
+
+Quick local start:
+ ```bash
+./frontend/scripts/quick_local_start.sh
+```
+The script:
+- Installs/upgrades npm and dependencies
+- Run frontend node server
+
+Prerequisites:
+- [Node.js](https://nodejs.org/) (LTS version recommended) and npm
+Navigate to the frontend directory (`cd frontend`)
+ 
+For the first setup, or after pulling changes that modify `package.json`, install dependencies:
+```bash
+npm install
+```
+ 
+To start the local development server:
+```bash
+npm run dev
+```
+This will start the app in your terminal and print a local URL (typically `http://localhost:5173`) where you can view it in your browser. Note that the frontend expects the backend API to be running (see "Local Backend Setup" below) since requests to `/api/...` are proxied/served by the backend.
+ 
+To stop the dev server, press `Ctrl + C` in the terminal.
+
 ## Database Migrations
 Alembic is used to manage database versions.
 
@@ -56,13 +91,34 @@ To undo the very last database migration that was applied use:
 docker compose exec web alembic downgrade -1
 ```
 
+To create a view, generate an empty migration:
+```bash
+docker compose exec web alembic revision -m "create view_name"
+```
+Open the migration file and add the SQL statement to create the view.
+
+Views names should be placed in backend/alembic/env.py IGNORED_VIEWS set to be ignored by alembic autogenerate command.
+
+If alembic migration fails, and you stuck in the middle of the migration, you can clean the container volume (storage).
+Next command will stop the container and delete all tables, views, and data from database:
+```bash
+docker compose down -v
+```
+
+You can undo all migrations, which also deletes all tables, views, and data if run successfully:
+```bash
+docker compose exec web alembic downgrade base
+```
+These commands are useful for testing clean environment.
+
 ## Seed Data
 
 Run docker container and use the following command in separate terminal to seed the database:
 ```bash
 docker compose exec web python seed.py
 ```
-Seed include: user_roles, user_statuses, users
+Seed include: user_roles, user_statuses, users, invitations, tool_types, tools_photos, tools, photos,
+reservations
 
 ## Backend Scripts
 
@@ -99,6 +155,29 @@ Install dependencies:
 ```Bash
 pip install -r requirements.txt
 ```
+## Media Storage Architecture (MinIO)
+
+### Overview
+The project utilizes MinIO, an open-source, high-performance object storage server. It serves as the dedicated bucket reservoir for storing user-uploaded images.
+
+### Storage Container
+The project uses Chainguard MinIO image.
+
+### How It Works
+To keep the server fast, the frontend does not send image files to the API. Instead, the API gives the frontend a temporary, secure upload ticket to upload images to the local MinIO storage server.
+- Request Ticket: The frontend asks the backend for ticket to upload an image file.
+- Security Check: The backend checks that the file extension is safe (.jpg, .png, etc.), creates a secure unique filename, and asks MinIO for a short-lived upload ticket.
+- Direct Upload: The frontend gets the ticket and sends the image file straight to MinIO. The images never has to pass through the main API server.
+- Save Tool: Once the upload succeeds, the frontend tells the backend the permanent link to the image.
+
+### Local Administration Web UI (MinIO Console)
+To inspect, delete, or monitor raw binary assets manually during local environment testing and debugging:
+
+Open your browser and navigate to the MinIO Console dashboard address (http://localhost:9001).
+
+Log in using your root credentials defined inside your .env configuration file:
+- MINIO_ROOT_USER
+- MINIO_ROOT_PASSWORD
 
 ## API Specifications
 Open http://localhost:5000/docs
@@ -115,6 +194,8 @@ Open http://localhost:5000/docs
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [ruff](https://docs.astral.sh/ruff/): python linter
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
+        -   [Bandit](https://bandit.readthedocs.io/en/latest/) python security linter
+            - \*Note: Bandit is currently configured to include only medium and high severity, high confidence findings
     -   #### Test Definitions
         -   The backend python tests reside in the [backend/tests folder](./backend/tests)
 -   ### Frontend Tests
@@ -125,6 +206,7 @@ Open http://localhost:5000/docs
     -   #### Testing Types
         -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
         -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
+            -   The [No Unsanitized](https://github.com/mozilla/eslint-plugin-no-unsanitized/blob/main/README.md)" ESLint plugin is used to detect unsafe DOM injection patterns to reduce the risk of cross-site scripting (XSS)
         -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
     -   #### Test Definitions
         -   The frontend React tests and the vitest configuration file reside in the [frontend/tests folder](./frontend/tests/)

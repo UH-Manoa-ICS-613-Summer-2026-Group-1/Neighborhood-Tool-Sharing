@@ -1,7 +1,14 @@
 import sys
 
 from app.database import SessionLocal
-from app.utils.seeder import run_admin_seeds, run_lookup_seeds, run_users_seeds
+from app.utils.seeder import (
+    run_admin_seeds,
+    run_invitaions_seeds,
+    run_lookup_seeds,
+    run_reservations_seeds,
+    run_tools_seeds,
+    run_users_seeds,
+)
 
 
 def seed_database():
@@ -12,10 +19,19 @@ def seed_database():
     try:
         print("Seed: start seeding lookup tables (user_roles, user_statuses).")
         run_lookup_seeds(db)
-        print("Seed: start seeding users table.")
+        print("Seed: start seeding users table with photos.")
         run_users_seeds(db)
         print("Seed: start seeding admin in users table.")
         run_admin_seeds(db)
+        print("Seed: start seeding invitaions table.")
+        run_invitaions_seeds(db)
+        print(
+            "Seed: start seeding tools, photos (only tools photos), and tool_photos table."
+        )
+        run_tools_seeds(db)
+        print("Seed: start seeding reservations table.")
+        run_reservations_seeds(db)
+        print("Seed: seeding completed.")
     except Exception as e:
         db.rollback()
         print(f"Seed: seeding failed: {e}", file=sys.stderr)

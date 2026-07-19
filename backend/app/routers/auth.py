@@ -1,25 +1,24 @@
 """
 Authentication routers.
-Handles registration, login, logout.
+Handles registration, login, logout, and password reset.
 """
 
 import jwt
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
+from app.models.invitation import InvitationStatus
 from app.models.user import User, UserRole, UserStatus
+from app.routers.invitation import get_valid_invite
 from app.schemas.auth import (
-    DetailError,
-    MessageResponse,
-    ProtectedProfileResponse,
     TokenResponse,
     UserLoginRequest,
     UserRegisterRequest,
 )
+from app.schemas.common import DetailError, MessageResponse
 from app.utils.auth_helpers import (
     ALGORITHM,
     SECRET_KEY,
@@ -27,9 +26,6 @@ from app.utils.auth_helpers import (
     get_password_hash,
     verify_password,
 )
-from app.utils.dependencies import get_current_user
-
-load_dotenv()
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -40,12 +36,20 @@ security_scheme = HTTPBearer()
     "/register",
     status_code=status.HTTP_201_CREATED,
     response_model=MessageResponse,
-    responses={400: {"model": DetailError}},
+    responses={400: {"model": DetailError}, 404: {"model": DetailError}},
 )
 def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
     """
     Create a new user account.
     """
+    invite = get_valid_invite(user_data.invite_token, db)
+
+    if invite.recipient_email.lower() != user_data.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration failed. This invitation link was issued to a different email address.",
+        )
+
     # Check if user already exists in the database
     user = db.query(User).filter(User.email == user_data.email).first()
     if user:
@@ -58,16 +62,29 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
     default_role = db.query(UserRole).filter(UserRole.code == "USER").first()
     default_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
 
+    # Handle middle name is empty string
+    middle_name = None
+    if user_data.middle_name is not None:
+        middle_name = user_data.middle_name if user_data.middle_name != "" else None
+
+    # Hash password
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
         password=hashed_password,
-        name=user_data.email.split("@")[0],  # Temporary name
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        middle_name=middle_name,
         status=default_status,  # ACTIVE status
         role=default_role,  # USER role
     )
 
+    # Add the new user to the database
     db.add(new_user)
+
+    # Set invite token status to USED
+    invite.status = InvitationStatus.USED
+
     db.commit()
 
     return {"message": "User registered successfully."}
@@ -147,19 +164,3 @@ def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme))
     TOKEN_BLOCKLIST.add(jti)
 
     return {"message": "Successfully logged out."}
-
-
-# A test route
-@router.get(
-    "/protected-profile",
-    response_model=ProtectedProfileResponse,
-    responses={401: {"model": DetailError}, 403: {"model": DetailError}},
-)
-def get_profile(current_user: User = Depends(get_current_user)):
-    """
-    This route is locked! Only users passing a valid JWT can see it.
-    """
-    return {
-        "message": "Access granted! You are inside a locked route.",
-        "user_details": current_user,
-    }
