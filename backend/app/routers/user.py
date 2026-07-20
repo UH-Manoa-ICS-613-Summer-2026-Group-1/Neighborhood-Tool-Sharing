@@ -3,6 +3,8 @@ User profile routers.
 Handles getting and updating user profiles, changing password.
 """
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -15,6 +17,7 @@ from app.models.user import (
 from app.schemas.common import DetailError, MessageResponse
 from app.schemas.user import (
     ChangePasswordRequest,
+    CurrentUserProfileResponse,
     UserProfileResponse,
     UserProfileUpdateRequest,
 )
@@ -30,17 +33,17 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 
 @router.get(
     "/me",
-    response_model=UserProfileResponse,
+    response_model=CurrentUserProfileResponse,
     responses={
         401: {"model": DetailError},
         403: {"model": DetailError},
     },
 )
-def get_user_profile(
+def get_current_user_profile(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """
-    Retrieve a user profile.
+    Retrieve a current user profile.
     """
     profile = (
         db.query(UserProfileView)
@@ -60,7 +63,7 @@ def get_user_profile(
 
 @router.patch(
     "/me",
-    response_model=UserProfileResponse,
+    response_model=CurrentUserProfileResponse,
     responses={
         401: {"model": DetailError},
         403: {"model": DetailError},
@@ -210,3 +213,34 @@ def change_user_password(
     db.commit()
 
     return {"message": "Password updated successfully."}
+
+
+@router.get(
+    "/{user_id}",
+    response_model=UserProfileResponse,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_user_profile(
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve a user profile.
+    """
+    profile = (
+        db.query(UserProfileView).filter(UserProfileView.user_id == user_id).first()
+    )
+
+    # Not found or not active
+    if not profile or bool(profile.status_code != "ACTIVE"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found or is currently unavailable.",
+        )
+
+    return profile
