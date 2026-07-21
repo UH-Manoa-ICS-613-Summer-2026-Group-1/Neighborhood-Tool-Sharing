@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .common import CleanStr
 
@@ -25,8 +25,7 @@ class ReviewResponse(BaseModel):
     comment: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReviewDetailsResponse(BaseModel):
@@ -48,3 +47,5 @@ class ReviewDetailsResponse(BaseModel):
     rating: int
     comment: str | None
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

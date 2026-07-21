@@ -6,6 +6,7 @@ from app.utils.seeder import (
     run_invitaions_seeds,
     run_lookup_seeds,
     run_reservations_seeds,
+    run_review_seeds,
     run_tools_seeds,
     run_users_seeds,
 )
@@ -31,6 +32,8 @@ def seed_database():
         run_tools_seeds(db)
         print("Seed: start seeding reservations table.")
         run_reservations_seeds(db)
+        print("Seed: start seeding reviews table.")
+        run_review_seeds(db)
         print("Seed: seeding completed.")
     except Exception as e:
         db.rollback()
