@@ -190,6 +190,8 @@ Open http://localhost:5000/docs
         -   Start the docker containers: `docker-compose up`
         -   Execute the [run_backend_qa_checks.sh](./qa/scripts/run_backend_qa_checks.sh) script: `bash ./qa/scripts/run_backend_qa_checks.sh`
             -   This will automatically execute all of the defined automated tests and linters
+        -   Before pushing changes from their feature branch or opening a pull request, developers can run the backend checks script
+        -   Developers should review any reported issue, correct it, and rerun the backend testing script until all checks pass
     -   #### Testing Types
         -   [pytest](https://docs.pytest.org/en/stable/)
         -   [Ruff](https://docs.astral.sh/ruff/): python linter
@@ -199,6 +201,8 @@ Open http://localhost:5000/docs
         -   [SQLFluff](https://pypi.org/project/sqlfluff/): PostgreSQL linter
         -   [Bandit](https://bandit.readthedocs.io/en/latest/) python security linter
             - \*Note: Bandit is currently configured to include only medium and high severity, high confidence findings
+        -   [mypy](https://mypy-lang.org/) static type checker
+            - \*Note: mypy is currently only enabled for the [on-demand tests](#on-demand-tests) until the findings and resolutions can be reviewed with the developers
     -   #### Test Definitions
         -   The backend python tests reside in the [backend/tests folder](./backend/tests)
 -   ### Frontend Tests
@@ -206,6 +210,8 @@ Open http://localhost:5000/docs
         -   Using bash (or git-bash), change to the root directory of the working copy of the repository
         -   Execute the [run_frontend_qa_checks.sh](./qa/scripts/run_frontend_qa_checks.sh) script: `bash ./qa/scripts/run_frontend_qa_checks.sh`
             -   This will automatically execute all of the defined automated tests, linters, and build process
+        -   Before pushing changes from their feature branch or opening a pull request, developers can run the  frontend checks script
+        -   Developers should review any reported issue, correct it, and rerun the frontend testing script until all checks pass
     -   #### Testing Types
         -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
         -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
@@ -217,7 +223,9 @@ Open http://localhost:5000/docs
     -   The CI pipeline is implemented using GitHub Actions
     -   The workflow definition is defined in [ci.yml](./.github/workflows/ci.yml) for both backend and frontend tests
     -   The CI pipeline runs each time a pull request is submitted and each time code is merged to the main branch
-    -   \*Note: The ci.yml file must stay in-sync with the [on-demand backend](#on-demand-tests) and [frontend](#on-demand-tests-1) tests to ensure they are consistent
+    -   \*Note: The ci.yml file should stay synchronized with the [on-demand backend](#on-demand-tests) and [frontend](#on-demand-tests-1) tests to ensure they are consistent
+    -   The backend and frontend jobs runs independently to allow developers to see the results appropriate for their team role even if the other job fails 
+
 
 ## Data Dictionary
 -   The [data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql) script contains the DDL necessary to define the data dictionary views in the PostgreSQL database
