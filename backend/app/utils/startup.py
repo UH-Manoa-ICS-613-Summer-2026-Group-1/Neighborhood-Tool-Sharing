@@ -14,6 +14,10 @@ from app.utils.storage import BUCKET_NAME, generate_dummy_image, internal_s3
 # Create a bucket for images storage if it doesn't exist
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # check if the required BUCKET_NAME variable is undefined or blank
+    if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
+        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
+
     try:
         internal_s3.head_bucket(Bucket=BUCKET_NAME)
         print(f"Storage bucket '{BUCKET_NAME}' verified.")
