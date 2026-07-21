@@ -1,7 +1,36 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "../src/App";
+
+// Mock all protected pages so the router tests stay focused on routing only
+// and don't trigger real API calls from nested components
+
+vi.mock("../src/pages/Dashboard/Dashboard", () => ({
+  default: () => <div>Dashboard Page</div>,
+}));
+
+vi.mock("../src/pages/Tools/AddTool", () => ({
+  default: () => <div>Add Tool Page</div>,
+}));
+
+vi.mock("../src/pages/Tools/ToolDetail", () => ({
+  default: () => <div>Tool Detail Page</div>,
+}));
+
+vi.mock("../src/pages/Profile/Profile", () => ({
+  default: () => <div>Profile Page</div>,
+}));
+
+vi.mock("../src/pages/Invite/SendInvite", () => ({
+  default: () => <div>Send Invite Page</div>,
+}));
+
+// ADDED BY MARITZA — 07/19/2026
+// Mock the new RequestReservation page so routing tests don't trigger real API calls
+vi.mock("../src/pages/Reservations/RequestReservation", () => ({
+  default: () => <div>Request Reservation Page</div>,
+}));
 
 // Integration tests use the real router with browser history.
 describe("App routing (integration)", () => {
