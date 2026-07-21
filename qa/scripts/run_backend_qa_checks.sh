@@ -28,6 +28,9 @@ docker compose exec web pytest tests \
 --cov-branch \
 --cov-report=term-missing  
 
+echo "Running Ruff linter..."
+python -m ruff check .
+
 echo "Checking Ruff formatting..."
 python -m ruff format --check .
 

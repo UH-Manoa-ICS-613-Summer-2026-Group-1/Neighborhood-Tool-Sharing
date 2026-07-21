@@ -44,7 +44,10 @@ jobs:
           --cov-branch \
           --cov-report=term-missing
           docker compose down --volumes
-        
+
+      - name: Run Ruff linter 
+        run: python -m ruff . 
+          
       - name: Run Ruff format checker 
         run: python -m ruff format --check . 
 
