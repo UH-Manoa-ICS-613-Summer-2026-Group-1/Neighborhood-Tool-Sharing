@@ -226,7 +226,6 @@ Open http://localhost:5000/docs
     -   \*Note: The ci.yml file should stay synchronized with the [on-demand backend](#on-demand-tests) and [frontend](#on-demand-tests-1) tests to ensure they are consistent
     -   The backend and frontend jobs runs independently to allow developers to see the results appropriate for their team role even if the other job fails 
 
-
 ## Data Dictionary
 -   The [data_dictionary_queries.sql](./backend/SQL/data_dictionary_queries.sql) script contains the DDL necessary to define the data dictionary views in the PostgreSQL database
 -   ### Updating the Data Dictionary
