@@ -573,7 +573,7 @@ def run_review_seeds(db: Session):
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 1, 'Returned with damage'
             )
-            ON CONFLICT (id) DO NOTHING;
+            ON CONFLICT (reservation_id, reviewer_id) DO NOTHING;
         """)
     )
     db.commit()
