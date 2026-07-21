@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.photo import Photo
+from app.models.review import ReviewView
 from app.models.user import (
     User,
     UserProfileView,
 )
 from app.schemas.common import DetailError, MessageResponse
+from app.schemas.review import ReviewDetailsResponse
 from app.schemas.user import (
     ChangePasswordRequest,
     CurrentUserProfileResponse,
@@ -244,3 +246,41 @@ def get_user_profile(
         )
 
     return profile
+
+
+@router.get(
+    "/{user_id}/reviews",
+    response_model=list[ReviewDetailsResponse],
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_user_reviews(
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all reviews received by a specific user.
+    """
+    # Verify the user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    # Fetch all reviews where this user is the reviewee
+    reviews = (
+        db.query(ReviewView)
+        .filter(ReviewView.reviewee_id == user_id)
+        .order_by(ReviewView.created_at.desc())
+        .all()
+    )
+
+    # Return a list of reviews
+    return [review for review in reviews]

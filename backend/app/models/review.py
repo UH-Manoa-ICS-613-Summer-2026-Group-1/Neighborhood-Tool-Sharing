@@ -25,7 +25,10 @@ if TYPE_CHECKING:
 # - reviews (id, reservation_id, reviewer_id, reviewee_id, rating, comment, created_at)
 
 # Views:
-# -
+# - reviews_v (review_id, reservation_id,
+#              reviewer_id, reviewer_first_name, reviewer_last_name, reviewer_photo_url,
+#              reviewee_id, reviewee_first_name, reviewee_last_name, reviewee_photo_url,
+#              rating, comment, created_at)
 
 
 class Review(Base):
@@ -94,17 +97,17 @@ class ReviewView(Base):
     review_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     reservation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
 
-    reviewer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
-    reviewer_first_name: Mapped[str] = mapped_column(String)
-    reviewer_middle_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    reviewer_last_name: Mapped[str] = mapped_column(String)
-    reviewer_photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
-
     reviewee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     reviewee_first_name: Mapped[str] = mapped_column(String)
     reviewee_middle_name: Mapped[str | None] = mapped_column(String, nullable=True)
     reviewee_last_name: Mapped[str] = mapped_column(String)
     reviewee_photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    reviewer_first_name: Mapped[str] = mapped_column(String)
+    reviewer_middle_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    reviewer_last_name: Mapped[str] = mapped_column(String)
+    reviewer_photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     rating: Mapped[int] = mapped_column(Integer)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
-from app.models.review import Review
+from app.models.review import Review, ReviewView
 from app.models.tool import Tool, ToolStatus
 from app.models.user import User
 from app.schemas.common import DetailError, MessageResponse
@@ -23,7 +23,7 @@ from app.schemas.reservation import (
     ReservationResponse,
     ReservationUpdateRequest,
 )
-from app.schemas.review import ReviewRequest, ReviewResponse
+from app.schemas.review import ReviewDetailsResponse, ReviewRequest, ReviewResponse
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/reservations", tags=["Reservations"])
@@ -743,3 +743,38 @@ def submit_reservation_review(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save review.",
         )
+
+
+@router.get(
+    "/{reservation_id}/reviews",
+    response_model=list[ReviewDetailsResponse],
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_reservation_reviews(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all reviews (0 to 2) associated with a given reservation.
+    """
+    # Verify reservation exists
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation record not found.",
+        )
+
+    # Fetch from the view filtered by reservation_id
+    reviews = (
+        db.query(ReviewView).filter(ReviewView.reservation_id == reservation_id).all()
+    )
+
+    # Return a list of reviews
+    return [review for review in reviews]
