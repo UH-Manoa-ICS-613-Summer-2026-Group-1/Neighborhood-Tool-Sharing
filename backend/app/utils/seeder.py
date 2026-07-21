@@ -529,3 +529,51 @@ def run_reservations_seeds(db: Session):
         """)
     )
     db.commit()
+
+
+def run_review_seeds(db: Session):
+    """
+    Seed reviews table
+    """
+    db.execute(
+        text("""
+            INSERT INTO reviews (reservation_id, reviewer_id, reviewee_id, rating, comment) VALUES
+            (
+                'd0000001-0000-0000-0000-000000000004', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                5, 'Returned on time'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000004',(SELECT id FROM users WHERE email = 'seed2@example.com'),
+                (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                4, 'Good tool'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000007', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                1, 'Returned late'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000010', (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                5, 'Returned on time'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000010', (SELECT id FROM users WHERE email = 'seed2@example.com'),
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                5, 'Great tool'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000015', (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                1, 'Bad tool'
+            ),
+            (
+                'd0000001-0000-0000-0000-000000000019', (SELECT id FROM users WHERE email = 'seed1@example.com'),
+                (SELECT id FROM users WHERE email = 'seed4@example.com'),
+                1, 'Returned with damage'
+            )
+            ON CONFLICT (reservation_id, reviewer_id) DO NOTHING;
+        """)
+    )
+    db.commit()

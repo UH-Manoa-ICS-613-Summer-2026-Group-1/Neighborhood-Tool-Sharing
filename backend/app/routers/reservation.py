@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
+from app.models.review import Review, ReviewView
 from app.models.tool import Tool, ToolStatus
 from app.models.user import User
 from app.schemas.common import DetailError, MessageResponse
@@ -22,6 +23,7 @@ from app.schemas.reservation import (
     ReservationResponse,
     ReservationUpdateRequest,
 )
+from app.schemas.review import ReviewDetailsResponse, ReviewRequest, ReviewResponse
 from app.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/reservations", tags=["Reservations"])
@@ -646,3 +648,133 @@ def cancel_reservation(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process cancel action.",
         )
+
+
+@router.post(
+    "/{reservation_id}/reviews",
+    response_model=ReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def submit_reservation_review(
+    reservation_id: uuid.UUID,
+    review_data: ReviewRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Submit a peer review for a completed reservation listing.
+    """
+    # Verify the reservation exists
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation not found.",
+        )
+
+    # Verify the reservation is complete
+    if reservation.status != "RETURNED":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reviews can only be submitted for completed reservations.",
+        )
+
+    # Ensure the current user is actually part of this reservation
+    is_borrower = reservation.borrower_id == current_user.id
+    is_lender = reservation.tool.owner_id == current_user.id
+
+    if not (is_borrower or is_lender):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to review a reservation you were not a party to.",
+        )
+
+    # If already reviewed
+    already_reviewed = (
+        db.query(Review)
+        .filter(
+            Review.reservation_id == reservation_id,
+            Review.reviewer_id == current_user.id,
+        )
+        .first()
+    )
+    if already_reviewed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have already submitted a review for this reservation.",
+        )
+
+    # Determine the reviewee
+    # If the current user is the borrower, the reviewee is the owner, and vice versa.
+    if is_borrower:
+        reviewee_id = reservation.tool.owner_id
+    else:
+        reviewee_id = reservation.borrower_id
+
+    # Handle comment field
+    comment = None
+    if review_data.comment is not None:
+        comment = review_data.comment if review_data.comment != "" else None
+
+    # Build and save the review record
+    new_review = Review(
+        reservation_id=reservation_id,
+        reviewer_id=current_user.id,
+        reviewee_id=reviewee_id,
+        rating=review_data.rating,
+        comment=comment,
+    )
+
+    try:
+        db.add(new_review)
+        db.commit()
+        db.refresh(new_review)
+        return new_review
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to save review: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save review.",
+        )
+
+
+@router.get(
+    "/{reservation_id}/reviews",
+    response_model=list[ReviewDetailsResponse],
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_reservation_reviews(
+    reservation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all reviews (0 to 2) associated with a given reservation.
+    """
+    # Verify reservation exists
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation record not found.",
+        )
+
+    # Fetch from the view filtered by reservation_id
+    reviews = (
+        db.query(ReviewView).filter(ReviewView.reservation_id == reservation_id).all()
+    )
+
+    # Return a list of reviews
+    return [review for review in reviews]

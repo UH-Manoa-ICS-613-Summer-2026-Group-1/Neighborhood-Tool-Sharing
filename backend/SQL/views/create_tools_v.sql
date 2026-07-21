@@ -22,6 +22,7 @@ SELECT
                 'id', photos.id,
                 'url', photos.url
             )
+            ORDER BY tool_photos.id ASC
         ) FILTER (WHERE photos.id IS NOT NULL),
         '[]'::jsonb
     ) AS tool_photos

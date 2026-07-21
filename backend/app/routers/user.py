@@ -3,18 +3,23 @@ User profile routers.
 Handles getting and updating user profiles, changing password.
 """
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.photo import Photo
+from app.models.review import ReviewView
 from app.models.user import (
     User,
     UserProfileView,
 )
 from app.schemas.common import DetailError, MessageResponse
+from app.schemas.review import ReviewDetailsResponse
 from app.schemas.user import (
     ChangePasswordRequest,
+    CurrentUserProfileResponse,
     UserProfileResponse,
     UserProfileUpdateRequest,
 )
@@ -22,24 +27,25 @@ from app.utils.auth_helpers import (
     get_password_hash,
     verify_password,
 )
-from app.utils.dependencies import get_current_user
+from app.utils.dependencies import get_current_user, validate_urls_ownership
+from app.utils.storage import BUCKET_NAME, internal_s3
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
 @router.get(
     "/me",
-    response_model=UserProfileResponse,
+    response_model=CurrentUserProfileResponse,
     responses={
         401: {"model": DetailError},
         403: {"model": DetailError},
     },
 )
-def get_user_profile(
+def get_current_user_profile(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """
-    Retrieve a user profile.
+    Retrieve a current user profile.
     """
     profile = (
         db.query(UserProfileView)
@@ -59,7 +65,7 @@ def get_user_profile(
 
 @router.patch(
     "/me",
-    response_model=UserProfileResponse,
+    response_model=CurrentUserProfileResponse,
     responses={
         401: {"model": DetailError},
         403: {"model": DetailError},
@@ -98,9 +104,22 @@ def update_user_profile(
 
     # Convert payload to a dictionary containing only the keys explicitly sent by the frontend
     sent_data = user_details.model_dump(exclude_unset=True)
+
+    # For orphan photo deletion from storage
+    url_to_delete_from_storage = None
+
     if "photo_url" in sent_data:
-        # There is a photo_url key and user_details.photo_url is not null
+        # Fetch the user's current photo if one exists
+        old_photo = None
+        if current_user.photo_id:
+            old_photo = (
+                db.query(Photo).filter(Photo.id == current_user.photo_id).first()
+            )
+
+        # Check that the currecnt user does not use someone else's photo from storage
         if user_details.photo_url:
+            validate_urls_ownership(current_user, [user_details.photo_url])
+            # Map the new photo
             new_photo = Photo(url=user_details.photo_url)
             db.add(new_photo)
             db.flush()
@@ -109,14 +128,51 @@ def update_user_profile(
             # user_details.photo_url is null
             current_user.photo_id = None
 
-    db.commit()
+        db.flush()
+        if old_photo:
+            # For orphan photo deletion from storage
+            url_to_delete_from_storage = (
+                old_photo.url if old_photo.url != user_details.photo_url else None
+            )
 
-    profile = (
-        db.query(UserProfileView)
-        .filter(UserProfileView.user_id == current_user.id)
-        .first()
-    )
-    return profile
+            # Delete the old photo
+            db.query(Photo).filter(Photo.id == old_photo.id).delete(
+                synchronize_session=False
+            )
+
+    try:
+        db.commit()
+
+        # Delete the orphan records from storage
+        if url_to_delete_from_storage:
+            try:
+                # Get the object name
+                object_name = (
+                    f"{current_user.id}/{url_to_delete_from_storage.split('/')[-1]}"
+                )
+
+                # Remove the object
+                internal_s3.delete_object(Bucket=BUCKET_NAME, Key=object_name)
+                print(f"Successfully deleted orphan asset {object_name} from storage.")
+            except Exception as e:
+                print(
+                    f"Failed to remove asset {url_to_delete_from_storage} from storage: {str(e)}"
+                )
+
+        profile = (
+            db.query(UserProfileView)
+            .filter(UserProfileView.user_id == current_user.id)
+            .first()
+        )
+        return profile
+
+    except Exception as e:
+        db.rollback()
+        print(f"Database write failure during user PATCH pipeline: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user profile.",
+        )
 
 
 @router.patch(
@@ -159,3 +215,72 @@ def change_user_password(
     db.commit()
 
     return {"message": "Password updated successfully."}
+
+
+@router.get(
+    "/{user_id}",
+    response_model=UserProfileResponse,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_user_profile(
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve a user profile.
+    """
+    profile = (
+        db.query(UserProfileView).filter(UserProfileView.user_id == user_id).first()
+    )
+
+    # Not found or not active
+    if not profile or bool(profile.status_code != "ACTIVE"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found or is currently unavailable.",
+        )
+
+    return profile
+
+
+@router.get(
+    "/{user_id}/reviews",
+    response_model=list[ReviewDetailsResponse],
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_user_reviews(
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all reviews received by a specific user.
+    """
+    # Verify the user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    # Fetch all reviews where this user is the reviewee
+    reviews = (
+        db.query(ReviewView)
+        .filter(ReviewView.reviewee_id == user_id)
+        .order_by(ReviewView.created_at.desc())
+        .all()
+    )
+
+    # Return a list of reviews
+    return [review for review in reviews]

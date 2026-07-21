@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, DateTime, ForeignKey, Text, func, text
+from sqlalchemy import UUID, DateTime, ForeignKey, Integer, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -55,11 +55,10 @@ class ToolPhoto(Base):
         "comment": "Intersection table mapping multiple uploaded tool photo to individual tool"
     }
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[int] = mapped_column(
+        Integer,
         primary_key=True,
-        default=uuid.uuid4,
-        server_default=text("gen_random_uuid()"),
+        autoincrement=True,
         comment="Unique identifier for a tool photo",
     )
     tool_id: Mapped[uuid.UUID] = mapped_column(
