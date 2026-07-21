@@ -94,7 +94,7 @@ describe("Navbar", () => {
   // Verify the Calendar item is current on the transactions tab,
   // and Home is not (they share the /dashboard pathname).
   it("distinguishes dashboard tabs via the ?tab query param", () => {
-    renderNavbar({}, "/dashboard?tab=transactions");
+    renderNavbar({}, "/calendar");
 
     expect(screen.getByRole("button", { name: /calendar/i })).toHaveAttribute(
       "aria-current",
@@ -114,7 +114,7 @@ describe("Navbar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/tools/new");
 
     await user.click(screen.getByRole("button", { name: /calendar/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard?tab=transactions");
+    expect(mockNavigate).toHaveBeenCalledWith("/calendar");
   });
 
   // Verify the avatar shows the user's initials when passed as a prop

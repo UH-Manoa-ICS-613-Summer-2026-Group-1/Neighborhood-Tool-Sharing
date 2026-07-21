@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import Dashboard from "../src/pages/Dashboard/Dashboard";
 import * as usersApi from "../src/api/users";
 import * as toolsApi from "../src/api/tools";
+import * as reservationsApi from "../src/api/reservations";
 import type { UserProfile } from "../src/api/users";
 import type { ToolDetails } from "../src/api/tools";
 
@@ -85,6 +86,11 @@ describe("Dashboard", () => {
     vi.spyOn(toolsApi, "fetchToolTypes").mockResolvedValue([]);
     vi.spyOn(toolsApi, "fetchToolConditions").mockResolvedValue([]);
     vi.spyOn(toolsApi, "fetchTools").mockResolvedValue([]);
+
+    // ADDED BY MARITZA — 07/19/2026
+    // Mock reservations API so the Transactions tab doesn't make real requests
+    // fetchReservations is called when the Transactions tab is rendered (US 9, 10)
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([]);
   });
 
   // Verify unauthenticated users are bounced to login.
@@ -177,8 +183,11 @@ describe("Dashboard", () => {
     });
   });
 
-  // Verify the transactions tab renders its placeholder and skips fetching.
-  it("shows the transactions placeholder on the transactions tab", async () => {
+  // UPDATED BY MARITZA — 07/19/2026
+  // US 9 & 10: Transactions tab now shows the real Transactions component
+  // instead of a placeholder. When there are no reservations it shows
+  // "No Transactions Yet" with a Browse Tools button.
+  it("shows the empty transactions state on the transactions tab", async () => {
     const user = userEvent.setup();
 
     renderDashboard();
@@ -186,8 +195,9 @@ describe("Dashboard", () => {
 
     await user.click(screen.getByRole("button", { name: /transactions/i }));
 
+    // Wait for the Transactions component to finish loading
     expect(
-      await screen.findByText(/reservation requests and loan history/i),
+      await screen.findByText(/no transactions yet/i),
     ).toBeInTheDocument();
   });
 
@@ -224,7 +234,25 @@ describe("Dashboard", () => {
     );
 
     expect(
-      await screen.findByText(/“cordless drill” was published/i),
+      await screen.findByText(/"cordless drill" was published/i),
+    ).toBeInTheDocument();
+  });
+
+  // ADDED BY MARITZA — 07/19/2026
+  // US 2 Scenario 1: success banner shows after a reservation is created
+  it("shows the reservation success banner when reservationCreated state is passed", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: "/dashboard", state: { reservationCreated: "Cordless Drill" } },
+        ]}
+      >
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(/reservation request for "cordless drill" was submitted/i),
     ).toBeInTheDocument();
   });
 });

@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, CalendarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../api/auth'
 import { fetchCurrentUser, type UserProfile } from '../api/users'
 
 
-const navigation =  [
+const navigation = [
   { name: 'Home', href: '/dashboard', pathname: '/dashboard', tab: 'my-tools', icon: HomeIcon },
   { name: 'Add Tool', href: '/tools/new', pathname: '/tools/new', tab: null, icon: PlusCircleIcon },
-  { name: 'Calendar', href: '/dashboard?tab=transactions', pathname: '/dashboard', tab: 'transactions', icon: CalendarIcon },
+  // ADDED BY MARITZA — 07/19/2026: Quick link to browse and reserve tools
+  { name: 'Reserve', href: '/dashboard?tab=neighborhood', pathname: '/dashboard', tab: 'neighborhood', icon: MagnifyingGlassIcon },
+  { name: 'Calendar', href: '/calendar', pathname: '/calendar', tab: null, icon: CalendarIcon },
 ]
 
 type NavItem = (typeof navigation)[number]
