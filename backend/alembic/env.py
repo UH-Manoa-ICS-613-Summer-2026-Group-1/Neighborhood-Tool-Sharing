@@ -44,6 +44,7 @@ IGNORED_VIEWS = {
     "invitation_history_v",
     "tools_v",
     "reservations_v",
+    "reviews_v",
 }
 
 

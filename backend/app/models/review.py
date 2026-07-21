@@ -2,7 +2,16 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text, UniqueConstraint, func, text
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -77,3 +86,26 @@ class Review(Base):
     )
     reviewer: Mapped["User"] = relationship("User", foreign_keys=[reviewer_id])
     reviewee: Mapped["User"] = relationship("User", foreign_keys=[reviewee_id])
+
+
+class ReviewView(Base):
+    __tablename__ = "reviews_v"
+
+    review_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    reservation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    reviewer_first_name: Mapped[str] = mapped_column(String)
+    reviewer_middle_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    reviewer_last_name: Mapped[str] = mapped_column(String)
+    reviewer_photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    reviewee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    reviewee_first_name: Mapped[str] = mapped_column(String)
+    reviewee_middle_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    reviewee_last_name: Mapped[str] = mapped_column(String)
+    reviewee_photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    rating: Mapped[int] = mapped_column(Integer)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
