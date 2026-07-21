@@ -60,8 +60,9 @@ jobs:
 #      - name: Run pip-audit linter
 #        run: python -m pip_audit
 
-      - name: Run mypy static type checker 
-        run: python -m mypy . --check-untyped-defs --warn-unused-ignores 
+#     mypy checks are currently only on the on-demand QA checking script
+#      - name: Run mypy static type checker 
+#        run: python -m mypy . --check-untyped-defs --warn-unused-ignores 
 
       - name: Run SQLFluff linter 
         run: python -m sqlfluff lint .
