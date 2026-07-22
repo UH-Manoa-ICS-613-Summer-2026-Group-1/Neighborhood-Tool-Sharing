@@ -81,7 +81,7 @@ export default function RequestReservation() {
 
         // US 2 Scenario 2: end date must be after start date
         if (new Date(endDate) <= new Date(startDate)) {
-            setFormError('End date must be after start date.')
+            setFormError('End date must be on or after start date.')
             return
         }
 

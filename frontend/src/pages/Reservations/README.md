@@ -168,4 +168,33 @@ npm run test    # 77/77 tests passing
 
 ---
 
+
 *Prepared by Maritza Medina — ICS 613 Group 1 — July 20, 2026*
+
+## Bug Fixes — July 21, 2026
+
+### Fix 1 — Timezone correction (Igor's feedback)
+**File:** `RequestReservation.tsx`
+Changed date conversion to use local midnight instead of hardcoded 10:00 AM:
+- `T10:00:00` → `T00:00:00` (start date)
+- `T09:59:59` → `T23:59:59` (end date)
+Hawaii is UTC-10 so midnight local converts to 10:00 UTC automatically.
+
+### Fix 2 — Same-day reservations allowed
+**File:** `RequestReservation.tsx`
+Changed `<=` to `<` so users can reserve a tool for a single day (start = end date).
+
+### Fix 3 — "undefined undefined Invalid Date" bug (Kylie's feedback)
+**File:** `Transactions.tsx`
+Action endpoints return `MessageResponse` not `ReservationDetails`.
+Fixed by updating only the status field locally instead of replacing the whole card.
+
+### Fix 4 — Incoming/Outgoing labels (Kylie's feedback)
+**File:** `Transactions.tsx`
+Added "Incoming" (teal) and "Outgoing" (orange) labels next to tool name
+so users can quickly tell which reservations are theirs vs others.
+
+### Fix 5 — Pagination (Kylie's feedback)
+**File:** `Transactions.tsx` and `reservations.ts`
+Added Previous/Next buttons showing 10 reservations at a time
+using API `limit` and `offset` query parameters.

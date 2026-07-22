@@ -9,26 +9,23 @@
 //   Scenario 2 & 6: Cannot cancel after PICKED_UP → backend rejects
 //   Scenario 3 & 7: Cannot cancel RETURNED → backend rejects
 //   Scenario 4 & 8: Cannot cancel already CANCELLED → backend rejects
-//   Note: Cancel button is only shown for REQUESTED or APPROVED (frontend guard)
-//         Backend enforces all other scenarios
 //
 // US 4 — Approve or Deny a Reservation (tool owner only)
-//   Scenario 1: Owner approves REQUESTED → status APPROVED, borrower notified
-//   Scenario 2: Owner denies REQUESTED → status DENIED, borrower notified
-//   Scenario 3 & 4: Non-owner cannot approve/deny → Approve/Deny buttons not shown to non-owners
+//   Scenario 1: Owner approves REQUESTED → status APPROVED
+//   Scenario 2: Owner denies REQUESTED → status DENIED
+//   Scenario 3 & 4: Non-owner cannot approve/deny → buttons not shown
 //   Scenario 5 & 6: Cannot approve/deny non-REQUESTED → buttons only shown for REQUESTED
-//   Scenario 7: Auto-deny overlapping requests → handled entirely by backend
+//   Scenario 7: Auto-deny overlapping requests → handled by backend
 //
 // US 5 — Confirm Return (tool owner only)
-//   Scenario 1: Owner marks PICKED_UP as RETURNED, borrower notified
-//   Scenario 2: Non-owner cannot confirm return → button not shown to non-owners
+//   Scenario 1: Owner marks PICKED_UP as RETURNED
+//   Scenario 2: Non-owner cannot confirm return → button not shown
 //   Scenario 3: Cannot confirm return unless PICKED_UP → button only shown for PICKED_UP
 //
 // US 7 — Confirm Pickup (borrower only)
-//   Scenario 1: Borrower marks APPROVED as PICKED_UP, owner notified
-//   Scenario 2: Non-borrower cannot mark pickup → button not shown to non-borrowers
-//   Scenario 3: Cannot pick up REQUESTED → button only shown for APPROVED
-//   Scenario 4: Cannot pick up already PICKED_UP → button only shown for APPROVED
+//   Scenario 1: Borrower marks APPROVED as PICKED_UP
+//   Scenario 2: Non-borrower cannot mark pickup → button not shown
+//   Scenario 3 & 4: Only shown for APPROVED status
 //   Scenario 5: Pickup outside date range → backend rejects with error message
 //
 // US 9 — Tool owner views incoming reservations on their tools
@@ -47,9 +44,11 @@ import {
 } from '../../api/reservations'
 import { fetchCurrentUser } from '../../api/users'
 
+// Number of reservations shown per page
+const PAGE_SIZE = 10
+
 // ---------------------------------------------------------------------------
 // Status badge color map — matches the app's dark theme
-// Each status has a distinct color so users can quickly scan their reservations
 // ---------------------------------------------------------------------------
 const statusColors: Record<string, string> = {
     REQUESTED: 'bg-blue-400/20 text-blue-300 border border-blue-400/30',
@@ -70,25 +69,32 @@ export default function Transactions() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
-    // We need the current user's ID to determine if they are the owner or borrower
-    // This controls which action buttons are shown for each reservation
+    // Current user ID — determines if the user is owner or borrower per reservation
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
-    // Per-reservation action state — tracks loading and errors independently
-    // so one reservation's action doesn't affect another
+    // Per-reservation action state
     const [actionError, setActionError] = useState<Record<string, string>>({})
     const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
 
-    // Load reservations (US 9, 10) and current user ID in parallel on mount
+    // Pagination state
+    const [offset, setOffset] = useState(0)
+    const [hasMore, setHasMore] = useState(false)
+
+    // Load reservations and current user ID
+    // Re-runs whenever offset changes (pagination)
     useEffect(() => {
         const loadData = async () => {
+            setLoading(true)
             try {
                 const [reservationsData, userData] = await Promise.all([
-                    fetchReservations(),   // GET /api/reservations
-                    fetchCurrentUser(),    // GET /api/users/me
+                    // GET /api/reservations with limit and offset for pagination
+                    fetchReservations({ limit: PAGE_SIZE, offset }),
+                    fetchCurrentUser(),
                 ])
                 setReservations(reservationsData)
                 setCurrentUserId(userData.user_id)
+                // If we got a full page, there may be more results
+                setHasMore(reservationsData.length === PAGE_SIZE)
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : 'Failed to load reservations.')
             } finally {
@@ -96,26 +102,33 @@ export default function Transactions() {
             }
         }
         loadData()
-    }, [])
+    }, [offset])
 
-    // Generic action handler — used for approve, deny, cancel, pickup, return
-    // On success: updates the reservation in the list without refetching the whole list
-    // On failure: shows the backend error message on the specific reservation card
+    // Generic action handler — approve, deny, cancel, pickup, return
+    //
+    // FIXED — 07/21/2026
+    // Action endpoints return MessageResponse { message: "..." } not ReservationDetails.
+    // Previously replacing the card with the API response caused
+    // "undefined undefined Invalid Date" to show.
+    // Fix: update only the status field locally using the newStatus parameter.
     const handleAction = async (
         reservationId: string,
-        action: (id: string) => Promise<ReservationDetails>
+        action: (id: string) => Promise<ReservationDetails>,
+        newStatus: string
     ) => {
         setActionError(prev => ({ ...prev, [reservationId]: '' }))
         setActionLoading(prev => ({ ...prev, [reservationId]: true }))
         try {
-            const updated = await action(reservationId)
-            // Replace just the updated reservation in the list
+            await action(reservationId)
+            // Update only the status — preserves tool name, dates, parties
             setReservations(prev =>
-                prev.map(r => r.reservation_id === reservationId ? updated : r)
+                prev.map(r =>
+                    r.reservation_id === reservationId
+                        ? { ...r, reservation_status: newStatus }
+                        : r
+                )
             )
         } catch (err: unknown) {
-            // Shows backend error messages for scenarios handled server-side
-            // e.g. US 7 Scenario 5: pickup outside date range
             setActionError(prev => ({
                 ...prev,
                 [reservationId]: err instanceof Error ? err.message : 'Action failed.',
@@ -125,12 +138,10 @@ export default function Transactions() {
         }
     }
 
-    // Format ISO date string to human-readable e.g. "Jul 20, 2026"
+    // Format ISO date string to "Jul 20, 2026"
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
+            month: 'short', day: 'numeric', year: 'numeric',
         })
 
     // ---------------------------------------------------------------------------
@@ -145,8 +156,8 @@ export default function Transactions() {
         return <p role="alert" className="text-center text-red-400 py-10">{error}</p>
     }
 
-    // Empty state — no reservations yet
-    if (reservations.length === 0) {
+    // Empty state
+    if (reservations.length === 0 && offset === 0) {
         return (
             <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
                 <span className="block text-3xl mb-3">📋</span>
@@ -169,6 +180,7 @@ export default function Transactions() {
     // ---------------------------------------------------------------------------
     return (
         <div className="flex flex-col gap-4">
+
             {reservations.map(r => {
                 const isOwner    = r.owner_id === currentUserId
                 const isBorrower = r.borrower_id === currentUserId
@@ -180,28 +192,31 @@ export default function Transactions() {
                         key={r.reservation_id}
                         className="p-4 bg-black/20 border border-white/10 rounded-lg"
                     >
-                        {/* Tool name + status badge */}
+                        {/* Tool name + role label + status badge */}
                         <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                             <div>
-                                {/* Clicking the tool name goes to its detail page */}
                                 <button
                                     onClick={() => navigate(`/tools/${r.tool_id}`)}
                                     className="text-sm font-bold text-white hover:text-[#e8a838] transition-colors cursor-pointer text-left"
                                 >
                                     {r.tool_title}
                                 </button>
+
+                                {/* Role label — ADDED 07/21/2026 (Kylie feedback)
+                                    Makes it easy to tell incoming vs outgoing reservations */}
+                                <span className={`text-[0.6rem] font-semibold px-1.5 py-0.5 rounded mr-1 ml-1 ${isOwner ? 'bg-orange-400/20 text-orange-300' : 'bg-teal-400/20 text-teal-300'}`}>
+                                    {isOwner ? 'Outgoing' : 'Incoming'}
+                                </span>
+
                                 <p className="text-xs text-gray-400 mt-0.5">
                                     {r.tool_type_name} &bull;{' '}
-                                    {/* Show the other party:
-                                        owner sees borrower name (US 9),
-                                        borrower sees owner name (US 10) */}
                                     {isOwner
                                         ? `Requested by ${r.borrower_first_name} ${r.borrower_last_name}`
                                         : `Owned by ${r.owner_first_name} ${r.owner_last_name}`}
                                 </p>
                             </div>
 
-                            {/* Status badge — distinct color per status for quick scanning */}
+                            {/* Status badge */}
                             <span className={`text-[0.65rem] font-bold px-2 py-1 rounded uppercase ${statusColors[r.reservation_status] ?? 'bg-gray-400/20 text-gray-300'}`}>
                                 {r.reservation_status}
                             </span>
@@ -212,24 +227,20 @@ export default function Transactions() {
                             {formatDate(r.reservation_start_date)} &rarr; {formatDate(r.reservation_end_date)}
                         </p>
 
-                        {/* Per-reservation action error — shown below the dates */}
+                        {/* Per-reservation action error */}
                         {err && (
                             <p role="alert" aria-live="assertive" className="mb-3 text-xs text-red-400">
                                 {err}
                             </p>
                         )}
 
-                        {/* -------------------------------------------------------
-                            Action buttons — shown based on role and current status
-                            Frontend only shows valid actions (backend enforces all rules)
-                            ------------------------------------------------------- */}
+                        {/* Action buttons */}
                         <div className="flex flex-wrap gap-2">
 
-                            {/* US 4 Scenario 1: Owner approves REQUESTED reservation
-                                US 4 Scenario 3: Only shown to owner (non-owner cannot approve) */}
+                            {/* US 4 Scenario 1: Approve — owner only, REQUESTED only */}
                             {isOwner && r.reservation_status === 'REQUESTED' && (
                                 <button
-                                    onClick={() => handleAction(r.reservation_id, approveReservation)}
+                                    onClick={() => handleAction(r.reservation_id, approveReservation, 'APPROVED')}
                                     disabled={isLoading}
                                     className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 text-green-300 text-xs font-semibold rounded hover:bg-green-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -237,12 +248,10 @@ export default function Transactions() {
                                 </button>
                             )}
 
-                            {/* US 4 Scenario 2: Owner denies REQUESTED reservation
-                                US 4 Scenario 4: Only shown to owner (non-owner cannot deny)
-                                US 4 Scenario 5 & 6: Only shown for REQUESTED status */}
+                            {/* US 4 Scenario 2: Deny — owner only, REQUESTED only */}
                             {isOwner && r.reservation_status === 'REQUESTED' && (
                                 <button
-                                    onClick={() => handleAction(r.reservation_id, denyReservation)}
+                                    onClick={() => handleAction(r.reservation_id, denyReservation, 'DENIED')}
                                     disabled={isLoading}
                                     className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-semibold rounded hover:bg-red-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -250,12 +259,10 @@ export default function Transactions() {
                                 </button>
                             )}
 
-                            {/* US 5 Scenario 1: Owner confirms return when PICKED_UP
-                                US 5 Scenario 2: Only shown to owner
-                                US 5 Scenario 3: Only shown for PICKED_UP status */}
+                            {/* US 5 Scenario 1: Confirm Return — owner only, PICKED_UP only */}
                             {isOwner && r.reservation_status === 'PICKED_UP' && (
                                 <button
-                                    onClick={() => handleAction(r.reservation_id, returnReservation)}
+                                    onClick={() => handleAction(r.reservation_id, returnReservation, 'RETURNED')}
                                     disabled={isLoading}
                                     className="px-3 py-1.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-semibold rounded hover:bg-purple-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -263,13 +270,10 @@ export default function Transactions() {
                                 </button>
                             )}
 
-                            {/* US 7 Scenario 1: Borrower confirms pickup when APPROVED
-                                US 7 Scenario 2: Only shown to borrower
-                                US 7 Scenario 3 & 4: Only shown for APPROVED status
-                                US 7 Scenario 5: Outside date range → backend rejects with error */}
+                            {/* US 7 Scenario 1: Confirm Pickup — borrower only, APPROVED only */}
                             {isBorrower && r.reservation_status === 'APPROVED' && (
                                 <button
-                                    onClick={() => handleAction(r.reservation_id, pickupReservation)}
+                                    onClick={() => handleAction(r.reservation_id, pickupReservation, 'PICKED_UP')}
                                     disabled={isLoading}
                                     className="px-3 py-1.5 bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 text-xs font-semibold rounded hover:bg-yellow-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -277,15 +281,11 @@ export default function Transactions() {
                                 </button>
                             )}
 
-                            {/* US 3 Scenarios 1 & 5: Owner or borrower cancels REQUESTED or APPROVED
-                                US 3 Scenarios 2 & 6: Cannot cancel after PICKED_UP → not shown
-                                US 3 Scenarios 3 & 7: Cannot cancel RETURNED → not shown
-                                US 3 Scenarios 4 & 8: Cannot cancel CANCELLED → not shown
-                                Backend enforces all rules; frontend only shows button for valid states */}
+                            {/* US 3: Cancel — owner or borrower, REQUESTED or APPROVED only */}
                             {(isOwner || isBorrower) &&
                                 ['REQUESTED', 'APPROVED'].includes(r.reservation_status) && (
                                 <button
-                                    onClick={() => handleAction(r.reservation_id, cancelReservation)}
+                                    onClick={() => handleAction(r.reservation_id, cancelReservation, 'CANCELED')}
                                     disabled={isLoading}
                                     className="px-3 py-1.5 bg-gray-500/20 border border-gray-500/30 text-gray-300 text-xs font-semibold rounded hover:bg-gray-500/30 transition-colors disabled:opacity-50 cursor-pointer"
                                 >
@@ -296,6 +296,31 @@ export default function Transactions() {
                     </div>
                 )
             })}
+
+            {/* Pagination — Previous and Next buttons
+                ADDED 07/21/2026 (Kylie feedback: older reservations not visible)
+                Shows 10 reservations at a time using API limit/offset params */}
+            {(offset > 0 || hasMore) && (
+                <div className="flex justify-center items-center gap-4 mt-2">
+                    <button
+                        onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                        disabled={offset === 0}
+                        className="px-4 py-2 text-xs font-semibold border border-white/10 rounded text-gray-300 hover:border-[#e8a838] hover:text-[#e8a838] transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        ← Previous
+                    </button>
+                    <span className="text-xs text-gray-500">
+                        Page {Math.floor(offset / PAGE_SIZE) + 1}
+                    </span>
+                    <button
+                        onClick={() => setOffset(offset + PAGE_SIZE)}
+                        disabled={!hasMore}
+                        className="px-4 py-2 text-xs font-semibold border border-white/10 rounded text-gray-300 hover:border-[#e8a838] hover:text-[#e8a838] transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
         </div>
     )
 }
