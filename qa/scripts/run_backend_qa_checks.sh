@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# determine the path of this script
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+# change to the repository root directory
+cd "${SCRIPT_DIR}/../.."
+
 # upgrade pip
 python -m pip install --upgrade pip
 
@@ -25,6 +31,9 @@ docker compose exec web pytest tests \
 echo "Running Ruff linter..."
 python -m ruff check .
 
+echo "Checking Ruff formatting..."
+python -m ruff format --check .
+
 # include only medium and high severity, high confidence findings
 echo "Running Bandit linter..."
 docker compose exec web \
@@ -33,9 +42,12 @@ python -m bandit -r app -ll -iii
 # echo "Running pip_audit linter..."
 # python -m pip_audit
 
+echo "Running mypy static type checker..."
+python -m mypy . \
+--check-untyped-defs \
+--warn-unused-ignores
+
 echo "Running SQLFluff linter..."
 python -m sqlfluff lint .
-
-
 
 echo "All checks passed."

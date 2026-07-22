@@ -145,6 +145,12 @@ def update_user_profile(
 
         # Delete the orphan records from storage
         if url_to_delete_from_storage:
+            # check if the required BUCKET_NAME variable is undefined or blank
+            if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
+                raise RuntimeError(
+                    f"Missing required environment variable {BUCKET_NAME}"
+                )
+
             try:
                 # Get the object name
                 object_name = (

@@ -52,6 +52,10 @@ def generate_upload_ticket(
     Generates a temporary, signed PUT URL that a frontend browser
     can target directly to upload an image.
     """
+    # check if the required BUCKET_NAME variable is undefined or blank
+    if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
+        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
+
     max_bytes = max_size_mb * 1024 * 1024  # Convert MB to Bytes
 
     return external_s3.generate_presigned_post(
@@ -81,6 +85,10 @@ def generate_dummy_image():
         / "assets"
         / "placeholder_image.jpg"
     )
+
+    # check if the required BUCKET_NAME variable is undefined or blank
+    if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
+        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
 
     try:
         # Check if it's already in MinIO/S3

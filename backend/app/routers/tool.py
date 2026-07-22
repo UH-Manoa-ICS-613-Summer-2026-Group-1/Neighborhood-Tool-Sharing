@@ -669,6 +669,12 @@ def patch_tool(
         if urls_to_delete_from_storage:
             for url in urls_to_delete_from_storage:
                 try:
+                    # check if the required BUCKET_NAME variable is undefined or blank
+                    if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
+                        raise RuntimeError(
+                            f"Missing required environment variable {BUCKET_NAME}"
+                        )
+
                     # Get the object name
                     object_name = f"{current_user.id}/{url.split('/')[-1]}"
 

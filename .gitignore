@@ -1,7 +1,8 @@
-# Testing cach
+# Testing cache
 /.pytest_cache
 /.ruff_cache
 backend/.coverage
+.mypy_cache/
 
 # Environments
 .env
@@ -12,4 +13,3 @@ venv/
 # Python cache files
 __pycache__/
 *.pyc
-.pytest_cache/
