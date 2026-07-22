@@ -85,8 +85,27 @@ export const createReservation = async (
 
 // GET /api/reservations
 // Returns all reservations where the current user is either the borrower or the tool owner
-export const fetchReservations = async (): Promise<ReservationDetails[]> => {
-    const response = await fetch('/api/reservations', { headers: authHeaders() })
+// Pagination and filter params for GET /api/reservations
+export interface FetchReservationsParams {
+    role?: 'owner' | 'borrower'
+    status?: string
+    limit?: number
+    offset?: number
+}
+
+// GET /api/reservations — supports pagination via limit and offset
+export const fetchReservations = async (
+    params: FetchReservationsParams = {}
+): Promise<ReservationDetails[]> => {
+    const query = new URLSearchParams()
+    if (params.role)                query.set('role', params.role)
+    if (params.status)              query.set('status', params.status)
+    if (params.limit !== undefined)  query.set('limit', String(params.limit))
+    if (params.offset !== undefined) query.set('offset', String(params.offset))
+
+    const response = await fetch(`/api/reservations?${query.toString()}`, {
+        headers: authHeaders(),
+    })
     const data = await response.json()
     if (!response.ok) throw new Error(extractDetail(data, 'Failed to load reservations.'))
     return data
