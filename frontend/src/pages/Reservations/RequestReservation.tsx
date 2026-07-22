@@ -73,14 +73,8 @@ export default function RequestReservation() {
             return
         }
 
-        // US 2 Scenario 6: reject if start or end date is in the past
-        if (startDate < today || endDate < today) {
-            setFormError('Reservation dates cannot be in the past.')
-            return
-        }
-
         // US 2 Scenario 2: end date must be after start date
-        if (new Date(endDate) <= new Date(startDate)) {
+        if (new Date(endDate) < new Date(startDate)) {
             setFormError('End date must be on or after start date.')
             return
         }
