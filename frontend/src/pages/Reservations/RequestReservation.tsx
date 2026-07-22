@@ -103,8 +103,8 @@ export default function RequestReservation() {
 
             // Convert local date strings to ISO datetime strings with timezone
             // Start at 10:00 AM, end at 9:59 AM the following day (matching seed data pattern)
-            const startISO = new Date(`${startDate}T10:00:00`).toISOString()
-            const endISO = new Date(`${endDate}T09:59:59`).toISOString()
+            const startISO = new Date(`${startDate}T00:00:00`).toISOString()
+            const endISO = new Date(`${endDate}T23:59:59`).toISOString()
 
             // POST /api/reservations
             // US 2 Scenario 1: creates reservation with REQUESTED status
