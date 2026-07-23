@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter } from 'react-router-dom';
@@ -116,5 +116,20 @@ describe("Login", () => {
 
     // Resolve the pending promise to finish the test cleanly.
     resolveLogin({ access_token: "token", token_type: "bearer" });
+  });
+
+  // Verify the empty-field guard in handleSubmit. Both inputs are marked
+  // `required`, so a real click is blocked by browser validation before the
+  // handler runs — submitting the form directly is the only way to reach it.
+  it("shows a validation error when the form is submitted empty", () => {
+    const loginSpy = vi.spyOn(authApi, "loginUser");
+    const { container } = renderLogin();
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    expect(
+      screen.getByText(/all fields are required/i),
+    ).toBeInTheDocument();
+    expect(loginSpy).not.toHaveBeenCalled();
   });
 });

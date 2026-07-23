@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import Profile from "../src/pages/Profile/Profile";
 import * as usersApi from "../src/api/users";
+import * as mediaApi from "../src/api/media";
 import type { UserProfile } from "../src/api/users";
 
 // Mock navigate so we can verify navigation without a real router.
@@ -41,11 +42,18 @@ const profile: UserProfile = {
   status_description: null,
 };
 
+// Helper: the file input has no label, so query it by type.
+const getFileInput = () =>
+  document.querySelector('input[type="file"]') as HTMLInputElement;
+
 describe("Profile", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     vi.restoreAllMocks();
     vi.spyOn(usersApi, "fetchCurrentUser").mockResolvedValue(profile);
+    // jsdom does not implement these; the photo preview needs them.
+    window.URL.createObjectURL = vi.fn(() => "blob:preview-url");
+    window.URL.revokeObjectURL = vi.fn();
   });
 
   // Verify the form is seeded from the loaded profile.
@@ -199,5 +207,208 @@ describe("Profile", () => {
       "OldPass1!",
       "NewPass1!",
     );
+  });
+
+  // Verify the back link.
+  it("navigates to the dashboard when Back is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.click(screen.getByRole("button", { name: /back to dashboard/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+  });
+
+  // Verify the optional fields are editable and included in the payload.
+  it("saves edits to the last name and optional fields", async () => {
+    const user = userEvent.setup();
+    const updateSpy = vi
+      .spyOn(usersApi, "updateUserProfile")
+      .mockResolvedValue(profile);
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.type(screen.getByLabelText(/last name/i), "son");
+    await user.type(screen.getByLabelText(/middle name/i), "Quinn");
+    await user.clear(screen.getByLabelText(/location/i));
+    await user.type(screen.getByLabelText(/location/i), "Oak Avenue");
+    await user.clear(screen.getByLabelText(/bio/i));
+    await user.type(screen.getByLabelText(/bio/i), "New bio.");
+
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          last_name: "Doeson",
+          middle_name: "Quinn",
+          location: "Oak Avenue",
+          bio: "New bio.",
+        }),
+      );
+    });
+  });
+
+  // Verify picking a photo shows a preview and uploads it on save.
+  it("uploads a newly selected photo and sends its URL", async () => {
+    const user = userEvent.setup();
+    const uploadSpy = vi
+      .spyOn(mediaApi, "uploadPhoto")
+      .mockResolvedValue("https://cdn.example.com/new.jpg");
+    const updateSpy = vi
+      .spyOn(usersApi, "updateUserProfile")
+      .mockResolvedValue(profile);
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    const file = new File(["bytes"], "me.jpg", { type: "image/jpeg" });
+    await user.upload(getFileInput(), file);
+
+    // The local preview replaces the initials avatar.
+    expect(screen.getByAltText(/profile/i)).toHaveAttribute(
+      "src",
+      "blob:preview-url",
+    );
+
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(uploadSpy).toHaveBeenCalledWith(file);
+    });
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ photo_url: "https://cdn.example.com/new.jpg" }),
+    );
+  });
+
+  // Verify removing an existing photo sends photo_url: null.
+  it("sends a null photo_url when the photo is removed", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(usersApi, "fetchCurrentUser").mockResolvedValue({
+      ...profile,
+      user_photo_url: "https://cdn.example.com/me.jpg",
+    });
+    const updateSpy = vi
+      .spyOn(usersApi, "updateUserProfile")
+      .mockResolvedValue(profile);
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.click(screen.getByRole("button", { name: /remove photo/i }));
+
+    expect(
+      screen.getByText(/photo will be removed when you save/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ photo_url: null }),
+      );
+    });
+  });
+
+  // Verify the save error path.
+  it("shows an error when saving the profile fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(usersApi, "updateUserProfile").mockRejectedValue(
+      new Error("Failed to update profile."),
+    );
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    expect(
+      await screen.findByText(/failed to update profile/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify the current-password guard.
+  it("shows an error when the current password is blank", async () => {
+    const user = userEvent.setup();
+    const changeSpy = vi.spyOn(usersApi, "changePassword");
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.type(screen.getByLabelText(/^new password$/i), "NewPass1!");
+    await user.type(
+      screen.getByLabelText(/confirm new password/i),
+      "NewPass1!",
+    );
+    await user.click(screen.getByRole("button", { name: /update password/i }));
+
+    expect(
+      await screen.findByText(/please enter your current password/i),
+    ).toBeInTheDocument();
+    expect(changeSpy).not.toHaveBeenCalled();
+  });
+
+  // Verify the new password cannot repeat the current one.
+  it("rejects a new password identical to the current one", async () => {
+    const user = userEvent.setup();
+    const changeSpy = vi.spyOn(usersApi, "changePassword");
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.type(screen.getByLabelText(/current password/i), "SamePass1!");
+    await user.type(screen.getByLabelText(/^new password$/i), "SamePass1!");
+    await user.type(
+      screen.getByLabelText(/confirm new password/i),
+      "SamePass1!",
+    );
+    await user.click(screen.getByRole("button", { name: /update password/i }));
+
+    expect(
+      await screen.findByText(/cannot be identical to your current password/i),
+    ).toBeInTheDocument();
+    expect(changeSpy).not.toHaveBeenCalled();
+  });
+
+  // Verify the password change error path.
+  it("shows an error when the password change fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(usersApi, "changePassword").mockRejectedValue(
+      new Error("Current password is incorrect."),
+    );
+
+    render(<Profile />);
+    await screen.findByDisplayValue("Jane");
+
+    await user.type(screen.getByLabelText(/current password/i), "OldPass1!");
+    await user.type(screen.getByLabelText(/^new password$/i), "NewPass1!");
+    await user.type(
+      screen.getByLabelText(/confirm new password/i),
+      "NewPass1!",
+    );
+    await user.click(screen.getByRole("button", { name: /update password/i }));
+
+    expect(
+      await screen.findByText(/current password is incorrect/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify client-side validation for a missing last name.
+  it("shows an error when the last name is cleared", async () => {
+    const user = userEvent.setup();
+    const updateSpy = vi.spyOn(usersApi, "updateUserProfile");
+
+    render(<Profile />);
+    const lastName = await screen.findByDisplayValue("Doe");
+
+    await user.clear(lastName);
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    expect(
+      await screen.findByText(/last name is required/i),
+    ).toBeInTheDocument();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 });

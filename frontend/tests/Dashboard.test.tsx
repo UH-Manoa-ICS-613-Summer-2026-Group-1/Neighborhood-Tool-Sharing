@@ -255,4 +255,155 @@ describe("Dashboard", () => {
       await screen.findByText(/reservation request for "cordless drill" was submitted/i),
     ).toBeInTheDocument();
   });
+
+  // Verify the tool list error path.
+  it("shows an error when the tool list fails to load", async () => {
+    vi.spyOn(toolsApi, "fetchTools").mockRejectedValue(
+      new Error("Failed to load tools."),
+    );
+
+    renderDashboard();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /failed to load tools/i,
+    );
+  });
+
+  // Verify the Go to Login button on the profile error screen.
+  it("navigates to login when Go to Login is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(usersApi, "fetchCurrentUser").mockRejectedValue(
+      new Error("Session expired or invalid token"),
+    );
+
+    renderDashboard();
+
+    await user.click(
+      await screen.findByRole("button", { name: /go to login/i }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
+  });
+
+  // Verify the success banner can be dismissed.
+  it("hides the success banner when the dismiss button is clicked", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: "/dashboard", state: { toolCreated: "Cordless Drill" } },
+        ]}
+      >
+        <Dashboard />
+      </MemoryRouter>,
+    );
+
+    const banner = await screen.findByText(/"cordless drill" was published/i);
+    expect(banner).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /dismiss/i }));
+
+    expect(
+      screen.queryByText(/"cordless drill" was published/i),
+    ).not.toBeInTheDocument();
+  });
+
+  // Verify switching back to the default tab clears the ?tab param and refetches.
+  it("returns to the My Tools tab after visiting the neighborhood tab", async () => {
+    const user = userEvent.setup();
+
+    renderDashboard();
+    await screen.findByRole("heading", { name: /welcome back/i });
+
+    await user.click(
+      screen.getByRole("button", { name: /browse neighborhood/i }),
+    );
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ isMine: false }),
+      );
+    });
+
+    await user.click(screen.getByRole("button", { name: /your tool shed/i }));
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ isMine: true }),
+      );
+    });
+  });
+
+  // Verify the category and condition dropdowns filter the tool list.
+  it("filters the tool list by category and condition", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchToolTypes").mockResolvedValue([
+      { id: 1, code: "POWER_TOOLS", display_name: "Power Tools", description: null },
+    ]);
+    vi.spyOn(toolsApi, "fetchToolConditions").mockResolvedValue(["GOOD"]);
+
+    renderDashboard();
+    await screen.findByRole("heading", { name: /welcome back/i });
+
+    // The two selects are the category and condition filters, in that order.
+    const [categorySelect, conditionSelect] = await screen.findAllByRole("combobox");
+
+    await user.selectOptions(categorySelect, "POWER_TOOLS");
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ toolType: "POWER_TOOLS" }),
+      );
+    });
+
+    await user.selectOptions(conditionSelect, "GOOD");
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ toolCondition: "GOOD" }),
+      );
+    });
+
+    // With filters applied, the empty state explains why nothing matched.
+    expect(
+      await screen.findByText(/no tools match your filters/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify clicking a tool card opens its detail page.
+  it("navigates to the tool detail page when a card is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchTools").mockResolvedValue([
+      makeTool("t1", "Cordless Drill"),
+    ]);
+
+    renderDashboard();
+
+    await user.click(
+      await screen.findByRole("button", { name: /cordless drill/i }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/t1");
+  });
+
+  // Verify pagination when the API returns a full page of results.
+  it("pages forward and back when a full page is returned", async () => {
+    const user = userEvent.setup();
+    // PAGE_SIZE is 12; a full page means there may be more results.
+    vi.spyOn(toolsApi, "fetchTools").mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) => makeTool(`t${i}`, `Tool ${i}`)),
+    );
+
+    renderDashboard();
+
+    await user.click(await screen.findByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 12 }),
+      );
+    });
+    expect(screen.getByText(/page 2/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /previous/i }));
+    await waitFor(() => {
+      expect(toolsApi.fetchTools).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 0 }),
+      );
+    });
+  });
 });

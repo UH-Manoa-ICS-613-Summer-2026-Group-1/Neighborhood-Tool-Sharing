@@ -57,6 +57,14 @@ const makeReservation = (
   ...overrides,
 });
 
+// Date-cell buttons are labelled like "1 July, 0 reservations" — this picks
+// them out from the month-navigation buttons.
+function getDateCells() {
+  return screen
+    .getAllByRole("button")
+    .filter((btn) => /^\d+\s\w+,/.test(btn.getAttribute("aria-label") ?? ""));
+}
+
 function renderCalendarPage() {
   return render(
     <MemoryRouter>
@@ -114,17 +122,12 @@ describe("CalendarPage", () => {
     // Wait for calendar to load
     await screen.findByRole("button", { name: /previous month/i });
 
-    // Click on any numbered date button
-    const dateCells = screen.getAllByRole("button").filter(
-      (btn) => /^\d+,/.test(btn.getAttribute("aria-label") ?? "")
-    );
+    // Date cells are labelled like "1 July, 0 reservations".
+    await user.click(getDateCells()[0]);
 
-    if (dateCells.length > 0) {
-      await user.click(dateCells[0]);
-      expect(
-        screen.getByText(/no reservations on this day/i),
-      ).toBeInTheDocument();
-    }
+    expect(
+      screen.getByText(/no reservations on this day/i),
+    ).toBeInTheDocument();
   });
 
   // US 26 Scenario 3: Reminder banner for APPROVED reservations within 3 days
@@ -184,5 +187,53 @@ describe("CalendarPage", () => {
 
     const newMonth = screen.getAllByRole("heading")[1]?.textContent ?? "";
     expect(newMonth).not.toBe(currentMonth);
+  });
+
+  // Verify next-month navigation (mirror of the previous-month test).
+  it("navigates to the next month when Next is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([]);
+    renderCalendarPage();
+
+    await screen.findByRole("button", { name: /next month/i });
+    const currentMonth = screen.getAllByRole("heading")[1]?.textContent ?? "";
+
+    await user.click(screen.getByRole("button", { name: /next month/i }));
+
+    const newMonth = screen.getAllByRole("heading")[1]?.textContent ?? "";
+    expect(newMonth).not.toBe(currentMonth);
+  });
+
+  // Verify the detail panel lists the day's reservations and links to the tool.
+  it("shows the reservation card and navigates to the tool when clicked", async () => {
+    const user = userEvent.setup();
+
+    // Span the whole current month so the first visible date cell is booked.
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(monthStart);
+    monthEnd.setDate(28);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation({
+        reservation_start_date: monthStart.toISOString(),
+        reservation_end_date: monthEnd.toISOString(),
+      }),
+    ]);
+
+    renderCalendarPage();
+    await screen.findByRole("button", { name: /previous month/i });
+
+    await user.click(getDateCells()[0]);
+
+    // The card shows the tool title and its status badge.
+    const toolButton = screen.getByRole("button", { name: /dewalt drill/i });
+    expect(toolButton).toBeInTheDocument();
+    expect(screen.getByText("REQUESTED")).toBeInTheDocument();
+
+    await user.click(toolButton);
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/tool-1");
   });
 });

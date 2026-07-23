@@ -206,4 +206,22 @@ describe("RequestReservation", () => {
     await user.click(screen.getByRole("button", { name: /back to tool/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/tools/tool-1");
   });
+
+  // Verify the owner's loan duration limit is enforced client-side.
+  // The fixture allows 7 days; this range is 14.
+  it("shows an error when the range exceeds the loan duration limit", async () => {
+    const user = userEvent.setup();
+    const createSpy = vi.spyOn(reservationsApi, "createReservation");
+    renderRequestReservation();
+    await screen.findByRole("heading", { name: /request reservation/i });
+
+    await user.type(screen.getByLabelText(/start date/i), "2026-07-22");
+    await user.type(screen.getByLabelText(/end date/i), "2026-08-05");
+    await user.click(screen.getByRole("button", { name: /submit request/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /can only be loaned for up to 7 days/i,
+    );
+    expect(createSpy).not.toHaveBeenCalled();
+  });
 });
