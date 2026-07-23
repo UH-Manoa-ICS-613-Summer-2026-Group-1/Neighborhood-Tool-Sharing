@@ -130,16 +130,25 @@ describe("ToolDetail", () => {
     ).toHaveAttribute("src", "https://example.com/photo2.jpg");
   });
 
-  // Verify the reservation button is present but disabled.
-  it("renders a disabled Request Reservation button", async () => {
+  // UPDATED BY MARITZA — 07/19/2026
+  // US 2: Request Reservation button is now enabled and navigates to the reservation form
+  // Previously: button was disabled (backend not ready)
+  // Now: button is enabled and routes to /tools/:toolId/reserve
+  it("renders an enabled Request Reservation button and navigates to reservation form", async () => {
+    const user = userEvent.setup();
     vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
 
     renderToolDetail();
     await screen.findByRole("heading", { name: /dewalt/i });
 
-    expect(
-      screen.getByRole("button", { name: /request reservation/i }),
-    ).toBeDisabled();
+    const reserveButton = screen.getByRole("button", { name: /request reservation/i });
+
+    // Button should now be enabled (US 2 — reservation backend is ready)
+    expect(reserveButton).not.toBeDisabled();
+
+    // Clicking should navigate to the reservation form for this tool
+    await user.click(reserveButton);
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/tool-1/reserve");
   });
 
   // Verify the back link returns to the dashboard.

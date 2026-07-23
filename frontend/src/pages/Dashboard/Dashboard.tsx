@@ -1,3 +1,8 @@
+// src/pages/Dashboard/Dashboard.tsx
+// Main dashboard page for logged-in users
+// Covers US 9 (owner views lending reservations) and US 10 (borrower views their requests)
+// via the Transactions tab which now uses the Transactions component
+
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
@@ -10,6 +15,10 @@ import {
     type ToolDetails,
     type ToolType,
 } from '../../api/tools'
+
+// ADDED BY MARITZA — 07/19/2026
+// Transactions component covers US 3, 4, 5, 7, 9, 10
+import Transactions from '../Reservations/Transactions'
 
 type Tab = 'my-tools' | 'neighborhood' | 'transactions'
 
@@ -49,14 +58,20 @@ export default function Dashboard() {
     const [conditions, setConditions] = useState<string[]>([])
 
     // Success banner after publishing a new tool (passed via navigate state)
+    // UPDATED BY MARITZA — also handles reservationCreated state from RequestReservation page
+    const locationState = location.state as { toolCreated?: string; reservationCreated?: string } | null
     const [successBanner, setSuccessBanner] = useState(
-        (location.state as { toolCreated?: string } | null)?.toolCreated || ''
+        locationState?.toolCreated
+            ? `"${locationState.toolCreated}" was published to your Tool Shed.`
+            : locationState?.reservationCreated
+            // US 2 Scenario 1: show success message after reservation is created
+            ? `Reservation request for "${locationState.reservationCreated}" was submitted successfully!`
+            : ''
     )
 
     // Reset paging whenever the tab changes, including when Navbar links
     // update the URL directly. Adjusting state during render (instead of in
     // an effect) avoids the extra cascading re-render the lint rule flags.
-
     const [prevTab, setPrevTab] = useState(activeTab)
     if (prevTab !== activeTab) {
         setPrevTab(activeTab)
@@ -190,7 +205,7 @@ export default function Dashboard() {
 
                 {!profileLoading && !profileError && user && (
                     <div className="mt-4">
-                        {/* Header + primary action */}
+                        {/* Header */}
                         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
                             <div>
                                 <h1 className="text-2xl font-bold mb-1">
@@ -202,13 +217,14 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        {/* Success banner after publishing a tool */}
+                        {/* Success banner — shown after publishing a tool OR after creating a reservation */}
                         {successBanner && (
                             <div
                                 role="alert"
+                                aria-live="polite"
                                 className="flex items-center justify-between mb-6 px-4 py-3 bg-green-400/10 border border-green-400/30 rounded text-green-400 text-sm"
                             >
-                                <span>✓ “{successBanner}” was published to your Tool Shed.</span>
+                                <span>✓ {successBanner}</span>
                                 <button
                                     onClick={() => setSuccessBanner('')}
                                     className="text-green-400/70 hover:text-green-400 ml-4 cursor-pointer"
@@ -232,20 +248,12 @@ export default function Dashboard() {
                             </button>
                         </div>
 
-                        {/* Transactions*/}
-                        {activeTab === 'transactions' && (
-                            <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
-                                <span className="block text-3xl mb-3">📅</span>
-                                <h2 className="text-lg font-semibold text-[#e8a838] mb-2">Transactions</h2>
-                                <p className="text-xs text-gray-400 max-w-md mx-auto">
-                                    Reservation requests and loan history will appear here once the
-                                    reservations feature is available. For now, arrange pickups directly
-                                    with your neighbors.
-                                </p>
-                            </div>
-                        )}
+                        {/* UPDATED BY MARITZA — 07/19/2026
+                            Transactions tab now uses the real Transactions component
+                            covering US 3, 4, 5, 7, 9, 10 instead of the placeholder */}
+                        {activeTab === 'transactions' && <Transactions />}
 
-                        {/* Tool lists */}
+                        {/* Tool lists — My Tool Shed and Browse Neighborhood tabs */}
                         {activeTab !== 'transactions' && (
                             <>
                                 {/* Filter bar */}
@@ -288,7 +296,6 @@ export default function Dashboard() {
                                     <p className="text-center text-gray-400 py-10">Loading tools...</p>
                                 )}
 
-                                {/* Hide stale errors while a new query is in flight */}
                                 {!toolsLoading && toolsError && (
                                     <p role="alert" className="text-center text-red-400 py-10">{toolsError}</p>
                                 )}
