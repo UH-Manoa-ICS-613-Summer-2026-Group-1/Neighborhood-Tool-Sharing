@@ -130,7 +130,7 @@ The script:
 - Create docker images and start containers
 - Upgrage database to latest version
 - Seed data to database
-- Run backend tests (see the QA Tests > Backend Tests section for detailed info about backend tests)
+- Run backend tests (see the [Backend Tests](#backend-tests) section for detailed info about backend tests)
 
 NOTE: Docker containers are left running for manual testing.
 Local Server: http://localhost:5000.
@@ -203,6 +203,8 @@ Open http://localhost:5000/docs
             - \*Note: Bandit is currently configured to include only medium and high severity, high confidence findings
         -   [mypy](https://mypy-lang.org/) static type checker
             - \*Note: mypy is currently only enabled for the [on-demand tests](#on-demand-tests) until the findings and resolutions can be reviewed with the developers
+        -   [radon](https://radon.readthedocs.io/en/latest/) computes code metrics, it is currently configured for [cyclomatic complexity](https://radon.readthedocs.io/en/latest/intro.html#cyclomatic-complexity), [maintainability index](https://radon.readthedocs.io/en/latest/intro.html#maintainability-index), and [raw metrics](https://radon.readthedocs.io/en/latest/intro.html#raw-metrics) 
+            - \*Note: radon is currently only enabled for the [on-demand tests](#on-demand-tests)            
     -   #### Test Definitions
         -   The backend python tests reside in the [backend/tests folder](./backend/tests)
 -   ### Frontend Tests
