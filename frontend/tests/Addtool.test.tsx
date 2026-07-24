@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import AddTool from "../src/pages/Tools/AddTool";
@@ -217,5 +217,187 @@ describe("AddTool", () => {
     await user.click(screen.getByRole("button", { name: /remove photo 1/i }));
 
     expect(screen.getByText(/photos \(0\/5\)/i)).toBeInTheDocument();
+  });
+
+  // Verify the MAX_PHOTOS cap.
+  it("shows an error when more than five photos are selected", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    const files = Array.from(
+      { length: 6 },
+      (_, i) => new File(["bytes"], `photo-${i}.jpg`, { type: "image/jpeg" }),
+    );
+    await user.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      files,
+    );
+
+    expect(
+      await screen.findByText(/maximum of 5 photos/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/photos \(0\/5\)/i)).toBeInTheDocument();
+  });
+
+  // Verify photos can be reordered — the first one becomes the cover image.
+  it("reorders photos with the move buttons", async () => {
+    const user = userEvent.setup();
+    // Unique preview URLs so the two photos are distinguishable.
+    let counter = 0;
+    window.URL.createObjectURL = vi.fn(() => `blob:preview-${++counter}`);
+
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await user.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      [
+        new File(["a"], "first.jpg", { type: "image/jpeg" }),
+        new File(["b"], "second.jpg", { type: "image/jpeg" }),
+      ],
+    );
+
+    const srcs = () =>
+      screen.getAllByRole("img").map((img) => img.getAttribute("src"));
+    expect(srcs()).toEqual(["blob:preview-1", "blob:preview-2"]);
+
+    await user.click(
+      screen.getByRole("button", { name: /move photo 1 right/i }),
+    );
+    expect(srcs()).toEqual(["blob:preview-2", "blob:preview-1"]);
+
+    await user.click(
+      screen.getByRole("button", { name: /move photo 2 left/i }),
+    );
+    expect(srcs()).toEqual(["blob:preview-1", "blob:preview-2"]);
+  });
+
+  // Verify validation: description length.
+  it("shows an error when the description is too short", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
+    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(screen.getByLabelText(/description/i), "hi");
+    await addPhoto(user);
+    await user.click(screen.getByRole("button", { name: /publish tool/i }));
+
+    expect(
+      await screen.findByText(/description must be between 5 and 2000/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify validation: condition is required.
+  it("shows an error when no condition is chosen", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
+    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(
+      screen.getByLabelText(/description/i),
+      "Great drill, barely used.",
+    );
+    await addPhoto(user);
+    await user.click(screen.getByRole("button", { name: /publish tool/i }));
+
+    expect(
+      await screen.findByText(/please choose a condition/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify validation: loan duration bounds.
+  it("shows an error when the loan limit is out of range", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await fillValidForm(user);
+    const loanLimit = screen.getByLabelText(/maximum loan duration/i);
+    await user.clear(loanLimit);
+    await user.type(loanLimit, "400");
+    await user.click(screen.getByRole("button", { name: /publish tool/i }));
+
+    expect(
+      await screen.findByText(/loan limit must be between 1 and 365 days/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify the no-photo guard. The publish button is disabled with zero
+  // photos, so submitting the form directly is the only way to reach it.
+  it("shows an error when the form is submitted with no photos", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    // Every earlier guard must pass so the photo check is the one that fires.
+    await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
+    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(
+      screen.getByLabelText(/description/i),
+      "Great drill, barely used.",
+    );
+    await user.selectOptions(screen.getByLabelText(/condition/i), "GOOD");
+
+    fireEvent.submit(document.querySelector("form")!);
+
+    expect(
+      await screen.findByText(/must include at least one photo/i),
+    ).toBeInTheDocument();
+  });
+
+  // Verify the optional notes and a custom loan limit reach the API.
+  it("sends the optional notes and custom loan limit", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(mediaApi, "uploadPhoto").mockResolvedValue(
+      "https://storage.example.com/drill.jpg",
+    );
+    const createSpy = vi
+      .spyOn(toolsApi, "createTool")
+      .mockResolvedValue({} as never);
+
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await fillValidForm(user);
+    await user.type(
+      screen.getByLabelText(/pickup notes/i),
+      "Porch pickup after 5pm",
+    );
+    await user.type(
+      screen.getByLabelText(/return notes/i),
+      "Please return charged",
+    );
+    const loanLimit = screen.getByLabelText(/maximum loan duration/i);
+    await user.clear(loanLimit);
+    await user.type(loanLimit, "14");
+
+    await user.click(screen.getByRole("button", { name: /publish tool/i }));
+
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pickup_notes: "Porch pickup after 5pm",
+          return_notes: "Please return charged",
+          loan_duration_limit: 14,
+        }),
+      );
+    });
+  });
+
+  // Verify the back link.
+  it("navigates to the dashboard when Back is clicked", async () => {
+    const user = userEvent.setup();
+    render(<AddTool />);
+    await screen.findByLabelText(/category/i);
+
+    await user.click(
+      screen.getByRole("button", { name: /back to dashboard/i }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
   });
 });

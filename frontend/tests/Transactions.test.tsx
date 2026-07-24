@@ -248,4 +248,125 @@ describe("Transactions", () => {
       await screen.findByText(/cannot approve at this time/i),
     ).toBeInTheDocument();
   });
+
+  // Verify the load error path.
+  it("shows an error when reservations fail to load", async () => {
+    vi.spyOn(reservationsApi, "fetchReservations").mockRejectedValue(
+      new Error("Failed to load reservations."),
+    );
+    renderTransactions();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /failed to load reservations/i,
+    );
+  });
+
+  // Verify the tool name links to the tool detail page.
+  it("navigates to the tool detail page when the tool name is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation(),
+    ]);
+    renderTransactions();
+    await user.click(await screen.findByRole("button", { name: /dewalt drill/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/tool-1");
+  });
+
+  // US 4 Scenario 2: Deny updates the status locally.
+  it("updates the status to DENIED when Deny is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation({ reservation_status: "REQUESTED" }),
+    ]);
+    vi.spyOn(reservationsApi, "denyReservation").mockResolvedValue(
+      makeReservation({ reservation_status: "DENIED" }),
+    );
+    renderTransactions();
+    await screen.findByText(/dewalt drill/i);
+    await user.click(screen.getByRole("button", { name: /deny/i }));
+    expect(await screen.findByText("DENIED")).toBeInTheDocument();
+  });
+
+  // US 7 Scenario 1: Borrower confirms pickup on an APPROVED reservation.
+  it("updates the status to PICKED_UP when Confirm Pickup is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation({
+        reservation_status: "APPROVED",
+        owner_id: "user-2",
+        borrower_id: "user-1",
+      }),
+    ]);
+    vi.spyOn(reservationsApi, "pickupReservation").mockResolvedValue(
+      makeReservation({ reservation_status: "PICKED_UP" }),
+    );
+    renderTransactions();
+    await screen.findByText(/dewalt drill/i);
+    await user.click(screen.getByRole("button", { name: /confirm pickup/i }));
+    expect(await screen.findByText("PICKED_UP")).toBeInTheDocument();
+  });
+
+  // US 5 Scenario 1: Owner confirms return on a PICKED_UP reservation.
+  it("updates the status to RETURNED when Confirm Return is clicked", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation({ reservation_status: "PICKED_UP" }),
+    ]);
+    vi.spyOn(reservationsApi, "returnReservation").mockResolvedValue(
+      makeReservation({ reservation_status: "RETURNED" }),
+    );
+    renderTransactions();
+    await screen.findByText(/dewalt drill/i);
+    await user.click(screen.getByRole("button", { name: /confirm return/i }));
+    expect(await screen.findByText("RETURNED")).toBeInTheDocument();
+  });
+
+  // US 3: Cancel updates only the clicked reservation and leaves siblings alone.
+  it("cancels only the clicked reservation", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+      makeReservation({ reservation_id: "res-1", tool_title: "DeWalt Drill" }),
+      makeReservation({ reservation_id: "res-2", tool_title: "Circular Saw" }),
+    ]);
+    vi.spyOn(reservationsApi, "cancelReservation").mockResolvedValue(
+      makeReservation({ reservation_status: "CANCELED" }),
+    );
+    renderTransactions();
+    await screen.findByText(/circular saw/i);
+
+    await user.click(screen.getAllByRole("button", { name: /cancel/i })[0]);
+
+    expect(await screen.findByText("CANCELED")).toBeInTheDocument();
+    // The second card is untouched.
+    expect(screen.getByText("REQUESTED")).toBeInTheDocument();
+    expect(screen.getByText(/circular saw/i)).toBeInTheDocument();
+  });
+
+  // Pagination appears once a full page is returned (PAGE_SIZE is 10).
+  it("pages forward and back through reservations", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(reservationsApi, "fetchReservations")
+      .mockResolvedValue(
+        Array.from({ length: 10 }, (_, i) =>
+          makeReservation({ reservation_id: `res-${i}`, tool_title: `Tool ${i}` }),
+        ),
+      );
+    renderTransactions();
+    await screen.findByText("Tool 0");
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 10 }),
+      );
+    });
+    expect(screen.getByText(/page 2/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /previous/i }));
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 0 }),
+      );
+    });
+  });
 });

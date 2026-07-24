@@ -46,6 +46,27 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   );
 }
 
+// Fill the form using one password for both password fields, then submit.
+async function submitWithPassword(
+  user: ReturnType<typeof userEvent.setup>,
+  password: string,
+) {
+  await user.type(screen.getByPlaceholderText(/first name/i), "Ada");
+  await user.type(screen.getByPlaceholderText(/last name/i), "Lovelace");
+  await user.type(screen.getByPlaceholderText(/^password/i), password);
+  await user.type(screen.getByPlaceholderText(/confirm password/i), password);
+  await user.click(screen.getByRole("button", { name: /create account/i }));
+}
+
+// Mock a valid invitation and wait for the form to appear.
+async function renderWithValidToken() {
+  vi.spyOn(invitationsApi, "validateInviteToken").mockResolvedValue({
+    recipient_email: "invited@example.com",
+  });
+  renderRegister();
+  await screen.findByDisplayValue("invited@example.com");
+}
+
 describe("Register", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -208,5 +229,105 @@ describe("Register", () => {
       await screen.findByText(/could not connect to the server/i),
     ).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalledWith("/login?registered=true");
+  });
+
+  // Verify the remaining password strength rules. The uppercase rule is
+  // covered by its own test above.
+  it.each([
+    ["shorter than 8 characters", "Ab1!", /at least 8 characters/i],
+    ["missing a lowercase letter", "STR0NGPASS!", /at least one lowercase letter/i],
+    ["missing a number", "StrongPass!", /at least one number/i],
+    ["missing a special character", "Str0ngPass1", /at least one special character/i],
+  ])("rejects a password %s", async (_label, password, expected) => {
+    const user = userEvent.setup();
+    const registerSpy = vi.spyOn(authApi, "registerUser");
+    await renderWithValidToken();
+
+    await submitWithPassword(user, password);
+
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(registerSpy).not.toHaveBeenCalled();
+  });
+
+  // Verify the required-name guards.
+  it("shows an error when the first name is blank", async () => {
+    const user = userEvent.setup();
+    const registerSpy = vi.spyOn(authApi, "registerUser");
+    await renderWithValidToken();
+
+    await user.type(screen.getByPlaceholderText(/last name/i), "Lovelace");
+    await user.type(screen.getByPlaceholderText(/^password/i), GOOD_PASSWORD);
+    await user.type(
+      screen.getByPlaceholderText(/confirm password/i),
+      GOOD_PASSWORD,
+    );
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      await screen.findByText(/first name is required/i),
+    ).toBeInTheDocument();
+    expect(registerSpy).not.toHaveBeenCalled();
+  });
+
+  it("shows an error when the last name is blank", async () => {
+    const user = userEvent.setup();
+    const registerSpy = vi.spyOn(authApi, "registerUser");
+    await renderWithValidToken();
+
+    await user.type(screen.getByPlaceholderText(/first name/i), "Ada");
+    await user.type(screen.getByPlaceholderText(/^password/i), GOOD_PASSWORD);
+    await user.type(
+      screen.getByPlaceholderText(/confirm password/i),
+      GOOD_PASSWORD,
+    );
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(
+      await screen.findByText(/last name is required/i),
+    ).toBeInTheDocument();
+    expect(registerSpy).not.toHaveBeenCalled();
+  });
+
+  // Verify the optional middle name is passed through when supplied.
+  it("includes the middle name in the registration payload", async () => {
+    const user = userEvent.setup();
+    const registerSpy = vi
+      .spyOn(authApi, "registerUser")
+      .mockResolvedValue({ message: "ok" });
+    await renderWithValidToken();
+
+    await user.type(screen.getByPlaceholderText(/middle name/i), "Quinn");
+    await fillValidForm(user);
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(registerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ middleName: "Quinn" }),
+      );
+    });
+  });
+
+  // Verify both navigation buttons.
+  it("navigates to login from the invalid-token screen", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(invitationsApi, "validateInviteToken").mockRejectedValue(
+      new Error("This invitation link has expired."),
+    );
+
+    renderRegister();
+
+    await user.click(
+      await screen.findByRole("button", { name: /back to login/i }),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
+  });
+
+  it("navigates to login when Back is clicked on the form", async () => {
+    const user = userEvent.setup();
+    await renderWithValidToken();
+
+    await user.click(screen.getByRole("button", { name: /back/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/login");
   });
 });

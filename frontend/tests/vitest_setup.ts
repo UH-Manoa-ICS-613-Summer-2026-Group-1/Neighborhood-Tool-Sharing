@@ -1,9 +1,11 @@
 // setup vitest for assertion test cases 
 import "@testing-library/jest-dom/vitest";
-
+import { configMocks, mockAnimationsApi } from 'jsdom-testing-mocks'
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 
+configMocks({ beforeAll, afterAll, beforeEach, afterEach });
+mockAnimationsApi();
 
 class ResizeObserverMock {
   observe() {}

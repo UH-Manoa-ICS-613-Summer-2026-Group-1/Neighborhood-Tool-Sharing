@@ -64,6 +64,19 @@ describe("Navbar", () => {
     vi.spyOn(usersApi, "fetchCurrentUser").mockResolvedValue(profile);
   });
 
+  // Verify the mobile panel's nav buttons navigate too.
+  // (Desktop bar and mobile panel each render their own buttons; the mobile
+  // one is second in the DOM.)
+  it("navigates when a mobile nav item is clicked", async () => {
+    const user = userEvent.setup();
+    renderNavbar();
+
+    await user.click(screen.getByRole("button", { name: /open main menu/i }));
+    await user.click(screen.getAllByRole("button", { name: /add tool/i })[1]);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/new");
+  });
+
   // Verify the navigation links render.
   // (The current nav has Home, Add Tool, and Calendar — no Search item.)
   it("renders all navigation items", () => {
