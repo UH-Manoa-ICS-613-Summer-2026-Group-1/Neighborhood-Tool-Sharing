@@ -724,7 +724,7 @@ def cancel_reservation(
 
         # If the current user is the borrower, the recipient is the owner, and vice versa.
         if is_borrower:
-            reviewee_id = reservation.tool.owner_id
+            recipient_id = reservation.tool.owner_id
         else:
             recipient_id = reservation.borrower_id
 

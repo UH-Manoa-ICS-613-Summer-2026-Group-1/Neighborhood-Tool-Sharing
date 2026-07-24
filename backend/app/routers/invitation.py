@@ -162,7 +162,7 @@ def send_invitation(
         print(f"Failed to send invitation email: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send invitation email. Please try again later.",
+            detail="Failed to send invitation email. Please try again later.",
         )
     db.commit()
 
