@@ -200,7 +200,13 @@ def list_tools(
         query = query.filter(ToolView.owner_id == current_user.id)
     else:
         # Public browsing only reveals available tools (no hidden or suspened)
-        query = query.filter(ToolView.tool_status == ToolStatus.AVAILABLE)
+        # And not includes tools owned by the current user
+        query = query.filter(
+            and_(
+                ToolView.tool_status == ToolStatus.AVAILABLE,
+                ToolView.owner_id != current_user.id,
+            )
+        )
 
     # Filter view by optional category type
     if tool_type:
