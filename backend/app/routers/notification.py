@@ -114,9 +114,11 @@ def mark_notification_read(
         db.commit()
         db.refresh(notification)
     except Exception as e:
+        print(f"Error updating notification: {str(e)}")
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating notification: {str(e)}",
+            detail=f"Error updating notification.",
         )
 
     return notification
@@ -145,9 +147,11 @@ def mark_all_notification_read(
         ).update({"is_read": True})
         db.commit()
     except Exception as e:
+        print(f"Error updating notifications: {str(e)}")
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating notifications: {str(e)}",
+            detail=f"Error updating notifications.",
         )
 
     return {"message": "Notifications marked as read."}

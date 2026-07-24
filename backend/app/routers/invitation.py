@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.invitation import Invitation, InvitationHistory, InvitationStatus
+from app.models.notification import NotificationCategory
 from app.models.user import User
 from app.schemas.common import DetailError, MessageResponse
 from app.schemas.invitation import (
@@ -20,6 +21,7 @@ from app.schemas.invitation import (
 )
 from app.utils.dependencies import get_current_user
 from app.utils.email import send_invitation_email
+from app.utils.notification_helpers import create_notification
 from app.utils.token_generator import generate_token
 
 router = APIRouter(prefix="/api/invitations", tags=["Invitations"])
@@ -61,6 +63,20 @@ def get_valid_invite(token: str, db: Session) -> Invitation:
         invite.status = (
             InvitationStatus.EXPIRED
         )  # in case the status was not updated yet
+
+        # Add notification for user who send the invite
+        create_notification(
+            db=db,
+            recipient_id=invite.sender_id,
+            category=NotificationCategory.INVITATION,
+            title="Invitation expired",
+            content="The user is trying to register with your invite. "
+            f"However, the invitation you sent to {invite.recipient_email} has expired. "
+            f"You can send a new invite to {invite.recipient_email}.",
+            target_id=None,
+            target_type="INVITATION",
+        )
+
         db.commit()
 
         raise HTTPException(
@@ -143,9 +159,10 @@ def send_invitation(
         send_invitation_email(recipient_email, invite_token)
     except Exception as e:
         db.rollback()
+        print(f"Failed to send invitation email: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send invitation email. Please try again later.\nError: {str(e)}.",
+            detail=f"Failed to send invitation email. Please try again later.",
         )
     db.commit()
 
