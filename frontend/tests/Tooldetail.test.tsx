@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router";
 import ToolDetail from "../src/pages/Tools/ToolDetail";
 import * as toolsApi from "../src/api/tools";
 import type { ToolDetails } from "../src/api/tools";
@@ -11,8 +11,8 @@ const { mockNavigate } = vi.hoisted(() => {
   return { mockNavigate: vi.fn() };
 });
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,

@@ -2,7 +2,7 @@
 // US 11: New user registers using an invite token from the URL
 
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router'
 import { validateInviteToken } from '../../api/invitations'
 import { registerUser } from '../../api/auth'
 

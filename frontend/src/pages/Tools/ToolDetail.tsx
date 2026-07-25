@@ -3,7 +3,7 @@
 // Includes the Request Reservation button (US 2) which navigates to /tools/:toolId/reserve
 
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchToolById, type ToolDetails } from '../../api/tools'
 

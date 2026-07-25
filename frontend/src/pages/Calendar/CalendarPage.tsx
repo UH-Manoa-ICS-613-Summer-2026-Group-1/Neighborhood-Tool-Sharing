@@ -15,7 +15,7 @@
 //   - Follows team code style: Tailwind CSS, heroicons, async/await API calls
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchReservations, type ReservationDetails } from '../../api/reservations'
 

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, beforeEach } from "vitest";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router";
 import ProtectedRoute from "../src/components/ProtectedRoute";
 
 // Renders a tiny route tree so we can observe where the router lands.

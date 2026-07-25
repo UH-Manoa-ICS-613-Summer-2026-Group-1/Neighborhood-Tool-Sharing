@@ -4,7 +4,7 @@
 // via the Transactions tab which now uses the Transactions component
 
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import Navbar from '../../components/Navbar'
 import ToolCard from '../../components/ToolCard'
 import { fetchCurrentUser, type UserProfile } from '../../api/users'

@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { uploadPhoto } from '../../api/media'
 import {changePassword, fetchCurrentUser, updateUserProfile, type UserProfile } from '../../api/users'

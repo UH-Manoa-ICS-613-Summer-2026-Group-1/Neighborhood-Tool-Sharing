@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Navbar from "../src/components/Navbar";
 import * as authApi from "../src/api/auth";
 import * as usersApi from "../src/api/users";
@@ -15,8 +15,8 @@ const { mockNavigate } = vi.hoisted(() => {
 // Replace useNavigate only — useLocation stays real, so the component
 // must be rendered inside a MemoryRouter (it reads the current URL to
 // highlight the active nav item).
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,

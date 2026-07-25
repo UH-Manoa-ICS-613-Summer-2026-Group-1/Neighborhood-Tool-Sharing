@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router'
 import { loginUser } from '../../api/auth'
 
 // Handles the email/password form, calls the auth API, stores the

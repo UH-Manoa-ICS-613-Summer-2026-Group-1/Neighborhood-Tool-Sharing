@@ -20,7 +20,7 @@
 //   → on success: redirect to /dashboard?tab=transactions
 
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchToolById, type ToolDetails } from '../../api/tools'
 import { createReservation } from '../../api/reservations'
