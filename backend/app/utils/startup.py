@@ -6,7 +6,9 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import (  # type: ignore[import-untyped]
+    BackgroundScheduler,
+)
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
 
