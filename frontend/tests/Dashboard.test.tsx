@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Dashboard from "../src/pages/Dashboard/Dashboard";
 import * as usersApi from "../src/api/users";
 import * as toolsApi from "../src/api/tools";
@@ -16,8 +16,8 @@ const { mockNavigate } = vi.hoisted(() => {
 
 // Keep useSearchParams/useLocation real (the tab state lives in the URL),
 // only replace useNavigate.
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,

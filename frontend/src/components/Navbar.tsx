@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, CalendarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router'
 import { logoutUser } from '../api/auth'
 import { fetchCurrentUser, type UserProfile } from '../api/users'
 

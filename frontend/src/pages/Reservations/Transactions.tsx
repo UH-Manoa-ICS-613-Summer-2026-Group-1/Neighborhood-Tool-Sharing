@@ -32,7 +32,7 @@
 // US 10 — Borrower views their own reservation requests
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import {
     fetchReservations,
     approveReservation,
@@ -43,6 +43,7 @@ import {
     type ReservationDetails,
 } from '../../api/reservations'
 import { fetchCurrentUser } from '../../api/users'
+import { fetchReservationReviews, type ReviewDetails } from '../../api/review'
 
 // Number of reservations shown per page
 const PAGE_SIZE = 10
@@ -57,6 +58,30 @@ const statusColors: Record<string, string> = {
     RETURNED:  'bg-purple-400/20 text-purple-300 border border-purple-400/30',
     DENIED:    'bg-red-400/20 text-red-300 border border-red-400/30',
     CANCELED:  'bg-gray-400/20 text-gray-300 border border-gray-400/30',
+}
+
+// Status options for the status filter dropdown
+const STATUS_OPTIONS = [
+    'REQUESTED',
+    'APPROVED',
+    'PICKED_UP',
+    'RETURNED',
+    'DENIED',
+    'CANCELED',
+] as const
+ 
+// Role filter values map to the API's role param.
+// owner  = INCOMING (requests on the user's tools)
+// borrower = OUTGOING (the user's own requests)
+type RoleFilter = '' | 'owner' | 'borrower'
+
+// Per-reservation review status, derived from GET /reservations/{id}/reviews.
+// mine   = the review the current user wrote (if any)
+// theirs = the review the OTHER party wrote about the current user (if any)
+type ReviewPair = {
+    mine: ReviewDetails | null
+    theirs: ReviewDetails | null
+    loaded: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -76,9 +101,18 @@ export default function Transactions() {
     const [actionError, setActionError] = useState<Record<string, string>>({})
     const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
 
+    // Per-reservation review status (only fetched for RETURNED reservations)
+    const [reviewState, setReviewState] = useState<Record<string, ReviewPair>>({})
+
+    // Filters applied server-side via the reservations API
+    const [roleFilter, setRoleFilter] = useState<RoleFilter>('')
+    const [statusFilter, setStatusFilter] = useState('')
+
     // Pagination state
     const [offset, setOffset] = useState(0)
     const [hasMore, setHasMore] = useState(false)
+
+    const filtersActive = roleFilter !== '' || statusFilter !== ''
 
     // Load reservations and current user ID
     // Re-runs whenever offset changes (pagination)
@@ -87,8 +121,13 @@ export default function Transactions() {
             setLoading(true)
             try {
                 const [reservationsData, userData] = await Promise.all([
-                    // GET /api/reservations with limit and offset for pagination
-                    fetchReservations({ limit: PAGE_SIZE, offset }),
+                    // GET /api/reservations with role/status filters + pagination
+                    fetchReservations({
+                        role: roleFilter || undefined,
+                        status: statusFilter || undefined,
+                        limit: PAGE_SIZE,
+                        offset,
+                    }),
                     fetchCurrentUser(),
                 ])
                 setReservations(reservationsData)
@@ -102,7 +141,60 @@ export default function Transactions() {
             }
         }
         loadData()
-    }, [offset])
+    }, [offset, roleFilter, statusFilter])
+
+    // Load review status for every RETURNED reservation currently on screen.
+    // Runs after reservations load and whenever the list changes (e.g. after a
+    // return is confirmed, or the user comes back from the review page).
+    useEffect(() => {
+        if (!currentUserId) return
+ 
+        const returned = reservations.filter(r => r.reservation_status === 'RETURNED')
+        if (returned.length === 0) return
+ 
+        let cancelled = false
+        const loadReviews = async () => {
+            const entries = await Promise.all(
+                returned.map(async r => {
+                    try {
+                        const reviews = await fetchReservationReviews(r.reservation_id)
+                        const mine = reviews.find(rv => rv.reviewer_id === currentUserId) ?? null
+                        const theirs = reviews.find(rv => rv.reviewer_id !== currentUserId) ?? null
+                        return [r.reservation_id, { mine, theirs, loaded: true }] as const
+                    } catch {
+                        // On failure fall back to "no reviews" so the button still works.
+                        return [r.reservation_id, { mine: null, theirs: null, loaded: true }] as const
+                    }
+                })
+            )
+            if (cancelled) return
+            setReviewState(prev => {
+                const next = { ...prev }
+                for (const [id, val] of entries) next[id] = val
+                return next
+            })
+        }
+        loadReviews()
+ 
+        return () => {
+            cancelled = true
+        }
+    }, [reservations, currentUserId])
+
+    // Changing a filter resets to the first page.
+    const changeRoleFilter = (value: RoleFilter) => {
+        setRoleFilter(value)
+        setOffset(0)
+    }
+    const changeStatusFilter = (value: string) => {
+        setStatusFilter(value)
+        setOffset(0)
+    }
+    const clearFilters = () => {
+        setRoleFilter('')
+        setStatusFilter('')
+        setOffset(0)
+    }
 
     // Generic action handler — approve, deny, cancel, pickup, return
     //
@@ -143,21 +235,25 @@ export default function Transactions() {
         new Date(iso).toLocaleDateString('en-US', {
             month: 'short', day: 'numeric', year: 'numeric',
         })
+    
+    // Order the visible list by creation time, newest first.
+    const orderedReservations = [...reservations].sort(
+        (a, b) =>
+            new Date(b.reservation_created_at).getTime() -
+            new Date(a.reservation_created_at).getTime()
+    )
 
     // ---------------------------------------------------------------------------
     // Render states
     // ---------------------------------------------------------------------------
 
-    if (loading) {
-        return <p className="text-center text-gray-400 py-10">Loading transactions...</p>
-    }
-
     if (error) {
         return <p role="alert" className="text-center text-red-400 py-10">{error}</p>
     }
 
-    // Empty state
-    if (reservations.length === 0 && offset === 0) {
+    // First-visit empty state, only when there are genuinely no reservations
+    // (no filters applied, first page). Keeps the original onboarding prompt.
+    if (!loading && reservations.length === 0 && offset === 0 && !filtersActive) {
         return (
             <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
                 <span className="block text-3xl mb-3">📋</span>
@@ -175,18 +271,89 @@ export default function Transactions() {
         )
     }
 
+
     // ---------------------------------------------------------------------------
     // Reservation list — US 9 (owner view) and US 10 (borrower view) combined
     // ---------------------------------------------------------------------------
     return (
         <div className="flex flex-col gap-4">
-
-            {reservations.map(r => {
+ 
+            {/* Filter bar — Role (direction) and Status */}
+            <div className="flex flex-wrap items-center gap-3">
+                <select
+                    aria-label="Filter by role"
+                    value={roleFilter}
+                    onChange={e => changeRoleFilter(e.target.value as RoleFilter)}
+                    className="px-3 py-2 bg-black/25 border border-white/10 rounded text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#e8a838]"
+                >
+                    <option value="">All requests</option>
+                    <option value="owner">Incoming (on my tools)</option>
+                    <option value="borrower">Outgoing (my requests)</option>
+                </select>
+ 
+                <select
+                    aria-label="Filter by status"
+                    value={statusFilter}
+                    onChange={e => changeStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-black/25 border border-white/10 rounded text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#e8a838]"
+                >
+                    <option value="">Any status</option>
+                    {STATUS_OPTIONS.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                    ))}
+                </select>
+ 
+                {filtersActive && (
+                    <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="px-3 py-2 text-xs font-semibold text-gray-400 hover:text-[#e8a838] transition-colors cursor-pointer"
+                    >
+                        Clear filters
+                    </button>
+                )}
+            </div>
+ 
+            {loading && (
+                <p className="text-center text-gray-400 py-10">Loading transactions...</p>
+            )}
+ 
+            {/* Empty state when filters exclude everything */}
+            {!loading && orderedReservations.length === 0 && (filtersActive || offset > 0) && (
+                <div className="p-10 bg-black/15 border border-white/5 rounded-lg text-center">
+                    <p className="text-sm text-gray-300 mb-1">No transactions match these filters.</p>
+                    {filtersActive && (
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="text-xs font-semibold text-[#e8a838] hover:underline cursor-pointer"
+                        >
+                            Clear filters
+                        </button>
+                    )}
+                </div>
+            )}
+ 
+            {!loading && orderedReservations.map(r => {
                 const isOwner    = r.owner_id === currentUserId
                 const isBorrower = r.borrower_id === currentUserId
                 const isLoading  = actionLoading[r.reservation_id]
                 const err        = actionError[r.reservation_id]
+ 
+                // Direction from the current user's point of view:
+                //   owner    -> INCOMING (a borrower is requesting the user's tool)
+                //   borrower -> OUTGOING (the user's own request to an owner)
+                const directionLabel = isOwner ? 'Incoming' : 'Outgoing'
+                const directionClass = isOwner
+                    ? 'bg-teal-400/20 text-teal-300'
+                    : 'bg-orange-400/20 text-orange-300'
 
+                // Review status for RETURNED reservations
+                const review = reviewState[r.reservation_id]
+                const hasMine = !!review?.mine
+                const hasTheirs = !!review?.theirs
+                const otherFirstName = isOwner ? r.borrower_first_name : r.owner_first_name
+ 
                 return (
                     <div
                         key={r.reservation_id}
@@ -201,13 +368,12 @@ export default function Transactions() {
                                 >
                                     {r.tool_title}
                                 </button>
-
-                                {/* Role label — ADDED 07/21/2026 (Kylie feedback)
-                                    Makes it easy to tell incoming vs outgoing reservations */}
-                                <span className={`text-[0.6rem] font-semibold px-1.5 py-0.5 rounded mr-1 ml-1 ${isOwner ? 'bg-orange-400/20 text-orange-300' : 'bg-teal-400/20 text-teal-300'}`}>
-                                    {isOwner ? 'Outgoing' : 'Incoming'}
+ 
+                                {/* Direction label — Incoming (on my tools) vs Outgoing (my requests) */}
+                                <span className={`text-[0.6rem] font-semibold px-1.5 py-0.5 rounded mr-1 ml-1 ${directionClass}`}>
+                                    {directionLabel}
                                 </span>
-
+ 
                                 <p className="text-xs text-gray-400 mt-0.5">
                                     {r.tool_type_name} &bull;{' '}
                                     {isOwner
@@ -215,28 +381,28 @@ export default function Transactions() {
                                         : `Owned by ${r.owner_first_name} ${r.owner_last_name}`}
                                 </p>
                             </div>
-
+ 
                             {/* Status badge */}
                             <span className={`text-[0.65rem] font-bold px-2 py-1 rounded uppercase ${statusColors[r.reservation_status] ?? 'bg-gray-400/20 text-gray-300'}`}>
                                 {r.reservation_status}
                             </span>
                         </div>
-
+ 
                         {/* Date range */}
                         <p className="text-xs text-gray-400 mb-3">
                             {formatDate(r.reservation_start_date)} &rarr; {formatDate(r.reservation_end_date)}
                         </p>
-
+ 
                         {/* Per-reservation action error */}
                         {err && (
                             <p role="alert" aria-live="assertive" className="mb-3 text-xs text-red-400">
                                 {err}
                             </p>
                         )}
-
+ 
                         {/* Action buttons */}
                         <div className="flex flex-wrap gap-2">
-
+ 
                             {/* US 4 Scenario 1: Approve — owner only, REQUESTED only */}
                             {isOwner && r.reservation_status === 'REQUESTED' && (
                                 <button
@@ -247,7 +413,7 @@ export default function Transactions() {
                                     {isLoading ? '...' : 'Approve'}
                                 </button>
                             )}
-
+ 
                             {/* US 4 Scenario 2: Deny — owner only, REQUESTED only */}
                             {isOwner && r.reservation_status === 'REQUESTED' && (
                                 <button
@@ -258,7 +424,7 @@ export default function Transactions() {
                                     {isLoading ? '...' : 'Deny'}
                                 </button>
                             )}
-
+ 
                             {/* US 5 Scenario 1: Confirm Return — owner only, PICKED_UP only */}
                             {isOwner && r.reservation_status === 'PICKED_UP' && (
                                 <button
@@ -269,7 +435,7 @@ export default function Transactions() {
                                     {isLoading ? '...' : 'Confirm Return'}
                                 </button>
                             )}
-
+ 
                             {/* US 7 Scenario 1: Confirm Pickup — borrower only, APPROVED only */}
                             {isBorrower && r.reservation_status === 'APPROVED' && (
                                 <button
@@ -280,7 +446,7 @@ export default function Transactions() {
                                     {isLoading ? '...' : 'Confirm Pickup'}
                                 </button>
                             )}
-
+ 
                             {/* US 3: Cancel — owner or borrower, REQUESTED or APPROVED only */}
                             {(isOwner || isBorrower) &&
                                 ['REQUESTED', 'APPROVED'].includes(r.reservation_status) && (
@@ -292,15 +458,58 @@ export default function Transactions() {
                                     {isLoading ? '...' : 'Cancel'}
                                 </button>
                             )}
+ 
+                            {/* Reviews — owner or borrower, RETURNED ("done") only.
+                                The label and pills reflect whether the user has already
+                                reviewed and whether they've received a review back. */}
+                            {(isOwner || isBorrower) && r.reservation_status === 'RETURNED' && (
+                                <>
+                                    <button
+                                        onClick={() => navigate(`/reservations/${r.reservation_id}/review`)}
+                                        className={
+                                            hasMine
+                                                // Your part is done, neutral "view" style
+                                                ? 'px-3 py-1.5 bg-white/5 border border-white/15 text-gray-200 text-xs font-semibold rounded hover:border-[#e8a838] hover:text-[#e8a838] transition-colors cursor-pointer'
+                                                // You still owe a review: gold call-to-action
+                                                : 'px-3 py-1.5 bg-[#e8a838]/20 border border-[#e8a838]/40 text-[#e8a838] text-xs font-semibold rounded hover:bg-[#e8a838]/30 transition-colors cursor-pointer'
+                                        }
+                                    >
+                                        {hasMine ? 'View Reviews' : 'Make a Review'}
+                                    </button>
+ 
+                                    {/* You have submitted your review */}
+                                    {hasMine && (
+                                        <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded bg-green-400/15 text-green-300 border border-green-400/25">
+                                            Review sent
+                                        </span>
+                                    )}
+ 
+                                    {/* You submitted but haven't received one yet */}
+                                    {hasMine && !hasTheirs && (
+                                        <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10">
+                                            Awaiting their review
+                                        </span>
+                                    )}
+ 
+                                    {/* The other party has reviewed you, show the rating you got */}
+                                    {hasTheirs && (
+                                        <span
+                                            title={review?.theirs?.comment ?? undefined}
+                                            className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded bg-purple-400/20 text-purple-200 border border-purple-400/30"
+                                        >
+                                            ★ {review?.theirs?.rating}/5 from {otherFirstName}
+                                        </span>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </div>
                 )
             })}
-
+ 
             {/* Pagination — Previous and Next buttons
-                ADDED 07/21/2026 (Kylie feedback: older reservations not visible)
                 Shows 10 reservations at a time using API limit/offset params */}
-            {(offset > 0 || hasMore) && (
+            {!loading && (offset > 0 || hasMore) && (
                 <div className="flex justify-center items-center gap-4 mt-2">
                     <button
                         onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}

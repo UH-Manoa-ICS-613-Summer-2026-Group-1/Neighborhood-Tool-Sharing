@@ -10,8 +10,8 @@ const { mockNavigate } = vi.hoisted(() => {
   return { mockNavigate: vi.fn() };
 });
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -38,7 +38,6 @@ beforeEach(() => {
 // Helper: attach a fake image file to the photo input.
 async function addPhoto(user: ReturnType<typeof userEvent.setup>) {
   const file = new File(["fake-bytes"], "drill.jpg", { type: "image/jpeg" });
-  // The file input has no label, so query it by its DOM type.
   const input = document.querySelector(
     'input[type="file"]',
   ) as HTMLInputElement;

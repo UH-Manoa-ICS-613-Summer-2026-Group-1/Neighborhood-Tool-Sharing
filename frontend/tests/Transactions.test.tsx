@@ -7,24 +7,27 @@
 //   US 5: Confirm Return shown to owner for PICKED_UP only
 //   US 7: Confirm Pickup shown to borrower for APPROVED only
 //   US 9 & 10: Shows reservations for both owner and borrower roles
+//   Reviews: state-aware review control on RETURNED reservations
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import Transactions from "../src/pages/Reservations/Transactions";
 import * as reservationsApi from "../src/api/reservations";
 import * as usersApi from "../src/api/users";
+import * as reviewApi from "../src/api/review";
 import type { ReservationDetails } from "../src/api/reservations";
 import type { UserProfile } from "../src/api/users";
+import type { ReviewDetails } from "../src/api/review";
 
 // Mock navigate
 const { mockNavigate } = vi.hoisted(() => {
   return { mockNavigate: vi.fn() };
 });
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
@@ -78,6 +81,29 @@ const makeReservation = (
   ...overrides,
 });
 
+// Helper to create a review fixture.
+// By default the reviewer is the OTHER party (user-2), i.e. a review the
+// current user has RECEIVED ("theirs"). Set reviewer_id: "user-1" for a
+// review the current user WROTE ("mine").
+const makeReview = (overrides: Partial<ReviewDetails> = {}): ReviewDetails => ({
+  review_id: "rev-1",
+  reservation_id: "res-1",
+  reviewer_id: "user-2",
+  reviewee_id: "user-1",
+  reviewer_first_name: "John",
+  reviewer_last_name: "Smith",
+  reviewer_middle_name: null,
+  reviewer_photo_url: null,
+  reviewee_first_name: "Jane",
+  reviewee_last_name: "Doe",
+  reviewee_middle_name: null,
+  reviewee_photo_url: null,
+  rating: 4,
+  comment: "Great borrower",
+  created_at: "2026-07-24T00:00:00Z",
+  ...overrides,
+});
+
 function renderTransactions() {
   return render(
     <MemoryRouter>
@@ -91,6 +117,8 @@ describe("Transactions", () => {
     mockNavigate.mockClear();
     vi.restoreAllMocks();
     vi.spyOn(usersApi, "fetchCurrentUser").mockResolvedValue(currentUser);
+    // Default: no reviews. Keeps RETURNED cards from hitting a real fetch.
+    vi.spyOn(reviewApi, "fetchReservationReviews").mockResolvedValue([]);
   });
 
   // Verify loading state
@@ -129,8 +157,9 @@ describe("Transactions", () => {
     renderTransactions();
     expect(await screen.findByText(/dewalt drill/i)).toBeInTheDocument();
     expect(screen.getByText(/requested by john smith/i)).toBeInTheDocument();
-    // Owner sees "Outgoing" label
-    expect(screen.getByText(/outgoing/i)).toBeInTheDocument();
+    // Owner sees the "Incoming" direction label (scoped to the badge span so
+    // it doesn't match the "Incoming (on my tools)" filter option).
+    expect(screen.getByText("Incoming", { selector: "span" })).toBeInTheDocument();
   });
 
   // US 10: Borrower sees reservation with owner name
@@ -140,8 +169,8 @@ describe("Transactions", () => {
     ]);
     renderTransactions();
     expect(await screen.findByText(/owned by jane doe/i)).toBeInTheDocument();
-    // Borrower sees "Incoming" label
-    expect(screen.getByText(/incoming/i)).toBeInTheDocument();
+    // Borrower sees the "Outgoing" direction label (scoped to the badge span).
+    expect(screen.getByText("Outgoing", { selector: "span" })).toBeInTheDocument();
   });
 
   // US 4 Scenario 1 & 2: Owner sees Approve and Deny for REQUESTED
@@ -228,7 +257,7 @@ describe("Transactions", () => {
     await screen.findByText(/dewalt drill/i);
     await user.click(screen.getByRole("button", { name: /approve/i }));
     await waitFor(() => {
-      expect(screen.getByText("APPROVED")).toBeInTheDocument();
+      expect(screen.getByText("APPROVED", { selector: "span" })).toBeInTheDocument();
     });
   });
 
@@ -283,7 +312,7 @@ describe("Transactions", () => {
     renderTransactions();
     await screen.findByText(/dewalt drill/i);
     await user.click(screen.getByRole("button", { name: /deny/i }));
-    expect(await screen.findByText("DENIED")).toBeInTheDocument();
+    expect(await screen.findByText("DENIED", { selector: "span" })).toBeInTheDocument();
   });
 
   // US 7 Scenario 1: Borrower confirms pickup on an APPROVED reservation.
@@ -302,7 +331,7 @@ describe("Transactions", () => {
     renderTransactions();
     await screen.findByText(/dewalt drill/i);
     await user.click(screen.getByRole("button", { name: /confirm pickup/i }));
-    expect(await screen.findByText("PICKED_UP")).toBeInTheDocument();
+    expect(await screen.findByText("PICKED_UP", { selector: "span" })).toBeInTheDocument();
   });
 
   // US 5 Scenario 1: Owner confirms return on a PICKED_UP reservation.
@@ -317,7 +346,7 @@ describe("Transactions", () => {
     renderTransactions();
     await screen.findByText(/dewalt drill/i);
     await user.click(screen.getByRole("button", { name: /confirm return/i }));
-    expect(await screen.findByText("RETURNED")).toBeInTheDocument();
+    expect(await screen.findByText("RETURNED", { selector: "span" })).toBeInTheDocument();
   });
 
   // US 3: Cancel updates only the clicked reservation and leaves siblings alone.
@@ -335,9 +364,9 @@ describe("Transactions", () => {
 
     await user.click(screen.getAllByRole("button", { name: /cancel/i })[0]);
 
-    expect(await screen.findByText("CANCELED")).toBeInTheDocument();
+    expect(await screen.findByText("CANCELED", { selector: "span" })).toBeInTheDocument();
     // The second card is untouched.
-    expect(screen.getByText("REQUESTED")).toBeInTheDocument();
+    expect(screen.getByText("REQUESTED", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByText(/circular saw/i)).toBeInTheDocument();
   });
 
@@ -367,6 +396,144 @@ describe("Transactions", () => {
       expect(fetchSpy).toHaveBeenLastCalledWith(
         expect.objectContaining({ offset: 0 }),
       );
+    });
+  });
+
+  // Filters are applied server-side. Selecting a status resets to the first
+  // page and passes the status through to the API. Selected by VALUE so a
+  // future label rename won't break this.
+  it("applies the status filter and resets to the first page", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(reservationsApi, "fetchReservations")
+      .mockResolvedValue([makeReservation({ reservation_status: "RETURNED" })]);
+    renderTransactions();
+    await screen.findByText(/dewalt drill/i);
+
+    await user.selectOptions(
+      screen.getByLabelText(/filter by status/i),
+      "RETURNED",
+    );
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: "RETURNED", offset: 0 }),
+      );
+    });
+  });
+
+  // Selecting a role passes the mapped role param through to the API.
+  it("applies the role filter", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi
+      .spyOn(reservationsApi, "fetchReservations")
+      .mockResolvedValue([makeReservation()]);
+    renderTransactions();
+    await screen.findByText(/dewalt drill/i);
+
+    await user.selectOptions(
+      screen.getByLabelText(/filter by role/i),
+      "owner",
+    );
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ role: "owner", offset: 0 }),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Reviews on RETURNED reservations — the four states of the review control
+  // -------------------------------------------------------------------------
+  describe("reviews on RETURNED reservations", () => {
+    const returned: Partial<ReservationDetails> = { reservation_status: "RETURNED" };
+
+    // Neither party reviewed -> gold "Make a Review", no pills.
+    it("shows 'Make a Review' when neither party has reviewed", async () => {
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      // fetchReservationReviews defaults to [] from beforeEach
+      renderTransactions();
+      expect(
+        await screen.findByRole("button", { name: /make a review/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/review sent/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/from john/i)).not.toBeInTheDocument();
+    });
+
+    // You reviewed, they didn't -> "View Reviews" + "Review sent" + "Awaiting their review".
+    it("shows 'Review sent' and 'Awaiting their review' after you review", async () => {
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      vi.spyOn(reviewApi, "fetchReservationReviews").mockResolvedValue([
+        makeReview({ reviewer_id: "user-1" }), // current user wrote it -> "mine"
+      ]);
+      renderTransactions();
+      expect(
+        await screen.findByRole("button", { name: /view reviews/i }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/review sent/i)).toBeInTheDocument();
+      expect(screen.getByText(/awaiting their review/i)).toBeInTheDocument();
+    });
+
+    // They reviewed you, you haven't -> gold "Make a Review" + "★ 4/5 from John".
+    it("shows the rating received when the other party reviewed you", async () => {
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      vi.spyOn(reviewApi, "fetchReservationReviews").mockResolvedValue([
+        makeReview({ reviewer_id: "user-2", rating: 4 }), // other party -> "theirs"
+      ]);
+      renderTransactions();
+      expect(await screen.findByText(/4\/5 from john/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /make a review/i }),
+      ).toBeInTheDocument();
+    });
+
+    // Both reviewed -> "View Reviews" + "Review sent" + "★" pill, and NO "Awaiting".
+    it("shows both pills when both parties have reviewed", async () => {
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      vi.spyOn(reviewApi, "fetchReservationReviews").mockResolvedValue([
+        makeReview({ review_id: "rev-a", reviewer_id: "user-1" }), // mine
+        makeReview({ review_id: "rev-b", reviewer_id: "user-2" }), // theirs
+      ]);
+      renderTransactions();
+      expect(await screen.findByText(/review sent/i)).toBeInTheDocument();
+      expect(screen.getByText(/4\/5 from john/i)).toBeInTheDocument();
+      expect(screen.queryByText(/awaiting their review/i)).not.toBeInTheDocument();
+    });
+
+    // The catch fallback: fetching reviews rejects -> the button still renders.
+    it("still renders the review button when fetching reviews fails", async () => {
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      vi.spyOn(reviewApi, "fetchReservationReviews").mockRejectedValue(
+        new Error("boom"),
+      );
+      renderTransactions();
+      expect(
+        await screen.findByRole("button", { name: /make a review/i }),
+      ).toBeInTheDocument();
+    });
+
+    // Navigation to the review page from the review button.
+    it("navigates to the review page when the review button is clicked", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(reservationsApi, "fetchReservations").mockResolvedValue([
+        makeReservation(returned),
+      ]);
+      renderTransactions();
+      await user.click(
+        await screen.findByRole("button", { name: /make a review/i }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith("/reservations/res-1/review");
     });
   });
 });

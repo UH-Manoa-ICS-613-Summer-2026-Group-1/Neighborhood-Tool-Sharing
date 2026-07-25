@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
 // Introduces the app and provides a "Sign In" button that routes to /login.
 const Home = () => {

@@ -2,7 +2,7 @@
 // US 12: Logged-in member sends an invitation to a new user
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { sendInvite } from '../../api/invitations'
 
 const SendInvite = () => {

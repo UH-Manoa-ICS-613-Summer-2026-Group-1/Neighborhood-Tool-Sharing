@@ -10,7 +10,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router";
 import RequestReservation from "../src/pages/Reservations/RequestReservation";
 import * as toolsApi from "../src/api/tools";
 import * as reservationsApi from "../src/api/reservations";
@@ -22,8 +22,8 @@ const { mockNavigate } = vi.hoisted(() => {
   return { mockNavigate: vi.fn() };
 });
 
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-router-dom")>();
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,

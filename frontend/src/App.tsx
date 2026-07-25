@@ -2,7 +2,7 @@
 // Main application router — defines all page routes
 // Protected routes require a valid JWT token (handled by ProtectedRoute)
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router'
 
 // Public pages
 import Home from "./pages/Landing/Home";
@@ -20,7 +20,8 @@ import SendInvite from "./pages/Invite/SendInvite";
 // ADDED BY MARITZA — 07/19/2026
 // New reservation pages covering US 2 (request) and US 3-5, 7, 9, 10 (transactions)
 import RequestReservation from "./pages/Reservations/RequestReservation";
-
+// Review page, both parties review a RETURNED reservation
+import MakeReview from "./pages/Reservations/MakeReview";
 // Route guard — redirects unauthenticated users to /login
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -43,6 +44,7 @@ function App() {
           <Route path="/tools/:toolId" element={<ToolDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/reservations/:reservationId/review" element={<MakeReview />} />
 
           {/* ADDED BY MARITZA — 07/19/2026
               US 2: Borrower requests a reservation for a specific tool
