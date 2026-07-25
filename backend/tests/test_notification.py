@@ -49,7 +49,7 @@ def test_reminder_before_pickup(
     # This notification is a reminder
     assert (
         notifications[0]["content"]
-        == f"Your reservation for '{seed_reservation.tool.title}' is scheduled to be picked up within the next 24 hours."
+        == f"Your reservation for '{seed_reservation.tool.title}' is scheduled to be picked up on {seed_reservation.start_date.astimezone(APP_TIMEZONE).strftime('%b %d')}."
     )
 
 
@@ -89,7 +89,7 @@ def test_reminder_before_return(
     # This notification is a reminder
     assert (
         notifications[0]["content"]
-        == f"Your reservation for '{seed_reservation.tool.title}' is due for return within the next 24 hours."
+        == f"Your reservation for '{seed_reservation.tool.title}' is due for return on {seed_reservation.end_date.astimezone(APP_TIMEZONE).strftime('%b %d before %I:%M %p')}."
     )
 
 

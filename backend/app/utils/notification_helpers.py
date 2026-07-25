@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.notification import Notification, NotificationCategory
 from app.models.reservation import Reservation, ReservationStatus
+from app.schemas.reservation import APP_TIMEZONE
 
 
 def create_notification(
@@ -55,6 +56,11 @@ def run_daily_reservation_reminders(db: Session):
     )
 
     for reservation in upcoming_pickups:
+        # Convert start_date to local timezone if needed, or format directly
+        pickup_time_str = reservation.start_date.astimezone(APP_TIMEZONE).strftime(
+            "%b %d"
+        )
+
         create_notification(
             db=db,
             recipient_id=reservation.borrower_id,
@@ -62,7 +68,7 @@ def run_daily_reservation_reminders(db: Session):
             title="Tool pickup reminder",
             content=(
                 f"Your reservation for '{reservation.tool.title}' is scheduled "
-                f"to be picked up within the next 24 hours."
+                f"to be picked up on {pickup_time_str}."
             ),
             target_id=reservation.id,
             target_type="RESERVATION",
@@ -82,6 +88,9 @@ def run_daily_reservation_reminders(db: Session):
     )
 
     for reservation in upcoming_returns:
+        return_time_str = reservation.end_date.astimezone(APP_TIMEZONE).strftime(
+            "%b %d before %I:%M %p"
+        )
         create_notification(
             db=db,
             recipient_id=reservation.borrower_id,
@@ -89,7 +98,7 @@ def run_daily_reservation_reminders(db: Session):
             title="Tool return reminder",
             content=(
                 f"Your reservation for '{reservation.tool.title}' is due "
-                f"for return within the next 24 hours."
+                f"for return on {return_time_str}."
             ),
             target_id=reservation.id,
             target_type="RESERVATION",
