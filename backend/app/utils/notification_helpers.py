@@ -50,6 +50,7 @@ def run_daily_reservation_reminders(db: Session):
                 Reservation.status == ReservationStatus.APPROVED,
                 Reservation.start_date >= now,
                 Reservation.start_date <= next_24h,
+                Reservation.pickup_reminder_sent.is_(False),
             )
         )
         .all()
@@ -74,6 +75,8 @@ def run_daily_reservation_reminders(db: Session):
             target_type="RESERVATION",
         )
 
+        reservation.pickup_reminder_sent = True
+
     # Return reminders (PICKED_UP status & end_date in the next 24 hours)
     upcoming_returns = (
         db.query(Reservation)
@@ -82,6 +85,7 @@ def run_daily_reservation_reminders(db: Session):
                 Reservation.status == ReservationStatus.PICKED_UP,
                 Reservation.end_date >= now,
                 Reservation.end_date <= next_24h,
+                Reservation.return_reminder_sent.is_(False),
             )
         )
         .all()
@@ -103,5 +107,7 @@ def run_daily_reservation_reminders(db: Session):
             target_id=reservation.id,
             target_type="RESERVATION",
         )
+
+        reservation.return_reminder_sent = True
 
     db.commit()
