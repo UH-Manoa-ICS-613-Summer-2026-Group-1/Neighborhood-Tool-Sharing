@@ -1,8 +1,11 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification, NotificationCategory
+from app.models.reservation import Reservation, ReservationStatus
 
 
 def create_notification(
@@ -28,3 +31,68 @@ def create_notification(
     )
     db.add(notification)
     return notification
+
+
+def run_daily_reservation_reminders(db: Session):
+    """
+    Scans for upcoming pickups and returns reservations within the next 24 hours
+    and creates notifications.
+    """
+    now = datetime.now(timezone.utc)
+    next_24h = now + timedelta(hours=24)
+
+    # Pickup reminders (APPROVED status & start_date in the next 24 hours)
+    upcoming_pickups = (
+        db.query(Reservation)
+        .filter(
+            and_(
+                Reservation.status == ReservationStatus.APPROVED,
+                Reservation.start_date >= now,
+                Reservation.start_date <= next_24h,
+            )
+        )
+        .all()
+    )
+
+    for reservation in upcoming_pickups:
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Tool pickup reminder",
+            content=(
+                f"Your reservation for '{reservation.tool.title}' is scheduled "
+                f"to be picked up within the next 24 hours."
+            ),
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
+
+    # Return reminders (PICKED_UP status & end_date in the next 24 hours)
+    upcoming_returns = (
+        db.query(Reservation)
+        .filter(
+            and_(
+                Reservation.status == ReservationStatus.PICKED_UP,
+                Reservation.end_date >= now,
+                Reservation.end_date <= next_24h,
+            )
+        )
+        .all()
+    )
+
+    for reservation in upcoming_returns:
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Tool return reminder",
+            content=(
+                f"Your reservation for '{reservation.tool.title}' is due "
+                f"for return within the next 24 hours."
+            ),
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
+
+    db.commit()
