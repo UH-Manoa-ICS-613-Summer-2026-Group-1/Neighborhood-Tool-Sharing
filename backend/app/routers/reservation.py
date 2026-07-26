@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.notification import NotificationCategory
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
 from app.models.review import Review, ReviewView
 from app.models.tool import Tool, ToolStatus
@@ -25,6 +26,7 @@ from app.schemas.reservation import (
 )
 from app.schemas.review import ReviewDetailsResponse, ReviewRequest, ReviewResponse
 from app.utils.dependencies import get_current_user
+from app.utils.notification_helpers import create_notification
 
 router = APIRouter(prefix="/api/reservations", tags=["Reservations"])
 
@@ -119,7 +121,22 @@ def create_reservation(
     )
 
     try:
+        # Add the new reservation
         db.add(new_reservation)
+
+        # flash() to use new_reservation.id as the target_id
+        db.flush()
+
+        # Add the notification
+        create_notification(
+            db=db,
+            recipient_id=tool.owner_id,
+            category=NotificationCategory.RESERVATION,
+            title="New reservation request",
+            content=f"{current_user.first_name} {current_user.last_name} has requested to borrow your tool '{tool.title}'.",
+            target_id=new_reservation.id,
+            target_type="RESERVATION",
+        )
         db.commit()
         db.refresh(new_reservation)
         return new_reservation
@@ -316,6 +333,16 @@ def update_reservation(
         )
 
     try:
+        # Add the notification
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Reservation notes updated",
+            content=f"{reservation.tool.owner.first_name} {reservation.tool.owner.last_name} has updated reservation notes.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
         db.commit()
 
         return reservation
@@ -374,6 +401,17 @@ def approve_reservation(
         reservation.status = ReservationStatus.APPROVED
         db.flush()
 
+        # add approve notification
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Reservation approved",
+            content=f"Your request for '{reservation.tool.title}' has been approved.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
+
         # Auto-deny competing REQUESTED reservations that overlap
         competing_reservations = (
             db.query(Reservation)
@@ -393,6 +431,17 @@ def approve_reservation(
 
         for competing_reservation in competing_reservations:
             competing_reservation.status = ReservationStatus.DENIED
+
+            # Add auto-deny notification
+            create_notification(
+                db=db,
+                recipient_id=competing_reservation.borrower_id,
+                category=NotificationCategory.RESERVATION,
+                title="Reservation request denied",
+                content=f"Your request for '{reservation.tool.title}' was auto-denied due to an overlapping approved reservation.",
+                target_id=competing_reservation.id,
+                target_type="RESERVATION",
+            )
 
         db.commit()
         return {
@@ -451,6 +500,17 @@ def deny_reservation(
     try:
         # Update this request to DENIED
         reservation.status = ReservationStatus.DENIED
+
+        #  Add the notification
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Reservation request denied",
+            content=f"Your request for '{reservation.tool.title}' was denied by the tool owner.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
 
         db.commit()
         return {"message": "Reservation has been denied."}
@@ -519,6 +579,18 @@ def pickup_reservation(
     try:
         # Update this request to PICKED_UP
         reservation.status = ReservationStatus.PICKED_UP
+
+        #  Add the notification
+        create_notification(
+            db=db,
+            recipient_id=reservation.tool.owner_id,
+            category=NotificationCategory.RESERVATION,
+            title="Tool picked up",
+            content=f"{current_user.first_name} {current_user.last_name} has marked '{reservation.tool.title}' as picked up.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
+
         db.commit()
 
         return {"message": "Tool pickup successfully registered."}
@@ -575,6 +647,18 @@ def return_reservation(
     try:
         # Update this request to RETURNED
         reservation.status = ReservationStatus.RETURNED
+
+        #  Add the notification
+        create_notification(
+            db=db,
+            recipient_id=reservation.borrower_id,
+            category=NotificationCategory.RESERVATION,
+            title="Tool return confirmed",
+            content=f"Return confirmed for '{reservation.tool.title}'. Don't forget to leave a review.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
+
         db.commit()
 
         return {"message": "Tool return successfully registered."}
@@ -637,6 +721,23 @@ def cancel_reservation(
     try:
         # Update this request to CANCELLED
         reservation.status = ReservationStatus.CANCELED
+
+        # If the current user is the borrower, the recipient is the owner, and vice versa.
+        if is_borrower:
+            recipient_id = reservation.tool.owner_id
+        else:
+            recipient_id = reservation.borrower_id
+
+        # Add the notification
+        create_notification(
+            db=db,
+            recipient_id=recipient_id,
+            category=NotificationCategory.RESERVATION,
+            title="Reservation cancelled",
+            content=f"The reservation for '{reservation.tool.title}' was cancelled by {current_user.first_name} {current_user.last_name}.",
+            target_id=reservation.id,
+            target_type="RESERVATION",
+        )
         db.commit()
 
         return {"message": "Reservation has been cancelled."}
@@ -733,6 +834,18 @@ def submit_reservation_review(
 
     try:
         db.add(new_review)
+        db.flush()
+
+        # Add the notification
+        create_notification(
+            db=db,
+            recipient_id=reviewee_id,
+            category=NotificationCategory.REVIEW,
+            title="New review received",
+            content=f"{current_user.first_name} {current_user.last_name} gave you a {new_review.rating}-star review for '{reservation.tool.title}'.",
+            target_id=reservation_id,
+            target_type="RESERVATION",
+        )
         db.commit()
         db.refresh(new_review)
         return new_review

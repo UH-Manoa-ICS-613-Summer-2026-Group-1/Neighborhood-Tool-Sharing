@@ -4,11 +4,34 @@ Startup fastapi functions
 
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
+from apscheduler.schedulers.background import (  # type: ignore[import-untyped]
+    BackgroundScheduler,
+)
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
 
+from app.database import SessionLocal
+from app.schemas.reservation import APP_TIMEZONE, APP_TIMEZONE_NAME
+from app.utils.notification_helpers import run_daily_reservation_reminders
 from app.utils.storage import BUCKET_NAME, generate_dummy_image, internal_s3
+
+# Initialize global scheduler instance
+scheduler = BackgroundScheduler()
+
+
+def execute_daily_reminders():
+    """
+    Background task to execute daily reminders
+    """
+    db = SessionLocal()
+    try:
+        run_daily_reservation_reminders(db)
+    except Exception as e:
+        print(f"Error executing daily reservation reminders: {str(e)}")
+    finally:
+        db.close()
 
 
 # Create a bucket for images storage if it doesn't exist
@@ -47,4 +70,20 @@ async def lifespan(app: FastAPI):
         )
 
     generate_dummy_image()
+
+    # Run daily reminders every 24 hours
+    scheduler.add_job(
+        execute_daily_reminders,
+        trigger="cron",
+        hour=10,
+        minute=0,
+        timezone=APP_TIMEZONE_NAME,
+        next_run_time=datetime.now(timezone.utc).astimezone(APP_TIMEZONE),
+    )
+    scheduler.start()
+    print("Background scheduler started.")
+
     yield
+
+    scheduler.shutdown()
+    print("Background scheduler stopped.")

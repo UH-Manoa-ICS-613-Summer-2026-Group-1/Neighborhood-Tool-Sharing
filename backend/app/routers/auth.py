@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
 from app.models.invitation import InvitationStatus
+from app.models.notification import NotificationCategory
 from app.models.user import User, UserRole, UserStatus
 from app.routers.invitation import get_valid_invite
 from app.schemas.auth import (
@@ -26,6 +27,7 @@ from app.utils.auth_helpers import (
     get_password_hash,
     verify_password,
 )
+from app.utils.notification_helpers import create_notification
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -79,15 +81,48 @@ def register(user_data: UserRegisterRequest, db: Session = Depends(get_db)):
         role=default_role,  # USER role
     )
 
-    # Add the new user to the database
-    db.add(new_user)
+    try:
+        # Add the new user to the database
+        db.add(new_user)
 
-    # Set invite token status to USED
-    invite.status = InvitationStatus.USED
+        # flush() to get the new_user.id
+        db.flush()
+        # Set invite token status to USED
+        invite.status = InvitationStatus.USED
 
-    db.commit()
+        invite.recipient_id = new_user.id
 
-    return {"message": "User registered successfully."}
+        # Add a welcome notification for the new user
+        create_notification(
+            db=db,
+            recipient_id=new_user.id,
+            category=NotificationCategory.SYSTEM,
+            title="Welcome!",
+            content=f"Hello {new_user.first_name} {new_user.last_name}! We're excited to have you join our community.",
+        )
+
+        # Add a confirmation notification for the user who sent the invite to let them know that the invite has been used
+        create_notification(
+            db=db,
+            recipient_id=invite.sender_id,
+            category=NotificationCategory.INVITATION,
+            title="Invitation used",
+            content=f"The invitation for {new_user.first_name} {new_user.last_name} has been used.",
+            target_id=new_user.id,
+            target_type="USER",
+        )
+
+        db.commit()
+
+        return {"message": "User registered successfully."}
+
+    except Exception as e:
+        print(f"Registration failed: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed. Please try again.",
+        )
 
 
 @router.post(

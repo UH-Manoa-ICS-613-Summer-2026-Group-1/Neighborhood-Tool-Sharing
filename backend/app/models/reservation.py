@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     UUID,
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -119,6 +120,20 @@ class Reservation(Base):
         DateTime(timezone=True),
         nullable=False,
         comment="Planned calendar reservation return date",
+    )
+    pickup_reminder_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        nullable=False,
+        comment="Whether the pickup reminder has been sent",
+    )
+    return_reminder_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        nullable=False,
+        comment="Whether the return reminder has been sent",
     )
 
     created_at: Mapped[datetime] = mapped_column(
