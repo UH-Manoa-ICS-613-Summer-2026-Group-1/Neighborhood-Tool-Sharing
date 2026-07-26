@@ -40,26 +40,6 @@ def execute_daily_reminders():
         db.close()
 
 
-def init_db(max_retries=10, delay=5):
-    """
-    Wait for database to be ready.
-    """
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"Connecting to Database (Attempt {attempt}/{max_retries})...")
-            db = SessionLocal()
-            # Execute a simple test query
-            db.execute(text("SELECT 1"))
-            db.close()
-            print("Successfully connected to Database.")
-            return
-        except Exception as e:
-            print(f"Database not ready yet ({str(e)}). Retrying in {delay}s...")
-            time.sleep(delay)
-
-    raise RuntimeError("Could not connect to Database after maximum retries.")
-
-
 def init_storage_bucket():
     """
     Create a bucket for images storage if it doesn't exist
@@ -121,9 +101,6 @@ def init_storage(max_retries=10, delay=5):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Wait database to be ready
-    init_db()
-
     # Wait storage to be ready, create bucket
     init_storage()
 
