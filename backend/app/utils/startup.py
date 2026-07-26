@@ -3,6 +3,7 @@ Startup fastapi functions
 """
 
 import json
+import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -16,6 +17,7 @@ from botocore.exceptions import (
     ClientError,
     EndpointConnectionError,
 )
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from sqlalchemy import text
 
@@ -29,6 +31,10 @@ from app.utils.storage import (
     internal_s3,
 )
 
+load_dotenv()
+
+# On render.com there is production environment variable
+PRODUCTION = os.getenv("PRODUCTION", "false").lower()
 # Initialize global scheduler instance
 scheduler = BackgroundScheduler()
 
@@ -53,11 +59,13 @@ def ping_storage_service():
     print(f"Pinging storage endpoint ({EXTERNAL_ENDPOINT}) to wake service...")
     # Check that the required EXTERNAL_ENDPOINT variable is defined
     if EXTERNAL_ENDPOINT is None or EXTERNAL_ENDPOINT.strip() == "":
-        raise RuntimeError(f"Missing required environment variable {EXTERNAL_ENDPOINT}")
+        raise RuntimeError(f"Missing required environment variable EXTERNAL_ENDPOINT")
 
-    # Timeout set to 30s so Render has time to spin up the container during cold start
-    response = requests.get(EXTERNAL_ENDPOINT, timeout=30)
-    print(f"Storage service ping responded with status: {response.status_code}")
+    try:
+        response = requests.get(EXTERNAL_ENDPOINT, timeout=30)
+        print(f"Storage service ping responded with status: {response.status_code}")
+    except Exception as e:
+        print(f"Ping sent, service spinning up: {str(e)}")
 
 
 def init_storage_bucket():
@@ -66,7 +74,7 @@ def init_storage_bucket():
     """
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
+        raise RuntimeError(f"Missing required environment variable BUCKET_NAME")
 
     try:
         internal_s3.head_bucket(Bucket=BUCKET_NAME)
@@ -104,14 +112,20 @@ def init_storage_bucket():
 
 def init_storage(max_retries=10, delay=5):
     """
-    Wait for storage to be ready.
+    Wait for storage to be ready and create the bucket.
     """
+
+    # On production
+    if PRODUCTION == "true":
+        # Try to ping the storage service
+        ping_storage_service()
+        # Wait 30 seconds to let the service spin up
+        time.sleep(30)
+
+    # Try to create the bucket
     for attempt in range(1, max_retries + 1):
         try:
             print(f"Connecting to storage (Attempt {attempt}/{max_retries})...")
-            # Try to ping the storage service
-            ping_storage_service()
-            # Try to create the bucket
             init_storage_bucket()
             print("Successfully connected to storage.")
             return
