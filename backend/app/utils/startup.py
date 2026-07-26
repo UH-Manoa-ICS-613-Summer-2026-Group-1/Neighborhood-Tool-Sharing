@@ -3,13 +3,18 @@ Startup fastapi functions
 """
 
 import json
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import (  # type: ignore[import-untyped]
     BackgroundScheduler,
 )
-from botocore.exceptions import ClientError
+from botocore.exceptions import (
+    BotoCoreError,
+    ClientError,
+    EndpointConnectionError,
+)
 from fastapi import FastAPI
 
 from app.database import SessionLocal
@@ -34,9 +39,10 @@ def execute_daily_reminders():
         db.close()
 
 
-# Create a bucket for images storage if it doesn't exist
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def init_storage_bucket():
+    """
+    Create a bucket for images storage if it doesn't exist
+    """
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
         raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
@@ -74,6 +80,28 @@ async def lifespan(app: FastAPI):
         else:
             print(f"Storage error: {e}")
 
+
+def init_storage(max_retries=10, delay=5):
+    """ """
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"Connecting to storage (Attempt {attempt}/{max_retries})...")
+            init_storage_bucket()
+            print("Successfully connected to storage.")
+            return
+        except (BotoCoreError, EndpointConnectionError, Exception) as e:
+            print(f"Storage not ready yet ({str(e)}). Retrying in {delay}s...")
+            time.sleep(delay)
+
+    raise RuntimeError("Could not connect to storage after maximum retries.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Wait storage to be ready, create bucket
+    init_storage()
+
+    # Generate placeholder image
     generate_dummy_image()
 
     # Run daily reminders every 24 hours
