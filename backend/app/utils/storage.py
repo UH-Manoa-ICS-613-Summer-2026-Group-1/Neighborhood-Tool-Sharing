@@ -24,7 +24,11 @@ DUMMY_IMAGE_URL = (
 )
 
 # Force MinIO to use path-style addressing (e.g., endpoint/bucket instead of bucket.endpoint)
-s3_config = Config(s3={"addressing_style": "path"}, signature_version="s3v4")
+s3_config = Config(
+    s3={"addressing_style": "path", "payload_signing_enabled": False},
+    signature_version="s3v4",
+    region_name="us-east-1",
+)
 
 # Internal client (For backend network operations)
 internal_s3 = boto3.client(
