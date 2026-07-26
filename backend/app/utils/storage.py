@@ -28,6 +28,8 @@ s3_config = Config(
     s3={"addressing_style": "path", "payload_signing_enabled": False},
     signature_version="s3v4",
     region_name="us-east-1",
+    request_checksum_calculation="when_required",
+    response_checksum_validation="when_required",
 )
 
 # Internal client (For backend network operations)

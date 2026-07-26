@@ -44,30 +44,35 @@ async def lifespan(app: FastAPI):
     try:
         internal_s3.head_bucket(Bucket=BUCKET_NAME)
         print(f"Storage bucket '{BUCKET_NAME}' verified.")
-    except ClientError:
-        print(f"Bucket '{BUCKET_NAME}' not found. Initializing now...")
-        internal_s3.create_bucket(Bucket=BUCKET_NAME)
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
+        # 404 or NoSuchBucket means the bucket doesn't exist yet
+        if error_code in ("404", "NoSuchBucket"):
+            print(f"Bucket '{BUCKET_NAME}' not found. Initializing now...")
+            internal_s3.create_bucket(Bucket=BUCKET_NAME)
 
-        # Define a read-only policy so the public can view uploaded tool pictures
-        public_read_policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {"AWS": ["*"]},
-                    "Action": ["s3:GetObject"],
-                    "Resource": [f"arn:aws:s3:::{BUCKET_NAME}/*"],
-                }
-            ],
-        }
+            # Define a read-only policy so the public can view uploaded tool pictures
+            public_read_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"AWS": ["*"]},
+                        "Action": ["s3:GetObject"],
+                        "Resource": [f"arn:aws:s3:::{BUCKET_NAME}/*"],
+                    }
+                ],
+            }
 
-        # Apply the policy
-        internal_s3.put_bucket_policy(
-            Bucket=BUCKET_NAME, Policy=json.dumps(public_read_policy)
-        )
-        print(
-            f"Storage bucket '{BUCKET_NAME}' successfully setup with public read access."
-        )
+            # Apply the policy
+            internal_s3.put_bucket_policy(
+                Bucket=BUCKET_NAME, Policy=json.dumps(public_read_policy)
+            )
+            print(
+                f"Storage bucket '{BUCKET_NAME}' successfully setup with public read access."
+            )
+        else:
+            print(f"Storage error: {e}")
 
     generate_dummy_image()
 
