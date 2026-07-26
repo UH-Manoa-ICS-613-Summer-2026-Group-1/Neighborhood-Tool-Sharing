@@ -50,4 +50,7 @@ python -m mypy . \
 echo "Running SQLFluff linter..."
 python -m sqlfluff lint .
 
+# run the backend code metrics script
+source ./backend/scripts/run_code_metrics.sh
+
 echo "All checks passed."

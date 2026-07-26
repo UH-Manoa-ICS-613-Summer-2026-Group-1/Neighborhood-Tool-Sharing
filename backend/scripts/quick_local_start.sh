@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# change to the current repository root directory
+cd "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/../.."
+
 echo "Building and spinning up dockerized environment..."
 # Alsways start the containers in detached mode and build the images
 docker compose up -d --build

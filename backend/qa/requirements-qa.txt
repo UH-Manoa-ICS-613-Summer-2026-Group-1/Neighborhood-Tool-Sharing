@@ -11,3 +11,4 @@ bandit
 mypy
 boto3-stubs[essential]
 types-sqlalchemy-utils
+radon
