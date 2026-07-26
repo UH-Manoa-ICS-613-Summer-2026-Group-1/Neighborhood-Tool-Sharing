@@ -41,7 +41,7 @@ projects:
       - key: ADMIN_PASSWORD
         sync: false
       - key: SECRET_KEY
-        sync: false
+        generateValue: true
       region: oregon
       healthCheckPath: /api/health
       dockerContext: .

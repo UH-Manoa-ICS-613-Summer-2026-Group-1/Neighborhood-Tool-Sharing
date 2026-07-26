@@ -7,6 +7,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+import requests
 from apscheduler.schedulers.background import (  # type: ignore[import-untyped]
     BackgroundScheduler,
 )
@@ -21,7 +22,12 @@ from sqlalchemy import text
 from app.database import SessionLocal
 from app.schemas.reservation import APP_TIMEZONE, APP_TIMEZONE_NAME
 from app.utils.notification_helpers import run_daily_reservation_reminders
-from app.utils.storage import BUCKET_NAME, generate_dummy_image, internal_s3
+from app.utils.storage import (
+    BUCKET_NAME,
+    EXTERNAL_ENDPOINT,
+    generate_dummy_image,
+    internal_s3,
+)
 
 # Initialize global scheduler instance
 scheduler = BackgroundScheduler()
@@ -38,6 +44,20 @@ def execute_daily_reminders():
         print(f"Error executing daily reservation reminders: {str(e)}")
     finally:
         db.close()
+
+
+def ping_storage_service():
+    """
+    Send a plain HTTP request to wake up storage if it's sleeping on Render free tier.
+    """
+    print(f"Pinging storage endpoint ({EXTERNAL_ENDPOINT}) to wake service...")
+    # Check that the required EXTERNAL_ENDPOINT variable is defined
+    if EXTERNAL_ENDPOINT is None or EXTERNAL_ENDPOINT.strip() == "":
+        raise RuntimeError(f"Missing required environment variable {EXTERNAL_ENDPOINT}")
+
+    # Timeout set to 30s so Render has time to spin up the container during cold start
+    response = requests.get(EXTERNAL_ENDPOINT, timeout=30)
+    print(f"Storage service ping responded with status: {response.status_code}")
 
 
 def init_storage_bucket():
@@ -89,6 +109,9 @@ def init_storage(max_retries=10, delay=5):
     for attempt in range(1, max_retries + 1):
         try:
             print(f"Connecting to storage (Attempt {attempt}/{max_retries})...")
+            # Try to ping the storage service
+            ping_storage_service()
+            # Try to create the bucket
             init_storage_bucket()
             print("Successfully connected to storage.")
             return
