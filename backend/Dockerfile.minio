@@ -1,2 +1,3 @@
 FROM cgr.dev/chainguard/minio:latest
-CMD ["server", "/data/minio"]
+
+CMD ["server", "/data/minio", "--address", ":9000", "--console-address", ":9001"]
