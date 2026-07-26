@@ -1,0 +1,93 @@
+# Exported from Render on 2026-07-26T18:57:33Z
+version: "1"
+projects:
+- name: Tool-Sharing-Neighborhood
+  environments:
+  - name: Production
+    services:
+    - type: web
+      name: tool-share-backend
+      runtime: docker
+      repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
+      branch: deploy-test
+      plan: free
+      envVars:
+      - key: PRODUCTION
+        value: "true"
+      - key: FRONTEND_BASE_URL
+        value: "https://neighborhood-tool-sharing.onrender.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tool-share-db
+          property: connectionString
+      - key: STORAGE_INTERNAL_ENDPOINT
+        value: "https://tool-share-minio.onrender.com"
+      - key: STORAGE_EXTERNAL_ENDPOINT
+        value: "https://tool-share-minio.onrender.com"
+      - key: STORAGE_ACCESS_KEY
+        fromService:
+          type: web
+          name: tool-share-minio
+          envVarKey: MINIO_ROOT_USER
+      - key: STORAGE_SECRET_KEY
+        fromService:
+          type: web
+          name: tool-share-minio
+          envVarKey: MINIO_ROOT_PASSWORD
+      - key: APP_TIMEZONE_NAME
+        value: "Pacific/Honolulu"
+      - key: STORAGE_BUCKET_NAME
+        value: "community-tool-share-media"
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      region: oregon
+      healthCheckPath: /api/health
+      dockerContext: .
+      dockerfilePath: Dockerfile
+      autoDeployTrigger: commit
+      rootDir: backend
+    - type: web
+      name: tool-share-minio
+      runtime: docker
+      repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
+      branch: deploy-test
+      plan: free
+      envVars:
+      - key: MINIO_ROOT_USER
+        generateValue: true
+      - key: MINIO_ROOT_PASSWORD
+        generateValue: true
+      - key: PORT
+        value: "9000"
+      region: oregon
+      dockerContext: .
+      dockerfilePath: backend/Dockerfile.minio
+      autoDeployTrigger: commit
+    - type: web
+      name: Neighborhood-Tool-Sharing
+      runtime: static
+      repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
+      branch: deploy-test
+      buildCommand: npm run build
+      staticPublishPath: dist
+      routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://tool-share-backend.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
+      autoDeployTrigger: commit
+      rootDir: frontend
+    databases:
+    - name: tool-share-db
+      databaseName: tool_share_db
+      user: tool_share_db_user
+      plan: free
+      region: oregon
+      ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+      postgresMajorVersion: "18"

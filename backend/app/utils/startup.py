@@ -79,7 +79,7 @@ def init_storage_bucket():
                 f"Storage bucket '{BUCKET_NAME}' successfully setup with public read access."
             )
         else:
-            print(f"Storage error: {e}")
+            raise RuntimeError(f"Storage error: {str(e)}")
 
 
 def init_storage(max_retries=10, delay=5):
