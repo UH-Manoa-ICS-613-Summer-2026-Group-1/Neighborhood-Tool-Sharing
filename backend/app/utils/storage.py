@@ -60,7 +60,7 @@ def generate_upload_ticket(
     """
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable BUCKET_NAME")
+        raise RuntimeError("Missing required environment variable BUCKET_NAME")
 
     max_bytes = max_size_mb * 1024 * 1024  # Convert MB to Bytes
 
@@ -94,7 +94,7 @@ def generate_dummy_image():
 
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable BUCKET_NAME")
+        raise RuntimeError("Missing required environment variable BUCKET_NAME")
 
     try:
         # Check if it's already in MinIO/S3

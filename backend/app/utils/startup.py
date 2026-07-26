@@ -19,7 +19,6 @@ from botocore.exceptions import (
 )
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.schemas.reservation import APP_TIMEZONE, APP_TIMEZONE_NAME
@@ -52,20 +51,48 @@ def execute_daily_reminders():
         db.close()
 
 
-def ping_storage_service():
+def ping_storage_service(max_ping_attempts=3, delay=15):
     """
     Send a plain HTTP request to wake up storage if it's sleeping on Render free tier.
     """
     print(f"Pinging storage endpoint ({EXTERNAL_ENDPOINT}) to wake service...")
     # Check that the required EXTERNAL_ENDPOINT variable is defined
     if EXTERNAL_ENDPOINT is None or EXTERNAL_ENDPOINT.strip() == "":
-        raise RuntimeError(f"Missing required environment variable EXTERNAL_ENDPOINT")
+        raise RuntimeError("Missing required environment variable EXTERNAL_ENDPOINT")
 
-    try:
-        response = requests.get(EXTERNAL_ENDPOINT, timeout=30)
-        print(f"Storage service ping responded with status: {response.status_code}")
-    except Exception as e:
-        print(f"Ping sent, service spinning up: {str(e)}")
+    health_url = f"{EXTERNAL_ENDPOINT}/minio/health/live"
+
+    # Browser headers
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+    }
+
+    for attempt in range(1, max_ping_attempts + 1):
+        print(
+            f"Pinging storage endpoint ({health_url}) [Attempt {attempt}/{max_ping_attempts}]..."
+        )
+        try:
+            response = requests.get(health_url, headers=headers, timeout=45)
+            print(f"Storage service ping responded with status: {response.status_code}")
+
+            # If the response is 200, the service is awake and healthy
+            if response.status_code == 200:
+                print("The storage service is fully awake and healthy!")
+                return
+            elif response.status_code == 429:
+                print("Render edge returned 429 rate limit. Waiting to retry...")
+            else:
+                print(
+                    f"Service responded with {response.status_code}, waiting for ready state..."
+                )
+        except Exception as e:
+            print(f"Service still booting up ({str(e)})...")
+
+        time.sleep(delay)
+
+    raise RuntimeError("Storage service failed to respond within the timeout limit.")
 
 
 def init_storage_bucket():
@@ -74,7 +101,7 @@ def init_storage_bucket():
     """
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable BUCKET_NAME")
+        raise RuntimeError("Missing required environment variable BUCKET_NAME")
 
     try:
         internal_s3.head_bucket(Bucket=BUCKET_NAME)
@@ -110,7 +137,7 @@ def init_storage_bucket():
             raise RuntimeError(f"Storage error: {str(e)}")
 
 
-def init_storage(max_retries=10, delay=5):
+def init_storage():
     """
     Wait for storage to be ready and create the bucket.
     """
@@ -119,21 +146,13 @@ def init_storage(max_retries=10, delay=5):
     if PRODUCTION == "true":
         # Try to ping the storage service
         ping_storage_service()
-        # Wait 30 seconds to let the service spin up
-        time.sleep(30)
+        time.sleep(3)
 
     # Try to create the bucket
-    for attempt in range(1, max_retries + 1):
-        try:
-            print(f"Connecting to storage (Attempt {attempt}/{max_retries})...")
-            init_storage_bucket()
-            print("Successfully connected to storage.")
-            return
-        except (BotoCoreError, EndpointConnectionError, Exception) as e:
-            print(f"Storage not ready yet ({str(e)}). Retrying in {delay}s...")
-            time.sleep(delay)
-
-    raise RuntimeError("Could not connect to storage after maximum retries.")
+    try:
+        init_storage_bucket()
+    except (BotoCoreError, EndpointConnectionError, Exception) as e:
+        raise RuntimeError(f"Could not connect to storage. Error: {str(e)}")
 
 
 @asynccontextmanager
