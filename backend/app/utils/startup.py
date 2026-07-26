@@ -51,10 +51,13 @@ def execute_daily_reminders():
         db.close()
 
 
-def ping_storage_service(max_ping_attempts=3, delay=15):
+def ping_storage_service(max_ping_attempts=3, delay=20):
     """
     Send a plain HTTP request to wake up storage if it's sleeping on Render free tier.
     """
+    # Create a requests session
+    session = requests.Session()
+
     print(f"Pinging storage endpoint ({EXTERNAL_ENDPOINT}) to wake service...")
     # Check that the required EXTERNAL_ENDPOINT variable is defined
     if EXTERNAL_ENDPOINT is None or EXTERNAL_ENDPOINT.strip() == "":
@@ -63,18 +66,20 @@ def ping_storage_service(max_ping_attempts=3, delay=15):
     health_url = f"{EXTERNAL_ENDPOINT}/minio/health/live"
 
     # Browser headers
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-    }
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+        }
+    )
 
     for attempt in range(1, max_ping_attempts + 1):
         print(
             f"Pinging storage endpoint ({health_url}) [Attempt {attempt}/{max_ping_attempts}]..."
         )
         try:
-            response = requests.get(health_url, headers=headers, timeout=45)
+            response = session.get(health_url, timeout=45)
             print(f"Storage service ping responded with status: {response.status_code}")
 
             # If the response is 200, the service is awake and healthy
