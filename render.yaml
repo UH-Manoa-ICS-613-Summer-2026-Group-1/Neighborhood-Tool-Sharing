@@ -72,6 +72,9 @@ projects:
       branch: deploy-test
       buildCommand: npm run build
       staticPublishPath: dist
+      envVars:
+      - key: VITE_STORAGE_EXTERNAL_ENDPOINT
+        value: https://tool-share-minio.onrender.com
       routes:
       - type: rewrite
         source: /api/*

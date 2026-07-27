@@ -3,6 +3,8 @@
 // Protected routes require a valid JWT token (handled by ProtectedRoute)
 
 import { BrowserRouter, Routes, Route } from 'react-router'
+import { useEffect } from 'react';
+import { wakeUpStorageService } from './utils/storage';
 
 // Public pages
 import Home from "./pages/Landing/Home";
@@ -27,6 +29,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 
 function App() {
+  useEffect(() => {
+    wakeUpStorageService();
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
