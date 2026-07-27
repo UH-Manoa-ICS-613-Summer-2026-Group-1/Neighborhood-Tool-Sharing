@@ -1,22 +1,25 @@
 """
 Reservation routers.
 Handles creating, viewing, and updating reservations.
+Also, reviewing and messaging within reservations.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.message import Message
 from app.models.notification import NotificationCategory
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
 from app.models.review import Review, ReviewView
 from app.models.tool import Tool, ToolStatus
 from app.models.user import User
 from app.schemas.common import DetailError, MessageResponse
+from app.schemas.message import MessageCreate, MessageResponse
 from app.schemas.reservation import (
     APP_TIMEZONE,
     ReservationDetailsResponse,
@@ -891,3 +894,147 @@ def get_reservation_reviews(
 
     # Return a list of reviews
     return [review for review in reviews]
+
+
+@router.get(
+    "/{reservation_id}/messages",
+    response_model=list[MessageResponse],
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def get_messages(
+    reservation_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrive the entire chat history between the owner and borrower for a reservation.
+    """
+    # Fetch the reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation not found.",
+        )
+
+    # Only the owner and borrower can view messages
+    if current_user.id not in (
+        reservation.borrower_id,
+        reservation.tool.owner_id,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view messages for this reservation.",
+        )
+
+    # Fetch all messages in the reservation in ascending order
+    messages = (
+        db.query(Message)
+        .filter(Message.reservation_id == reservation_id)
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    # Get incoming messages sent by the other party as read
+    unread_incoming = [
+        msg for msg in messages if not msg.is_read and msg.sender_id != current_user.id
+    ]
+    # Mark incoming messages as read
+    if unread_incoming:
+        for msg in unread_incoming:
+            msg.is_read = True
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"Failed to mark messages as read: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to mark messages as read.",
+            )
+
+    return messages
+
+
+@router.post(
+    "/{reservation_id}/messages",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def create_message(
+    reservation_id: uuid.UUID,
+    message_data: MessageCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Append a new message to a reservation message thread.
+    """
+    # Fetch the reservation
+    reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Reservation not found.",
+        )
+
+    # Only the owner and borrower can send messages
+    if current_user.id not in (
+        reservation.borrower_id,
+        reservation.tool.owner_id,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to send messages for this reservation.",
+        )
+
+    # The messaging allows only for requested, approved, picked up, and returned* reservation.
+    # Or until the reservation ends datetime + 24 hours for returned reservations
+    if (
+        reservation.status
+        not in (
+            ReservationStatus.REQUESTED,
+            ReservationStatus.APPROVED,
+            ReservationStatus.PICKED_UP,
+            ReservationStatus.RETURNED,
+        )
+    ) or (
+        reservation.status == ReservationStatus.RETURNED
+        and reservation.end_date + timedelta(days=1) < datetime.now(timezone.utc)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot send messages for finished reservations.",
+        )
+
+    new_message = Message(
+        reservation_id=reservation_id,
+        sender_id=current_user.id,
+        content=message_data.content,
+        is_read=False,
+    )
+
+    db.add(new_message)
+    try:
+        db.commit()
+        db.refresh(new_message)
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to save message: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save message.",
+        )
+
+    return new_message
