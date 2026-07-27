@@ -7,6 +7,11 @@ import { useNavigate, useParams } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchToolById, type ToolDetails } from '../../api/tools'
 
+const STORAGE_BASE_URL = 
+  import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
+const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL.replace(/\/$/, '')}/community-tool-share-media/placeholders/default-placeholder-image.png`;
+
+
 export default function ToolDetail() {
     const navigate = useNavigate()
     const { toolId } = useParams<{ toolId: string }>()
@@ -70,6 +75,7 @@ export default function ToolDetail() {
                                         src={photos[activePhoto].url}
                                         alt={`${tool.tool_title} — photo ${activePhoto + 1}`}
                                         className="h-full w-full object-cover"
+                                        onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE }}
                                     />
                                 ) : (
                                     <span className="text-4xl">🔧</span>
@@ -89,7 +95,7 @@ export default function ToolDetail() {
                                                 idx === activePhoto ? 'border-[#e8a838]' : 'border-transparent opacity-70 hover:opacity-100'
                                             }`}
                                         >
-                                            <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                                            <img src={photo.url} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE }}/>
                                         </button>
                                     ))}
                                 </div>

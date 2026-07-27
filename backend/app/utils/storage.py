@@ -85,11 +85,11 @@ def generate_dummy_image():
     Generate placeholder image.
     Placed in MinIO/S3
     """
-    dummy_key = "placeholders/default-placeholder-image.jpg"
+    dummy_key = "placeholders/default-placeholder-image.png"
     image_path = (
         Path(__file__).resolve().parent.parent.parent
         / "assets"
-        / "placeholder_image.jpg"
+        / "placeholder_image.png"
     )
 
     # check if the required BUCKET_NAME variable is undefined or blank
@@ -110,7 +110,7 @@ def generate_dummy_image():
                     Bucket=BUCKET_NAME,
                     Key=dummy_key,
                     Body=image_bytes,
-                    ContentType="image/jpeg",
+                    ContentType="image/png",
                 )
                 print(f"Successfully seeded placeholder image from assets: {dummy_key}")
             else:
