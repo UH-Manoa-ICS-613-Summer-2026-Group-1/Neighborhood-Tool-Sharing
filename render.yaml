@@ -9,7 +9,7 @@ projects:
       name: tool-share-backend
       runtime: docker
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
-      branch: deploy-test
+      branch: main
       plan: free
       envVars:
       - key: PRODUCTION
@@ -52,7 +52,7 @@ projects:
       name: tool-share-minio
       runtime: docker
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
-      branch: deploy-test
+      branch: main
       plan: free
       envVars:
       - key: MINIO_ROOT_USER
@@ -69,7 +69,7 @@ projects:
       name: Neighborhood-Tool-Sharing
       runtime: static
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
-      branch: deploy-test
+      branch: main
       buildCommand: npm run build
       staticPublishPath: dist
       envVars:
