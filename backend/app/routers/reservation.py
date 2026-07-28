@@ -19,7 +19,7 @@ from app.models.review import Review, ReviewView
 from app.models.tool import Tool, ToolStatus
 from app.models.user import User
 from app.schemas.common import DetailError, MessageResponse
-from app.schemas.message import MessageCreate, MessageResponse
+from app.schemas.message import ChatMessageRequest, ChatMessageResponse
 from app.schemas.reservation import (
     APP_TIMEZONE,
     ReservationDetailsResponse,
@@ -898,7 +898,7 @@ def get_reservation_reviews(
 
 @router.get(
     "/{reservation_id}/messages",
-    response_model=list[MessageResponse],
+    response_model=list[ChatMessageResponse],
     status_code=status.HTTP_200_OK,
     responses={
         401: {"model": DetailError},
@@ -963,7 +963,7 @@ def get_messages(
 
 @router.post(
     "/{reservation_id}/messages",
-    response_model=MessageResponse,
+    response_model=ChatMessageResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
         400: {"model": DetailError},
@@ -974,7 +974,7 @@ def get_messages(
 )
 def create_message(
     reservation_id: uuid.UUID,
-    message_data: MessageCreate,
+    message_data: ChatMessageRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

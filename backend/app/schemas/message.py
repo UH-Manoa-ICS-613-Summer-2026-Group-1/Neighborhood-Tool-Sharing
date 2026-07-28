@@ -8,7 +8,7 @@ from .common import CleanStr
 # REQUEST SCHEMAS
 
 
-class MessageCreate(BaseModel):
+class ChatMessageRequest(BaseModel):
     content: CleanStr = Field(
         ...,
         min_length=1,
@@ -20,7 +20,7 @@ class MessageCreate(BaseModel):
 # RESPONSE SCHEMAS
 
 
-class MessageResponse(BaseModel):
+class ChatMessageResponse(BaseModel):
     id: UUID
     reservation_id: UUID
     sender_id: UUID
