@@ -20,7 +20,7 @@ MAX_SIZE_MB = 5  # The max size of the image that can be uploaded in MB
 
 # Dummy image link
 DUMMY_IMAGE_URL = (
-    f"{EXTERNAL_ENDPOINT}/{BUCKET_NAME}/placeholders/default-placeholder-image.jpg"
+    f"{EXTERNAL_ENDPOINT}/{BUCKET_NAME}/placeholders/default-placeholder-image.png"
 )
 
 # Force MinIO to use path-style addressing (e.g., endpoint/bucket instead of bucket.endpoint)
