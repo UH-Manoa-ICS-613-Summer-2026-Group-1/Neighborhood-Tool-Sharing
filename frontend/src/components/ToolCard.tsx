@@ -1,10 +1,9 @@
 // Card used in the Dashboard grids
 import type { ToolDetails } from '../api/tools'
 
-const STORAGE_BASE_URL = 
-  import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
-const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL.replace(/\/$/, '')}/community-tool-share-media/placeholders/default-placeholder-image.png`;
-
+const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
+const STORAGE_BUCKET_NAME = import.meta.env.VITE_STORAGE_BUCKET_NAME || "community-tool-share-media";
+const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL}/${STORAGE_BUCKET_NAME}/placeholders/default-placeholder-image.png`;
  
 // Small colored badges for tool condition and status
 const conditionColors: Record<string, string> = {
@@ -41,7 +40,13 @@ export default function ToolCard({ tool, showOwner = false, showStatus = false, 
             {/* Cover photo */}
             <div className="h-36 w-full bg-black/30 flex items-center justify-center overflow-hidden">
                 {cover ? (
-                    <img src={cover || PLACEHOLDER_IMAGE} alt={tool.tool_title} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE }} />
+                    <img src={cover}
+                    alt={tool.tool_title}
+                    className="h-full w-full object-cover" 
+                    onError={(e) => { 
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = PLACEHOLDER_IMAGE; 
+                    }} />
                 ) : (
                     <span className="text-3xl">🔧</span>
                 )}

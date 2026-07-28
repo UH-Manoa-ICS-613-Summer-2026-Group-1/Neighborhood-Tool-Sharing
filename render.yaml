@@ -1,5 +1,12 @@
 # Exported from Render on 2026-07-26T18:57:33Z
 version: "1"
+envVarGroups:
+  - name: minio-shared-credentials
+    envVars:
+      - key: MINIO_ROOT_USER
+        generateValue: true
+      - key: MINIO_ROOT_PASSWORD
+        generateValue: true
 projects:
 - name: Tool-Sharing-Neighborhood
   environments:
@@ -11,6 +18,8 @@ projects:
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
       branch: main
       plan: free
+      fromEnvGroup:
+        - name: minio-shared-credentials
       envVars:
       - key: PRODUCTION
         value: "true"
@@ -25,15 +34,9 @@ projects:
       - key: STORAGE_EXTERNAL_ENDPOINT
         value: "https://tool-share-minio.onrender.com"
       - key: STORAGE_ACCESS_KEY
-        fromService:
-          type: web
-          name: tool-share-minio
-          envVarKey: MINIO_ROOT_USER
+        fromEnvVar: MINIO_ROOT_USER
       - key: STORAGE_SECRET_KEY
-        fromService:
-          type: web
-          name: tool-share-minio
-          envVarKey: MINIO_ROOT_PASSWORD
+        fromEnvVar: MINIO_ROOT_PASSWORD
       - key: APP_TIMEZONE_NAME
         value: "Pacific/Honolulu"
       - key: STORAGE_BUCKET_NAME
@@ -54,11 +57,9 @@ projects:
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
       branch: main
       plan: free
+      fromEnvGroup:
+        - name: minio-shared-credentials
       envVars:
-      - key: MINIO_ROOT_USER
-        generateValue: true
-      - key: MINIO_ROOT_PASSWORD
-        generateValue: true
       - key: PORT
         value: "9000"
       region: oregon
@@ -75,6 +76,8 @@ projects:
       envVars:
       - key: VITE_STORAGE_EXTERNAL_ENDPOINT
         value: https://tool-share-minio.onrender.com
+      - key: VITE_STORAGE_BUCKET_NAME
+        value: community-tool-share-media
       routes:
       - type: rewrite
         source: /api/*

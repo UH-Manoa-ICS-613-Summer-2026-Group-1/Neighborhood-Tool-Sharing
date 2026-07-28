@@ -7,10 +7,9 @@ import { useNavigate, useParams } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchToolById, type ToolDetails } from '../../api/tools'
 
-const STORAGE_BASE_URL = 
-  import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
-const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL.replace(/\/$/, '')}/community-tool-share-media/placeholders/default-placeholder-image.png`;
-
+const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
+const STORAGE_BUCKET_NAME = import.meta.env.VITE_STORAGE_BUCKET_NAME || "community-tool-share-media";
+const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL}/${STORAGE_BUCKET_NAME}/placeholders/default-placeholder-image.png`;
 
 export default function ToolDetail() {
     const navigate = useNavigate()
@@ -75,7 +74,10 @@ export default function ToolDetail() {
                                         src={photos[activePhoto].url}
                                         alt={`${tool.tool_title} — photo ${activePhoto + 1}`}
                                         className="h-full w-full object-cover"
-                                        onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE }}
+                                        onError={(e) => { 
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = PLACEHOLDER_IMAGE;
+                                        }}
                                     />
                                 ) : (
                                     <span className="text-4xl">🔧</span>
@@ -95,7 +97,13 @@ export default function ToolDetail() {
                                                 idx === activePhoto ? 'border-[#e8a838]' : 'border-transparent opacity-70 hover:opacity-100'
                                             }`}
                                         >
-                                            <img src={photo.url} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMAGE }}/>
+                                            <img src={photo.url} 
+                                                alt="" 
+                                                className="h-full w-full object-cover" 
+                                                onError={(e) => { 
+                                                    e.currentTarget.onerror = null;
+                                                    e.currentTarget.src = PLACEHOLDER_IMAGE; 
+                                                }}/>
                                         </button>
                                     ))}
                                 </div>
