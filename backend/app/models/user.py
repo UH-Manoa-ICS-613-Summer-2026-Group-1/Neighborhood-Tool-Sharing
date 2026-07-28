@@ -19,6 +19,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from .invitation import Invitation
+    from .message import Message
     from .notification import Notification
     from .photo import Photo
     from .reservation import Reservation
@@ -177,6 +178,11 @@ class User(Base):
         "Notification",
         foreign_keys="[Notification.recipient_id]",
         back_populates="recipient",
+    )
+    sent_messages: Mapped[list["Message"]] = relationship(
+        "Message",
+        foreign_keys="[Message.sender_id]",
+        back_populates="sender",
     )
 
 

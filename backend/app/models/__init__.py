@@ -1,4 +1,5 @@
 from .invitation import Invitation
+from .message import Message
 from .notification import Notification
 from .photo import Photo, ToolPhoto
 from .reservation import Reservation
@@ -18,4 +19,5 @@ __all__ = [
     "Reservation",
     "Review",
     "Notification",
+    "Message",
 ]

@@ -11,6 +11,7 @@ from alembic.config import Config
 from app.database import get_db
 from app.main import app
 from app.models.invitation import Invitation
+from app.models.message import Message
 from app.models.photo import Photo, ToolPhoto
 from app.models.reservation import Reservation
 from app.models.tool import Tool, ToolType
@@ -315,3 +316,20 @@ def seed_reservation(db_session, seed_tool, seed_user2):
     db_session.commit()
     db_session.refresh(reservation)
     return reservation
+
+
+@pytest.fixture()
+def seed_message(db_session, seed_reservation):
+    """
+    Seeds a single message from the owner into the test database.
+    """
+    # Create a message
+    message = Message(
+        reservation_id=seed_reservation.id,
+        sender_id=seed_reservation.tool.owner_id,
+        content="This is a test message",
+    )
+    db_session.add(message)
+    db_session.commit()
+    db_session.refresh(message)
+    return message
