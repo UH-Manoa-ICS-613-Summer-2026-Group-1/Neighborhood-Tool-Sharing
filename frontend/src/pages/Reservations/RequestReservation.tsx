@@ -61,7 +61,8 @@ export default function RequestReservation() {
 
     // Today's date in YYYY-MM-DD format
     // Used as the minimum value on date inputs to prevent past date selection (Scenario 6)
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA');
+    console.log(today);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()

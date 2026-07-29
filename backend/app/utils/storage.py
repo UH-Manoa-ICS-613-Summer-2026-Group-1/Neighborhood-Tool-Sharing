@@ -20,11 +20,17 @@ MAX_SIZE_MB = 5  # The max size of the image that can be uploaded in MB
 
 # Dummy image link
 DUMMY_IMAGE_URL = (
-    f"{EXTERNAL_ENDPOINT}/{BUCKET_NAME}/placeholders/default-placeholder-image.jpg"
+    f"{EXTERNAL_ENDPOINT}/{BUCKET_NAME}/placeholders/default-placeholder-image.png"
 )
 
 # Force MinIO to use path-style addressing (e.g., endpoint/bucket instead of bucket.endpoint)
-s3_config = Config(s3={"addressing_style": "path"}, signature_version="s3v4")
+s3_config = Config(
+    s3={"addressing_style": "path", "payload_signing_enabled": False},
+    signature_version="s3v4",
+    region_name="us-east-1",
+    request_checksum_calculation="when_required",
+    response_checksum_validation="when_required",
+)
 
 # Internal client (For backend network operations)
 internal_s3 = boto3.client(
@@ -54,7 +60,7 @@ def generate_upload_ticket(
     """
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
+        raise RuntimeError("Missing required environment variable BUCKET_NAME")
 
     max_bytes = max_size_mb * 1024 * 1024  # Convert MB to Bytes
 
@@ -79,16 +85,16 @@ def generate_dummy_image():
     Generate placeholder image.
     Placed in MinIO/S3
     """
-    dummy_key = "placeholders/default-placeholder-image.jpg"
+    dummy_key = "placeholders/default-placeholder-image.png"
     image_path = (
         Path(__file__).resolve().parent.parent.parent
         / "assets"
-        / "placeholder_image.jpg"
+        / "placeholder_image.png"
     )
 
     # check if the required BUCKET_NAME variable is undefined or blank
     if BUCKET_NAME is None or BUCKET_NAME.strip() == "":
-        raise RuntimeError(f"Missing required environment variable {BUCKET_NAME}")
+        raise RuntimeError("Missing required environment variable BUCKET_NAME")
 
     try:
         # Check if it's already in MinIO/S3
@@ -104,7 +110,7 @@ def generate_dummy_image():
                     Bucket=BUCKET_NAME,
                     Key=dummy_key,
                     Body=image_bytes,
-                    ContentType="image/jpeg",
+                    ContentType="image/png",
                 )
                 print(f"Successfully seeded placeholder image from assets: {dummy_key}")
             else:
