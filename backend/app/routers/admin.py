@@ -12,16 +12,24 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.admin_statistics import AdminOverviewStatistics
+from app.models.invitation import InvitationHistory, InvitationStatus
 from app.models.notification import NotificationCategory
-from app.models.reservation import Reservation, ReservationStatus
-from app.models.tool import Tool, ToolStatus
-from app.models.user import User, UserStatus
+from app.models.reservation import Reservation, ReservationStatus, ReservationView
+from app.models.tool import Tool, ToolStatus, ToolView
+from app.models.user import User, UserProfileView, UserStatus
 from app.schemas.admin_statistics import (
     AdminOverviewStatisticsResponse,
     AdminTimeframeStatisticsResponse,
 )
 from app.schemas.common import DetailError, MessageResponse
-from app.schemas.reservation import APP_TIMEZONE, APP_TIMEZONE_NAME
+from app.schemas.invitation import InvitationDetailsResponse
+from app.schemas.reservation import (
+    APP_TIMEZONE,
+    APP_TIMEZONE_NAME,
+    ReservationDetailsResponse,
+)
+from app.schemas.tool import ToolDetailsResponse
+from app.schemas.user import CurrentUserProfileResponse
 from app.utils.dependencies import get_admin_user
 from app.utils.notification_helpers import create_notification
 
@@ -349,6 +357,11 @@ def suspend_user(
     )
 
     # Suspend the user
+    if suspended_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to suspend a user. User status not found.",
+        )
     user.status = suspended_status
     try:
         db.flush()
@@ -429,6 +442,11 @@ def activate_user(
     active_status = db.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
 
     # Activate the user account
+    if active_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to activate a user. User status not found.",
+        )
     user.status = active_status
     try:
         db.flush()
@@ -564,3 +582,305 @@ def get_statistics_timeseries(
             {"date": str(row.date), "count": row.total} for row in res_per_day_query
         ],
     }
+
+
+@router.get(
+    "/invitations",
+    status_code=status.HTTP_200_OK,
+    response_model=list[InvitationDetailsResponse],
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+        400: {"model": DetailError},
+    },
+)
+def get_invitations(
+    email: str | None = Query(
+        default=None,
+        description="Email to filter by",
+    ),
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        description="'None' to get all invitations; or filter by invitation status (e.g., 'PENDING',"
+        " 'USED', 'EXPIRED', 'REVOKED')",
+    ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Retrive all invitations.
+    """
+    query = db.query(InvitationHistory)
+
+    if email:
+        query = query.filter(
+            InvitationHistory.recipient_email.ilike(f"%{email.strip()}%")
+        )
+
+    # Apply optional status filtering
+    if status_filter:
+        if status_filter.upper() in InvitationStatus:
+            query = query.filter(InvitationHistory.status == status_filter.upper())
+        else:
+            # If status_filter is not a valid status, raise an error
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status parameter: {status_filter.upper() if status_filter else 'None'}."
+                " Choose from 'PENDING', 'USED', 'EXPIRED', 'REVOKED' or ommit it.",
+            )
+
+    # Sort by creation date
+    results = (
+        query.order_by(InvitationHistory.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return results
+
+
+@router.get(
+    "/reservations",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ReservationDetailsResponse],
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+        400: {"model": DetailError},
+    },
+)
+def get_reservations(
+    user_id: uuid.UUID | None = Query(
+        default=None,
+        description="User ID to filter by",
+    ),
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        description="'None' to get all reservations; or filter by reservation status (e.g., 'REQUESTED',"
+        " 'APPROVED', 'DENIED', 'PICKED_UP', 'RETURNED', 'CANCELED')",
+    ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Retrive all reservations.
+    """
+    query = db.query(ReservationView)
+
+    if user_id:
+        user_exists = db.query(User).filter(User.id == user_id).first() is not None
+        if not user_exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        query = query.filter(
+            or_(
+                ReservationView.owner_id == user_id,
+                ReservationView.borrower_id == user_id,
+            )
+        )
+
+    # Apply optional status filtering
+    if status_filter:
+        if status_filter.upper() in ReservationStatus:
+            query = query.filter(
+                ReservationView.reservation_status == status_filter.upper()
+            )
+        else:
+            # If status_filter is not a valid status, raise an error
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status parameter: {status_filter.upper() if status_filter else 'None'}."
+                " Choose 'REQUESTED', 'APPROVED', 'DENIED', 'PICKED_UP', 'RETURNED', 'CANCELED', or omit it.",
+            )
+
+    # Sort by creation date
+    results = (
+        query.order_by(ReservationView.reservation_created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return results
+
+
+@router.get(
+    "/tools",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ToolDetailsResponse],
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+        400: {"model": DetailError},
+    },
+)
+def get_tools(
+    user_id: uuid.UUID | None = Query(
+        default=None,
+        description="User ID to filter by",
+    ),
+    tool_id: uuid.UUID | None = Query(
+        default=None,
+        description="Tool ID to filter by",
+    ),
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        description="'None' to get all tools; or filter by tool status (e.g., 'AVAILABLE',"
+        " 'SUSPENDED', 'HIDDEN')",
+    ),
+    tool_type: str | None = Query(
+        default=None, description="Filter by tool type code (e.g. 'POWER_TOOLS')"
+    ),
+    tool_condition: str | None = Query(
+        default=None, description="Filter by tool condition"
+    ),
+    search: str | None = Query(
+        default=None, description="Keywords to search in title or description"
+    ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all tools.
+    """
+    # There is no DELETED tools in the view since we fileter it out in view creation
+
+    # Initialize query context pointed at tool_v
+    query = db.query(ToolView)
+
+    if user_id:
+        user_exists = db.query(User).filter(User.id == user_id).first() is not None
+        if not user_exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        query = query.filter(ToolView.owner_id == user_id)
+
+    if tool_id:
+        tool_exists = db.query(Tool).filter(Tool.id == tool_id).first() is not None
+        if not tool_exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tool not found.",
+            )
+        query = query.filter(ToolView.tool_id == tool_id)
+
+    # Apply optional status filtering
+    if status_filter:
+        if status_filter.upper() in ToolStatus:
+            query = query.filter(ToolView.tool_status == status_filter.upper())
+        else:
+            # If status_filter is not a valid status, raise an error
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status parameter: {status_filter.upper() if status_filter else 'None'}."
+                " Choose 'AVAILABLE', 'SUSPENDED', 'HIDDEN', or omit it.",
+            )
+    # Filter view by optional category type
+    if tool_type:
+        query = query.filter(ToolView.tool_type_code == tool_type.upper())
+
+    # Filter view by optional tool condition
+    if tool_condition:
+        query = query.filter(ToolView.tool_condition == tool_condition.upper())
+
+    # Filter view by optional search by keywords in title or description (case-insensitive)
+    if search:
+        search_pattern = f"%{search.strip()}%"
+        query = query.filter(
+            (ToolView.tool_title.ilike(search_pattern))
+            | (ToolView.tool_description.ilike(search_pattern))
+        )
+
+    results = (
+        query.order_by(ToolView.tool_created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return results
+
+
+@router.get(
+    "/users",
+    status_code=status.HTTP_200_OK,
+    response_model=list[CurrentUserProfileResponse],
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+        400: {"model": DetailError},
+    },
+)
+def get_user_profiles(
+    user_id: uuid.UUID | None = Query(
+        default=None,
+        description="User ID to filter by",
+    ),
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        description="'None' to get all users; or filter by user status (e.g., 'ACTIVE',"
+        " 'SUSPENDED')",
+    ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve all user profiles.
+    """
+    query = db.query(UserProfileView)
+
+    if user_id:
+        user_exists = db.query(User).filter(User.id == user_id).first() is not None
+        if not user_exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found.",
+            )
+        query = query.filter(UserProfileView.user_id == user_id)
+
+    # Apply optional status filtering
+    if status_filter:
+        status_exists = (
+            db.query(UserStatus)
+            .filter(UserStatus.code == status_filter.upper())
+            .first()
+        ) is not None
+        if status_exists:
+            query = query.filter(UserProfileView.status_code == status_filter.upper())
+        else:
+            # If status_filter is not a valid status, raise an error
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status parameter: {status_filter.upper() if status_filter else 'None'}."
+                " Choose 'ACTIVE', 'SUSPENDED', or omit it.",
+            )
+
+    results = (
+        query.order_by(UserProfileView.user_created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return results

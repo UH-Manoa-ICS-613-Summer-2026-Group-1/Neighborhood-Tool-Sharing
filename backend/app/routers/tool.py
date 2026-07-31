@@ -218,7 +218,7 @@ def list_tools(
 
     # Filter view by optional search by keywords in title or description (case-insensitive)
     if search:
-        search_pattern = f"%{search}%"
+        search_pattern = f"%{search.strip()}%"
         query = query.filter(
             (ToolView.tool_title.ilike(search_pattern))
             | (ToolView.tool_description.ilike(search_pattern))
