@@ -33,9 +33,15 @@ projects:
       - key: STORAGE_EXTERNAL_ENDPOINT
         value: "https://tool-share-minio.onrender.com"
       - key: STORAGE_ACCESS_KEY
-        fromEnvVar: MINIO_ROOT_USER
+        fromService:
+          type: web
+          name: tool-share-minio
+          envVarKey: MINIO_ROOT_USER
       - key: STORAGE_SECRET_KEY
-        fromEnvVar: MINIO_ROOT_PASSWORD
+        fromService:
+          type: web
+          name: tool-share-minio
+          envVarKey: MINIO_ROOT_PASSWORD
       - key: APP_TIMEZONE_NAME
         value: "Pacific/Honolulu"
       - key: STORAGE_BUCKET_NAME
