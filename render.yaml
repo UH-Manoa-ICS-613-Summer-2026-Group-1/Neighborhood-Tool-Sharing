@@ -18,9 +18,8 @@ projects:
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
       branch: main
       plan: free
-      fromEnvGroup:
-        - name: minio-shared-credentials
       envVars:
+      - fromGroup: minio-shared-credentials
       - key: PRODUCTION
         value: "true"
       - key: FRONTEND_BASE_URL
@@ -57,9 +56,8 @@ projects:
       repo: https://github.com/UH-Manoa-ICS-613-Summer-2026-Group-1/Neighborhood-Tool-Sharing
       branch: main
       plan: free
-      fromEnvGroup:
-        - name: minio-shared-credentials
       envVars:
+      - fromGroup: minio-shared-credentials
       - key: PORT
         value: "9000"
       region: oregon
