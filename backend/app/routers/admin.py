@@ -4,7 +4,7 @@ Handles user and tool suspension and activation. Generation basic reports.
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.admin_statistics import AdminOverviewStatistics
-from app.models.invitation import InvitationHistory, InvitationStatus
+from app.models.invitation import (
+    INVITATION_LINK_EXPIRE_DAYS,
+    Invitation,
+    InvitationHistory,
+    InvitationStatus,
+)
 from app.models.notification import NotificationCategory
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
 from app.models.tool import Tool, ToolStatus, ToolView
@@ -31,7 +36,9 @@ from app.schemas.reservation import (
 from app.schemas.tool import ToolDetailsResponse
 from app.schemas.user import CurrentUserProfileResponse
 from app.utils.dependencies import get_admin_user
+from app.utils.email import send_invitation_email
 from app.utils.notification_helpers import create_notification
+from app.utils.token_generator import generate_token
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
@@ -884,3 +891,167 @@ def get_user_profiles(
     )
 
     return results
+
+
+@router.post(
+    "/{id}/resend",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def resend_invitation(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Generate and send a fresh link for an expired (or pending) invitation.
+    """
+    invitation = db.query(Invitation).filter(Invitation.id == id).first()
+
+    # Validate invitation exists
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found.",
+        )
+
+    # Invitation already used
+    if invitation.status == InvitationStatus.USED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot resend. The invitation has already been used to create an account.",
+        )
+
+    # Check if revoked
+    if invitation.status == InvitationStatus.REVOKED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot resend a revoked invitation. Please send a new invitation instead.",
+        )
+
+    existing_user = (
+        db.query(User)
+        .filter(func.lower(User.email) == invitation.recipient_email.lower())
+        .first()
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"The email address {invitation.recipient_email} is already associated with an account."
+            ),
+        )
+
+    # If there is another invitation already pending, raise an exeption
+    pending_invite = (
+        db.query(Invitation)
+        .filter(
+            func.lower(Invitation.recipient_email)
+            == invitation.recipient_email.lower(),
+            Invitation.status == InvitationStatus.PENDING,
+            Invitation.id != id,
+        )
+        .first()
+    )
+
+    if pending_invite:
+        # If it's expired by time, update it to expired and let a fresh invite be created
+        if datetime.now(timezone.utc) > pending_invite.expires_at.replace(
+            tzinfo=timezone.utc
+        ):
+            pending_invite.status = InvitationStatus.EXPIRED
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Another invitation is already pending for the email address {invitation.recipient_email}.",
+            )
+
+    # Generate a new token and extend the expiration date from right now
+    now = datetime.now(timezone.utc)
+    new_token = generate_token()
+
+    invitation.invitation_token = new_token
+    invitation.status = InvitationStatus.PENDING
+    invitation.created_at = now
+    invitation.expires_at = now + timedelta(days=INVITATION_LINK_EXPIRE_DAYS)
+
+    # Send the email with new link
+    try:
+        send_invitation_email(invitation.recipient_email, new_token)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to resend invitation email: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send invitation email. Please try again later.",
+        )
+
+    return MessageResponse(
+        message=f"Fresh invitation link generated and sent to {invitation.recipient_email}."
+    )
+
+
+@router.post(
+    "/{id}/revoke",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    responses={
+        400: {"model": DetailError},
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def revoke_invitation(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Revoke an invitation link so it can no longer be used.
+    """
+    invitation = db.query(Invitation).filter(Invitation.id == id).first()
+
+    # Validate invitation exists
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Invitation not found.",
+        )
+
+    # Invitation already used
+    if invitation.status == InvitationStatus.USED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revoke. The invitation has already been used to create an account.",
+        )
+
+    # Prevent redundant revoking
+    if invitation.status == InvitationStatus.REVOKED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation is already revoked.",
+        )
+
+    # Mark record as revoked
+    invitation.status = InvitationStatus.REVOKED
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to revoke invitation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to revoke invitation. Please try again later.",
+        )
+    return MessageResponse(
+        message=f"Invitation for {invitation.recipient_email} has been revoked successfully."
+    )
