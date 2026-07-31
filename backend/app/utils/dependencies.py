@@ -124,6 +124,6 @@ def get_admin_user(
     if not current_user.role or current_user.role.code != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden: Admin privileges required to perform this action.",
+            detail="Admin privileges required to perform this action.",
         )
     return current_user

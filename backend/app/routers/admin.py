@@ -4,17 +4,24 @@ Handles user and tool suspension and activation. Generation basic reports.
 """
 
 import uuid
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.admin_statistics import AdminOverviewStatistics
 from app.models.notification import NotificationCategory
 from app.models.reservation import Reservation, ReservationStatus
 from app.models.tool import Tool, ToolStatus
 from app.models.user import User, UserStatus
+from app.schemas.admin_statistics import (
+    AdminOverviewStatisticsResponse,
+    AdminTimeframeStatisticsResponse,
+)
 from app.schemas.common import DetailError, MessageResponse
+from app.schemas.reservation import APP_TIMEZONE, APP_TIMEZONE_NAME
 from app.utils.dependencies import get_admin_user
 from app.utils.notification_helpers import create_notification
 
@@ -444,3 +451,116 @@ def activate_user(
             detail=f"Failed to activate a user account. Error: {str(e)}",
         )
     return {"message": f"User account '{user.email}' has been activated."}
+
+
+@router.get(
+    "/statistics/overview",
+    status_code=status.HTTP_200_OK,
+    response_model=AdminOverviewStatisticsResponse,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+    },
+)
+def get_statistics_overview(
+    db: Session = Depends(get_db), admin: User = Depends(get_admin_user)
+):
+    """
+    Admin views statistics overview.
+    """
+    overview_statistics = db.query(AdminOverviewStatistics).first()
+    return overview_statistics
+
+
+@router.get(
+    "/statistics/timeseries",
+    status_code=status.HTTP_200_OK,
+    response_model=AdminTimeframeStatisticsResponse,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+    },
+)
+def get_statistics_timeseries(
+    timeframe: int = Query(
+        default=30,
+        description="Timeframe in days",
+        ge=1,
+        le=365,
+    ),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Admin views statistics timeseries metrics filtered by timeframe in days.
+    """
+    local_today_midnight = datetime.now(APP_TIMEZONE).replace(
+        hour=0, minute=0, second=0
+    )
+    start_date = local_today_midnight - timedelta(days=timeframe - 1)
+
+    # New users grouped by day
+    users_per_day_query = (
+        db.query(
+            func.date(func.timezone(APP_TIMEZONE_NAME, User.created_at)).label("date"),
+            func.count(User.id).label("total"),
+        )
+        .filter(User.created_at >= start_date)
+        .group_by(func.date(func.timezone(APP_TIMEZONE_NAME, User.created_at)))
+        .order_by("date")
+        .all()
+    )
+
+    # Tools grouped by day
+    tools_per_day_query = (
+        db.query(
+            func.date(func.timezone(APP_TIMEZONE_NAME, Tool.created_at)).label("date"),
+            func.count(Tool.id).label("total"),
+        )
+        .filter(Tool.created_at >= start_date)
+        .group_by(func.date(func.timezone(APP_TIMEZONE_NAME, Tool.created_at)))
+        .order_by("date")
+        .all()
+    )
+
+    # Reservations grouped by day
+    res_per_day_query = (
+        db.query(
+            func.date(func.timezone(APP_TIMEZONE_NAME, Reservation.created_at)).label(
+                "date"
+            ),
+            func.count(Reservation.id).label("total"),
+        )
+        .filter(Reservation.created_at >= start_date)
+        .group_by(func.date(func.timezone(APP_TIMEZONE_NAME, Reservation.created_at)))
+        .order_by("date")
+        .all()
+    )
+
+    # All-time totals
+    all_time_users = db.query(func.count(User.id)).scalar() or 0
+    all_time_tools = db.query(func.count(Tool.id)).scalar() or 0
+    all_time_reservations = db.query(func.count(Reservation.id)).scalar() or 0
+
+    # Calculate timeframe totals from queries
+    timeframe_new_users = sum(row.total for row in users_per_day_query)
+    timeframe_new_tools = sum(row.total for row in tools_per_day_query)
+    timeframe_new_reservations = sum(row.total for row in res_per_day_query)
+
+    return {
+        "all_time_users": all_time_users,
+        "all_time_tools": all_time_tools,
+        "all_time_reservations": all_time_reservations,
+        "timeframe_new_users": timeframe_new_users,
+        "timeframe_new_tools": timeframe_new_tools,
+        "timeframe_new_reservations": timeframe_new_reservations,
+        "new_users_per_day": [
+            {"date": str(row.date), "count": row.total} for row in users_per_day_query
+        ],
+        "new_tools_per_day": [
+            {"date": str(row.date), "count": row.total} for row in tools_per_day_query
+        ],
+        "reservations_per_day": [
+            {"date": str(row.date), "count": row.total} for row in res_per_day_query
+        ],
+    }

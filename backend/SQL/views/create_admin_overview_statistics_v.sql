@@ -13,6 +13,7 @@ SELECT
     (SELECT COUNT(*) FROM tools WHERE status = 'AVAILABLE') AS available_tools,
     (SELECT COUNT(*) FROM tools WHERE status = 'HIDDEN') AS hidden_tools,
     (SELECT COUNT(*) FROM tools WHERE status = 'SUSPENDED') AS suspended_tools,
+    (SELECT COUNT(*) FROM tools WHERE status = 'DELETED') AS deleted_tools,
     (SELECT COUNT(*) FROM tools 
     WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)) AS new_tools_this_month,
     -- Reservations

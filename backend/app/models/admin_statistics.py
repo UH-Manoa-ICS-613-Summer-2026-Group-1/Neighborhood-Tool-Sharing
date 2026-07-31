@@ -15,6 +15,7 @@ class AdminOverviewStatistics(Base):
     available_tools: Mapped[int]
     hidden_tools: Mapped[int]
     suspended_tools: Mapped[int]
+    deleted_tools: Mapped[int]
     new_tools_this_month: Mapped[int]
 
     total_reservations: Mapped[int]
