@@ -5,7 +5,7 @@ Handles user and tool suspension and activation. Generation basic reports.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
