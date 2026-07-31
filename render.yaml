@@ -1,17 +1,12 @@
 # Exported from Render on 2026-07-26T18:57:33Z
 version: "1"
-envVarGroups:
-  - name: minio-shared-credentials
-    envVars:
-      - key: MINIO_ROOT_USER
-        generateValue: true
-      - key: MINIO_ROOT_PASSWORD
-        generateValue: true
+
 projects:
 - name: Tool-Sharing-Neighborhood
   environments:
   - name: Production
     services:
+
     - type: web
       name: tool-share-backend
       runtime: docker
@@ -19,7 +14,6 @@ projects:
       branch: main
       plan: free
       envVars:
-      - fromGroup: minio-shared-credentials
       - key: PRODUCTION
         value: "true"
       - key: FRONTEND_BASE_URL
@@ -56,6 +50,7 @@ projects:
       dockerfilePath: Dockerfile
       autoDeployTrigger: commit
       rootDir: backend
+
     - type: web
       name: tool-share-minio
       runtime: docker
@@ -63,13 +58,17 @@ projects:
       branch: main
       plan: free
       envVars:
-      - fromGroup: minio-shared-credentials
+      - key: MINIO_ROOT_USER
+        generateValue: true
+      - key: MINIO_ROOT_PASSWORD
+        generateValue: true
       - key: PORT
         value: "9000"
       region: oregon
       dockerContext: .
       dockerfilePath: backend/Dockerfile.minio
       autoDeployTrigger: commit
+
     - type: web
       name: Neighborhood-Tool-Sharing
       runtime: static
