@@ -9,6 +9,7 @@ import os
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.schemas.reservation import APP_TIMEZONE_NAME
 from app.utils.auth_helpers import get_password_hash
 
 
@@ -331,19 +332,20 @@ def run_reservations_seeds(db: Session):
     - Start Date: Local 00:00:00 -> UTC 10:00:00 (Same calendar day)
     - End Date: Local 23:59:59 -> UTC 09:59:59 (Next calendar day)
     """
+
     db.execute(
         text("""
             INSERT INTO reservations (id, tool_id, borrower_id, loan_duration_limit, start_date, end_date, status) VALUES
             -- TOOL 1 BOOKINGS (e0000000-0000-0000-0000-000000000001)
 
             -- 1. Future, approved
-            -- Local: Tomorrow 00:00:00 to Today + 3 Days 23:59:59
+            -- Local: Tomorrow 00:00:00 to Tomorrow + 3 Days 23:59:59
             (
                 'd0000001-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '1 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '5 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
 
@@ -353,8 +355,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000002', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '1 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '4 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'REQUESTED'
             ),
 
@@ -364,8 +366,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000003', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '1 day')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '1 day')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '1 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '1 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'PICKED_UP'
             ),
 
@@ -374,8 +376,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000004', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '14 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '11 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '14 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '12 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'RETURNED'
             ),
             -- 5. Past: canceled
@@ -383,8 +385,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000005', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '9 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '9 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '8 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'CANCELED'
             ),
             -- TOOL 2 BOOKINGS (e0000000-0000-0000-0000-000000000002)
@@ -393,8 +395,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000006', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '6 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '6 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '5 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'DENIED'
             ),
             -- 7. Past, returned
@@ -402,8 +404,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000007', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '2 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '4 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '3 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'RETURNED'
             ),
             -- 8. Future, request
@@ -411,8 +413,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000008', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '6 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '6 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '10 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'REQUESTED'
             ),
             -- 9. Future, approved
@@ -420,8 +422,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000009', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '10 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '14 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '10 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '15 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
             -- TOOL 8 BOOKINGS (e0000000-0000-0000-0000-000000000008)
@@ -430,8 +432,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000010', 'e0000000-0000-0000-0000-000000000008',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '20 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '17 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '20 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '18 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'RETURNED'
             ),
             -- 11. Future, approved
@@ -439,8 +441,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000011', 'e0000000-0000-0000-0000-000000000008',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '4 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '4 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '8 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
             -- 12. Future, requested
@@ -448,8 +450,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000012', 'e0000000-0000-0000-0000-000000000008',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '7 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '7 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '10 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'REQUESTED'
             ),
             -- 13. Future, approved
@@ -457,8 +459,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000013', 'e0000000-0000-0000-0000-000000000008',
                 (SELECT id FROM users WHERE email = 'seed2@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '14 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '17 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '14 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '18 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
             -- 14. Current, approved
@@ -467,8 +469,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000014', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE)::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '2 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz)) AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '2 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
             -- 15. Past, returned
@@ -476,8 +478,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000015', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '12 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '11 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '12 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '11 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'RETURNED'
             ),
             -- 16. Past, canceled
@@ -485,8 +487,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000016', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '8 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '7 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '8 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '7 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'CANCELED'
             ),
             -- 17. Future: approved
@@ -494,8 +496,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000017', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '6 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '9 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '6 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '10 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'APPROVED'
             ),
             -- 18. Future, requested
@@ -503,8 +505,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000018', 'e0000000-0000-0000-0000-000000000001',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '11 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '15 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '11 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '16 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'REQUESTED'
             ),
             -- 19. Past, returned
@@ -512,8 +514,8 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000019', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE - INTERVAL '4 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE - INTERVAL '3 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '4 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) - INTERVAL '3 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'RETURNED'
             ),
             -- 20. Future, requested
@@ -521,12 +523,13 @@ def run_reservations_seeds(db: Session):
                 'd0000001-0000-0000-0000-000000000020', 'e0000000-0000-0000-0000-000000000002',
                 (SELECT id FROM users WHERE email = 'seed4@example.com'),
                 7,
-                (CURRENT_DATE + INTERVAL '16 days')::timestamp + TIME '10:00:00',
-                (CURRENT_DATE + INTERVAL '19 days')::timestamp + TIME '09:59:59',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '16 day') AT TIME ZONE :tz AT TIME ZONE 'UTC',
+                (date_trunc('day', NOW() AT TIME ZONE :tz) + INTERVAL '20 days' - INTERVAL '1 second') AT TIME ZONE :tz AT TIME ZONE 'UTC',
                 'REQUESTED'
             )
             ON CONFLICT (id) DO NOTHING;
-        """)
+        """),
+        {"tz": APP_TIMEZONE_NAME},
     )
     db.commit()
 
