@@ -219,6 +219,26 @@ def test_view_tool_listing_not_found(client, seed_user, get_auth_headers):
     assert response.status_code == 404
 
 
+def test_view_all_my_tools_with_filters(client, seed_user, seed_tool, get_auth_headers):
+    """
+    Test that a user can view all their tools with filters
+    """
+    headers = get_auth_headers(seed_user.id)
+
+    response = client.get(
+        f"/api/tools?is_mine=true&status=AVAILABLE&\
+        tool_type={seed_tool.tool_type.code}&\
+        tool_condition={seed_tool.condition}&\
+        search={seed_tool.title}&limit=10&offset=0",
+        headers=headers,
+    )
+    assert response.status_code == 200
+
+    tools = response.json()
+    assert len(tools) == 1
+    assert tools[0]["tool_id"] == str(seed_tool.id)
+
+
 # US 21 Scenario 1: Successful search
 def test_search_tools_by_keyword_and_category(
     client, seed_user, seed_tool, get_auth_headers

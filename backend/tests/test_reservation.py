@@ -155,6 +155,42 @@ def test_other_user_unsuccessful_view_tool_reservations(
     )
 
 
+def test_view_all_reservations_as_owner(
+    client, seed_user, seed_reservation, get_auth_headers
+):
+    """
+    Test that user can view all reservations where he is the owner.
+    """
+    headers = get_auth_headers(seed_user.id)
+
+    response = client.get(
+        "/api/reservations?role=owner&status=REQUESTED&limit=10&offset=0",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    reservations = response.json()
+    assert reservations[0]["tool_id"] == str(seed_reservation.tool_id)
+
+
+def test_view_all_reservations_as_borrower(
+    client, seed_user2, seed_reservation, get_auth_headers
+):
+    """
+    Test that user can view all reservations where he is the borrower.
+    """
+    headers = get_auth_headers(seed_user2.id)
+
+    response = client.get(
+        "/api/reservations?role=borrower&status=REQUESTED&limit=10&offset=0",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    reservations = response.json()
+    assert reservations[0]["tool_id"] == str(seed_reservation.tool_id)
+
+
 # US 2 Scenario 1: Valid reservation request
 def test_successful_reservation_request(
     client, seed_user3, seed_tool, get_auth_headers

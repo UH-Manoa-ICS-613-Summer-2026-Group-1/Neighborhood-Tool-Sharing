@@ -113,3 +113,17 @@ def validate_urls_ownership(current_user: User, urls: list[str]):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Malformed media asset URL format provided.",
             )
+
+
+def get_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Ensure the current active user has administrator privileges.
+    """
+    if not current_user.role or current_user.role.code != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required to perform this action.",
+        )
+    return current_user

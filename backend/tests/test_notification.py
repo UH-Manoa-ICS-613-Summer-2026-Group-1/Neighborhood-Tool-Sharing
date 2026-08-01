@@ -1,9 +1,14 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from app.models.notification import NotificationCategory
 from app.models.reservation import ReservationStatus
 from app.schemas.reservation import APP_TIMEZONE
-from app.utils.notification_helpers import run_daily_reservation_reminders
+from app.utils.notification_helpers import (
+    create_notification,
+    run_daily_reservation_reminders,
+)
+from sqlalchemy.orm import Session
 
 today = (
     datetime.now(APP_TIMEZONE)
@@ -271,3 +276,48 @@ def test_notification_after_cancel(
         seed_user2.notifications[0].content
         == f"The reservation for '{seed_reservation.tool.title}' was cancelled by {seed_user.first_name} {seed_user.last_name}."
     )
+
+
+def test_get_only_unread_notifications(
+    client,
+    db_session: Session,
+    seed_user,
+    get_auth_headers,
+):
+    """
+    Tests that only unread notifications are returned.
+    """
+    headers = get_auth_headers(seed_user.id)
+
+    # Seed two notifications
+    # 1st
+    create_notification(
+        db=db_session,
+        recipient_id=seed_user.id,
+        category=NotificationCategory.SYSTEM,
+        title="Test Title",
+        content="Test content",
+    )
+    # 2nd
+    create_notification(
+        db=db_session,
+        recipient_id=seed_user.id,
+        category=NotificationCategory.SYSTEM,
+        title="Test Title 2",
+        content="Test content 2",
+    )
+    db_session.commit()
+
+    # Read the first notification
+    for notification in seed_user.notifications:
+        if notification.title == "Test Title":
+            notification.is_read = True
+    db_session.commit()
+
+    # Get all notifications
+    response = client.get("/api/notifications?unread_only=true", headers=headers)
+    print(response.json())
+    assert response.status_code == 200
+    notifications = response.json()
+    assert len(notifications) == 1
+    assert notifications[0]["title"] == "Test Title 2"
