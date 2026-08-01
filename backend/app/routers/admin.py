@@ -894,7 +894,7 @@ def get_user_profiles(
 
 
 @router.post(
-    "/{id}/resend",
+    "/invitations/{id}/resend",
     status_code=status.HTTP_200_OK,
     response_model=MessageResponse,
     responses={
@@ -1000,7 +1000,7 @@ def resend_invitation(
 
 
 @router.post(
-    "/{id}/revoke",
+    "/invitations/{id}/revoke",
     status_code=status.HTTP_200_OK,
     response_model=MessageResponse,
     responses={
@@ -1024,7 +1024,7 @@ def revoke_invitation(
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Invitation not found.",
+            detail="Invitation not found.",
         )
 
     # Invitation already used

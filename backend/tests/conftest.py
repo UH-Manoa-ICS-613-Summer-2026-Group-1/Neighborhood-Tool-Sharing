@@ -238,6 +238,30 @@ def seed_suspended_user(db_session, hashed_password):
 
 
 @pytest.fixture()
+def seed_admin(db_session, hashed_password):
+    """
+    Seeds a single admin user into the test database.
+    """
+    admin_role = db_session.query(UserRole).filter(UserRole.code == "ADMIN").first()
+    active_status = (
+        db_session.query(UserStatus).filter(UserStatus.code == "ACTIVE").first()
+    )
+
+    admin_user = User(
+        email="admin@mail.com",
+        password=hashed_password,
+        first_name="AdminFirst",
+        last_name="AdminLast",
+        status=active_status,
+        role=admin_role,
+    )
+    db_session.add(admin_user)
+    db_session.commit()
+    db_session.refresh(admin_user)
+    return admin_user
+
+
+@pytest.fixture()
 def seed_invitation(db_session, seed_user):
     """
     Seeds a single invitation into the test database.
