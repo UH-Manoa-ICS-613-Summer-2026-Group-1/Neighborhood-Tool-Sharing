@@ -4,6 +4,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.utils.auth_helpers import normalize_email
 
+# REQUEST SCHEMAS
+
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
@@ -36,3 +38,10 @@ class ResetPasswordSubmitRequest(BaseModel):
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>_+=-]", value):
             raise ValueError("Password must contain at least one special character.")
         return value
+
+
+# RESPONSE SCHEMAS
+
+
+class ResetPasswordValidateResponse(BaseModel):
+    email: EmailStr

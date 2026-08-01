@@ -19,3 +19,12 @@ def send_invitation_email(recipient_email, invite_token):
     print(f"DEVELOPMENT MODE: Invitation link generated for {recipient_email}.")
     print(f"URL: {invitation_link}")
     print("=" * 20 + "\n")
+
+
+def send_reset_password_email(recipient_email, reset_token):
+    reset_link = f"{FRONTEND_BASE_URL}/reset-password?token={reset_token}"
+
+    print("\n" + "=" * 20)
+    print(f"DEVELOPMENT MODE: Reset link generated for {recipient_email}.")
+    print(f"URL: {reset_link}")
+    print("=" * 20 + "\n")
