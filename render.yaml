@@ -1,6 +1,4 @@
-# Exported from Render on 2026-07-26T18:57:33Z
 version: "1"
-
 projects:
 - name: Tool-Sharing-Neighborhood
   environments:
