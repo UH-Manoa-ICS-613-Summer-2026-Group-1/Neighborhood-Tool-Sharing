@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from .invitation import Invitation
     from .message import Message
     from .notification import Notification
+    from .password_reset import PasswordReset
     from .photo import Photo
     from .reservation import Reservation
     from .tool import Tool
@@ -183,6 +184,9 @@ class User(Base):
         "Message",
         foreign_keys="[Message.sender_id]",
         back_populates="sender",
+    )
+    password_resets: Mapped[list["PasswordReset"]] = relationship(
+        "PasswordReset", back_populates="user"
     )
 
 
