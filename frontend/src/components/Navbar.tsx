@@ -4,6 +4,7 @@ import { Bars3Icon, XMarkIcon, HomeIcon, PlusCircleIcon, CalendarIcon, Magnifyin
 import { useLocation, useNavigate } from 'react-router'
 import { logoutUser } from '../api/auth'
 import { fetchCurrentUser, type UserProfile } from '../api/users'
+import NotificationBell from './NotificationBell'
 
 
 const navigation = [
@@ -122,8 +123,10 @@ export default function Navbar({ user: userProp }: NavbarProps) {
                 ))}
             </div>
           </div>
-          {/* Profile dropdown menu (avatar, profile link, invite, sign out) */}
+          {/* Notification bell and Profile dropdown menu (avatar, profile link, invite, sign out) */}
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+            {/* Notification bell with unread badge + dropdown panel */}
+            <NotificationBell />
             <Menu as="div" className="relative ml-3">
               <MenuButton className="relative flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
                 <span className="absolute -inset-1.5" />
