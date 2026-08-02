@@ -1,7 +1,7 @@
 """Create password_resets table
 
 Revision ID: e8c84b3977d7
-Revises: 1420f6f97e79
+Revises: 136b2a22fa9d
 Create Date: 2026-08-01 08:41:31.293274
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e8c84b3977d7"
-down_revision: Union[str, Sequence[str], None] = "1420f6f97e79"
+down_revision: Union[str, Sequence[str], None] = "136b2a22fa9d"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
