@@ -7,6 +7,7 @@ from app.routers import (
     invitation,
     media,
     notification,
+    report,
     reservation,
     tool,
     user,
@@ -20,6 +21,7 @@ app.include_router(user.router)
 app.include_router(tool.router)
 app.include_router(reservation.router)
 app.include_router(notification.router)
+app.include_router(report.router)
 app.include_router(admin.router)
 app.include_router(media.router)
 app.include_router(health.router)

@@ -19,6 +19,7 @@ from app.models.invitation import (
     InvitationStatus,
 )
 from app.models.notification import NotificationCategory
+from app.models.report import Report, ReportStatus
 from app.models.reservation import Reservation, ReservationStatus, ReservationView
 from app.models.tool import Tool, ToolStatus, ToolView
 from app.models.user import User, UserProfileView, UserStatus
@@ -28,6 +29,7 @@ from app.schemas.admin_statistics import (
 )
 from app.schemas.common import DetailError, MessageResponse
 from app.schemas.invitation import InvitationDetailsResponse
+from app.schemas.report import ReportResponse
 from app.schemas.reservation import (
     APP_TIMEZONE,
     APP_TIMEZONE_NAME,
@@ -1055,3 +1057,122 @@ def revoke_invitation(
     return MessageResponse(
         message=f"Invitation for {invitation.recipient_email} has been revoked successfully."
     )
+
+
+@router.get(
+    "/reports",
+    response_model=list[ReportResponse],
+    status_code=status.HTTP_200_OK,
+    responses={401: {"model": DetailError}, 403: {"model": DetailError}},
+)
+def get_admin_reports(
+    status_filter: ReportStatus | None = Query(
+        None,
+        alias="status",
+        description="Filter reports by status (ACTIVE or RESOLVED)",
+    ),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Retrieve all user reports.
+    """
+    query = db.query(Report)
+
+    if status_filter:
+        query = query.filter(Report.status == status_filter)
+
+    reports = query.order_by(Report.created_at.desc()).all()
+    return reports
+
+
+@router.post(
+    "/reports/{report_id}/resolve",
+    response_model=ReportResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def resolve_report(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Mark an active report as RESOLVED.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found.",
+        )
+
+    if report.status == ReportStatus.RESOLVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Report is already marked as RESOLVED.",
+        )
+
+    report.status = ReportStatus.RESOLVED
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to resolve report: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resolve report. Error: {str(e)}",
+        )
+    db.refresh(report)
+
+    return report
+
+
+@router.post(
+    "/reports/{report_id}/activate",
+    response_model=ReportResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": DetailError},
+        403: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def activate_report(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """
+    Re-activate a resolved report back to ACTIVE status.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found.",
+        )
+
+    if report.status == ReportStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Report is already ACTIVE.",
+        )
+
+    report.status = ReportStatus.ACTIVE
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to activate report: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to activate report. Error: {str(e)}",
+        )
+    db.refresh(report)
+
+    return report

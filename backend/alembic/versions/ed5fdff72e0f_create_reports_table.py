@@ -38,7 +38,14 @@ def upgrade() -> None:
         ),
         sa.Column(
             "category",
-            sa.String(length=50),
+            sa.Enum(
+                "LATE_RETURN",
+                "TOOL_DAMAGED",
+                "INAPPROPRIATE_BEHAVIOR",
+                "OTHER",
+                name="reportcategory",
+                native_enum=False,
+            ),
             server_default=sa.text("'OTHER'"),
             nullable=False,
             comment="Category of the report",
@@ -51,7 +58,13 @@ def upgrade() -> None:
         ),
         sa.Column(
             "target_type",
-            sa.String(length=50),
+            sa.Enum(
+                "RESERVATION",
+                "TOOL",
+                "USER",
+                name="reporttargettype",
+                native_enum=False,
+            ),
             nullable=False,
             comment="Target type of the report",
         ),

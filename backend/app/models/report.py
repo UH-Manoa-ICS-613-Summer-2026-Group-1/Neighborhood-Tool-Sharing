@@ -28,6 +28,19 @@ class ReportStatus(enum.Enum):
     RESOLVED = "RESOLVED"
 
 
+class ReportTargetType(enum.Enum):
+    RESERVATION = "RESERVATION"
+    TOOL = "TOOL"
+    USER = "USER"
+
+
+class ReportCategory(enum.Enum):
+    LATE_RETURN = "LATE_RETURN"
+    TOOL_DAMAGED = "TOOL_DAMAGED"
+    INAPPROPRIATE_BEHAVIOR = "INAPPROPRIATE_BEHAVIOR"
+    OTHER = "OTHER"
+
+
 class Report(Base):
     __tablename__ = "reports"
 
@@ -50,12 +63,12 @@ class Report(Base):
         comment="Links the report to the user who submitted the report",
     )
 
-    category: Mapped[str] = mapped_column(
-        String(50),
+    category: Mapped[ReportCategory] = mapped_column(
+        SAEnum(ReportCategory, native_enum=False),
+        default=ReportCategory.OTHER,
+        server_default=text("'OTHER'"),
         nullable=False,
         comment="Category of the report",
-        default="OTHER",
-        server_default=text("'OTHER'"),
     )
 
     description: Mapped[str] = mapped_column(
@@ -65,8 +78,10 @@ class Report(Base):
     target_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), nullable=False, comment="Target id of the report"
     )
-    target_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, comment="Target type of the report"
+    target_type: Mapped[ReportTargetType] = mapped_column(
+        SAEnum(ReportTargetType, native_enum=False),
+        nullable=False,
+        comment="Target type of the report",
     )
 
     status: Mapped[ReportStatus] = mapped_column(
