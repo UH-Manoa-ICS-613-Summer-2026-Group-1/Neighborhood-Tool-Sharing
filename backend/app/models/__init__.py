@@ -3,6 +3,7 @@ from .message import Message
 from .notification import Notification
 from .password_reset import PasswordReset
 from .photo import Photo, ToolPhoto
+from .report import Report
 from .reservation import Reservation
 from .review import Review
 from .tool import Tool, ToolType
@@ -22,4 +23,5 @@ __all__ = [
     "Notification",
     "Message",
     "PasswordReset",
+    "Report",
 ]

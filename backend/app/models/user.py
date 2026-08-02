@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .notification import Notification
     from .password_reset import PasswordReset
     from .photo import Photo
+    from .report import Report
     from .reservation import Reservation
     from .tool import Tool
 
@@ -188,6 +189,7 @@ class User(Base):
     password_resets: Mapped[list["PasswordReset"]] = relationship(
         "PasswordReset", back_populates="user"
     )
+    reports: Mapped[list["Report"]] = relationship("Report", back_populates="reporter")
 
 
 class UserProfileView(Base):
