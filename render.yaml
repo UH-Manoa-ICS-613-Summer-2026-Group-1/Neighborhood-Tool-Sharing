@@ -14,8 +14,6 @@ projects:
       envVars:
       - key: PRODUCTION
         value: "true"
-      - key: RESEND_API_KEY
-      - key: SENDER_EMAIL
       - key: FRONTEND_BASE_URL
         value: "https://neighborhood-tool-sharing.onrender.com"
       - key: DATABASE_URL
