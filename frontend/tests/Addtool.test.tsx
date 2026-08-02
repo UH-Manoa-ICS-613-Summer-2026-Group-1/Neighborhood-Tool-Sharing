@@ -29,6 +29,18 @@ const toolTypes = [
 ];
 const conditions = ["NEW", "GOOD", "FAIR", "POOR"];
 
+// define constant values that are used multiple times in the test cases
+const image_jpeg = "image/jpeg";
+const input_file = 'input[type="file"]';
+const my_drill = "My Drill";
+const drill_name = "DeWalt 20V Cordless Drill";
+const drill_desc = "Great drill, barely used.";
+const good_condition = "GOOD";
+const drill_url = "https://storage.example.com/drill.jpg";
+const dashboard_url = "/dashboard"
+const blob_preview1 = "blob:preview-1";
+const blob_preview2 = "blob:preview-2";
+
 // jsdom does not implement createObjectURL; stub it for photo previews.
 beforeEach(() => {
   window.URL.createObjectURL = vi.fn(() => "blob:preview-url");
@@ -37,9 +49,9 @@ beforeEach(() => {
 
 // Helper: attach a fake image file to the photo input.
 async function addPhoto(user: ReturnType<typeof userEvent.setup>) {
-  const file = new File(["fake-bytes"], "drill.jpg", { type: "image/jpeg" });
+  const file = new File(["fake-bytes"], "drill.jpg", { type: image_jpeg });
   const input = document.querySelector(
-    'input[type="file"]',
+    input_file,
   ) as HTMLInputElement;
   await user.upload(input, file);
   return file;
@@ -49,13 +61,13 @@ async function addPhoto(user: ReturnType<typeof userEvent.setup>) {
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(
     screen.getByLabelText(/title/i),
-    "DeWalt 20V Cordless Drill",
+    drill_name,
   );
   await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
-  await user.selectOptions(screen.getByLabelText(/condition/i), "GOOD");
+  await user.selectOptions(screen.getByLabelText(/condition/i), good_condition);
   await user.type(
     screen.getByLabelText(/description/i),
-    "Great drill, barely used.",
+    drill_desc,
   );
   await addPhoto(user);
 }
@@ -77,7 +89,7 @@ describe("AddTool", () => {
       screen.getByRole("option", { name: "Power Tools" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Garden" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "GOOD" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: good_condition })).toBeInTheDocument();
   });
 
   // Verify a lookup failure shows an error.
@@ -99,7 +111,7 @@ describe("AddTool", () => {
     render(<AddTool />);
     await screen.findByLabelText(/category/i);
 
-    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(screen.getByLabelText(/title/i), my_drill);
     await addPhoto(user); // enables the submit button
     await user.click(screen.getByRole("button", { name: /publish tool/i }));
 
@@ -138,14 +150,14 @@ describe("AddTool", () => {
   it("uploads photos, creates the tool, and navigates to the dashboard", async () => {
     const user = userEvent.setup();
     vi.spyOn(mediaApi, "uploadPhoto").mockResolvedValue(
-      "https://storage.example.com/drill.jpg",
+      drill_url,
     );
     const createSpy = vi.spyOn(toolsApi, "createTool").mockResolvedValue({
       id: "tool-1",
       tool_type_id: 1,
-      title: "DeWalt 20V Cordless Drill",
-      description: "Great drill, barely used.",
-      condition: "GOOD",
+      title: drill_name,
+      description: drill_desc,
+      condition: good_condition,
       photos: [],
       pickup_notes: null,
       return_notes: null,
@@ -164,15 +176,15 @@ describe("AddTool", () => {
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           tool_type_code: "POWER_TOOLS",
-          title: "DeWalt 20V Cordless Drill",
-          condition: "GOOD",
-          photo_urls: ["https://storage.example.com/drill.jpg"],
+          title: drill_name,
+          condition: good_condition,
+          photo_urls: [drill_url],
           loan_duration_limit: 7,
         }),
       );
     });
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard", {
-      state: { toolCreated: "DeWalt 20V Cordless Drill" },
+    expect(mockNavigate).toHaveBeenCalledWith(dashboard_url, {
+      state: { toolCreated: drill_name },
     });
   });
 
@@ -180,7 +192,7 @@ describe("AddTool", () => {
   it("shows an error when publishing fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(mediaApi, "uploadPhoto").mockResolvedValue(
-      "https://storage.example.com/drill.jpg",
+      drill_url,
     );
     vi.spyOn(toolsApi, "createTool").mockRejectedValue(
       new Error("Failed to create tool listing."),
@@ -199,7 +211,7 @@ describe("AddTool", () => {
       screen.getByRole("button", { name: /publish tool/i }),
     ).toBeEnabled();
     expect(mockNavigate).not.toHaveBeenCalledWith(
-      "/dashboard",
+      dashboard_url,
       expect.anything(),
     );
   });
@@ -226,10 +238,10 @@ describe("AddTool", () => {
 
     const files = Array.from(
       { length: 6 },
-      (_, i) => new File(["bytes"], `photo-${i}.jpg`, { type: "image/jpeg" }),
+      (_, i) => new File(["bytes"], `photo-${i}.jpg`, { type: image_jpeg }),
     );
     await user.upload(
-      document.querySelector('input[type="file"]') as HTMLInputElement,
+      document.querySelector(input_file) as HTMLInputElement,
       files,
     );
 
@@ -250,26 +262,26 @@ describe("AddTool", () => {
     await screen.findByLabelText(/category/i);
 
     await user.upload(
-      document.querySelector('input[type="file"]') as HTMLInputElement,
+      document.querySelector(input_file) as HTMLInputElement,
       [
-        new File(["a"], "first.jpg", { type: "image/jpeg" }),
-        new File(["b"], "second.jpg", { type: "image/jpeg" }),
+        new File(["a"], "first.jpg", { type: image_jpeg }),
+        new File(["b"], "second.jpg", { type: image_jpeg }),
       ],
     );
 
     const srcs = () =>
       screen.getAllByRole("img").map((img) => img.getAttribute("src"));
-    expect(srcs()).toEqual(["blob:preview-1", "blob:preview-2"]);
+    expect(srcs()).toEqual([blob_preview1, blob_preview2]);
 
     await user.click(
       screen.getByRole("button", { name: /move photo 1 right/i }),
     );
-    expect(srcs()).toEqual(["blob:preview-2", "blob:preview-1"]);
+    expect(srcs()).toEqual([blob_preview2, blob_preview1]);
 
     await user.click(
       screen.getByRole("button", { name: /move photo 2 left/i }),
     );
-    expect(srcs()).toEqual(["blob:preview-1", "blob:preview-2"]);
+    expect(srcs()).toEqual([blob_preview1, blob_preview2]);
   });
 
   // Verify validation: description length.
@@ -279,7 +291,7 @@ describe("AddTool", () => {
     await screen.findByLabelText(/category/i);
 
     await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
-    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(screen.getByLabelText(/title/i), my_drill);
     await user.type(screen.getByLabelText(/description/i), "hi");
     await addPhoto(user);
     await user.click(screen.getByRole("button", { name: /publish tool/i }));
@@ -296,10 +308,10 @@ describe("AddTool", () => {
     await screen.findByLabelText(/category/i);
 
     await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
-    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(screen.getByLabelText(/title/i), my_drill);
     await user.type(
       screen.getByLabelText(/description/i),
-      "Great drill, barely used.",
+      drill_desc,
     );
     await addPhoto(user);
     await user.click(screen.getByRole("button", { name: /publish tool/i }));
@@ -335,12 +347,12 @@ describe("AddTool", () => {
 
     // Every earlier guard must pass so the photo check is the one that fires.
     await user.selectOptions(screen.getByLabelText(/category/i), "POWER_TOOLS");
-    await user.type(screen.getByLabelText(/title/i), "My Drill");
+    await user.type(screen.getByLabelText(/title/i), my_drill);
     await user.type(
       screen.getByLabelText(/description/i),
-      "Great drill, barely used.",
+      drill_desc,
     );
-    await user.selectOptions(screen.getByLabelText(/condition/i), "GOOD");
+    await user.selectOptions(screen.getByLabelText(/condition/i), good_condition);
 
     fireEvent.submit(document.querySelector("form")!);
 
@@ -353,7 +365,7 @@ describe("AddTool", () => {
   it("sends the optional notes and custom loan limit", async () => {
     const user = userEvent.setup();
     vi.spyOn(mediaApi, "uploadPhoto").mockResolvedValue(
-      "https://storage.example.com/drill.jpg",
+      drill_url,
     );
     const createSpy = vi
       .spyOn(toolsApi, "createTool")
@@ -397,6 +409,6 @@ describe("AddTool", () => {
     await user.click(
       screen.getByRole("button", { name: /back to dashboard/i }),
     );
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+    expect(mockNavigate).toHaveBeenCalledWith(dashboard_url);
   });
 });
