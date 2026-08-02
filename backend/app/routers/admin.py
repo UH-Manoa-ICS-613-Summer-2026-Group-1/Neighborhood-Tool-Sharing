@@ -1071,6 +1071,8 @@ def get_admin_reports(
         alias="status",
         description="Filter reports by status (ACTIVE or RESOLVED)",
     ),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user),
 ):
@@ -1082,7 +1084,7 @@ def get_admin_reports(
     if status_filter:
         query = query.filter(Report.status == status_filter)
 
-    reports = query.order_by(Report.created_at.desc()).all()
+    reports = query.order_by(Report.created_at.desc()).limit(limit).offset(offset).all()
     return reports
 
 

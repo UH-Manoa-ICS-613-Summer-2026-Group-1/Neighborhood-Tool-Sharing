@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.notification import NotificationCategory
-from app.models.report import Report, ReportCategory, ReportStatus, ReportTargetType
+from app.models.report import Report, ReportCategory, ReportTargetType
 from app.models.reservation import Reservation
 from app.models.tool import Tool
 from app.models.user import User
