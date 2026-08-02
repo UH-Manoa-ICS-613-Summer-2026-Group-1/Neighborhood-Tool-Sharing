@@ -60,6 +60,9 @@ services:
       - STORAGE_BUCKET_NAME=${MINIO_BUCKET_NAME}
       - STORAGE_INTERNAL_ENDPOINT=${STORAGE_INTERNAL_ENDPOINT}
       - STORAGE_EXTERNAL_ENDPOINT=${STORAGE_EXTERNAL_ENDPOINT}
+      # Email
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - SENDER_EMAIL=${SENDER_EMAIL}
     depends_on:
           db:
             condition: service_healthy
