@@ -10,6 +10,8 @@ import { wakeUpStorageService } from './utils/storage';
 import Home from "./pages/Landing/Home";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
+import NotFound from "./pages/NotFound/NotFound";
+
 // ADDED BY MARITZA — Calendar page covering US 26 Scenario 3
 import CalendarPage from "./pages/Calendar/CalendarPage";
 
@@ -43,6 +45,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="*" element={<NotFound />} />
 
         {/* Protected routes — must be logged in */}
         <Route element={<ProtectedRoute />}>
