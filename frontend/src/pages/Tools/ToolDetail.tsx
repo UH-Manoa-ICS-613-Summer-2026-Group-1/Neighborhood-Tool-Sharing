@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router'
 import Navbar from '../../components/Navbar'
-import { fetchToolById, type ToolDetails } from '../../api/tools'
+import { hideTool, unhideTool, deleteTool, fetchToolById, type ToolDetails } from '../../api/tools'
 import { fetchCurrentUser, type UserProfile } from '../../api/users'
 
 const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
@@ -19,7 +19,9 @@ export default function ToolDetail() {
 
     // Extract user from router state if available
     const initialUser = (location.state as { user?: UserProfile } | null)?.user ?? null
-    
+
+    const [isHiding, setIsHiding] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     const [user, setUser] = useState<UserProfile | null>(initialUser)
     const [tool, setTool] = useState<ToolDetails | null>(null)
     const [loading, setLoading] = useState(true)
@@ -59,6 +61,35 @@ export default function ToolDetail() {
         }
         loadUser()
     }, [user])
+
+    const handleToggleHide = async () => {
+        if (!tool) return
+        setIsHiding(true)
+        try {
+            const updatedTool = tool.tool_status === 'HIDDEN' 
+            ? await unhideTool(tool.tool_id)
+            : await hideTool(tool.tool_id) 
+            setTool({ ...tool, tool_status: updatedTool.status })
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to update tool status.')
+        } finally {
+            setIsHiding(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!toolId) return
+        if (!confirm('Are you sure you want to delete this tool? This action cannot be undone.')) return
+        setIsDeleting(true)
+        try {
+            await deleteTool(toolId)
+            // If the tool was successfully deleted, navigate to the dashboard
+            navigate('/dashboard')
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to delete tool.')
+            setIsDeleting(false)
+        }
+    }
 
     const photos = tool?.tool_photos ?? []
 
@@ -150,13 +181,16 @@ export default function ToolDetail() {
                                 Shared by {tool.owner_first_name} {tool.owner_last_name}
                             </p>
 
-                            {/* Condition and loan duration badges */}
+                            {/* Status,Condition and loan duration badges */}
                             <div className="flex gap-2 mb-4">
                                 <span className="text-[0.65rem] px-2 py-1 rounded border border-white/20 text-gray-300">
                                     Condition: {tool.tool_condition}
                                 </span>
                                 <span className="text-[0.65rem] px-2 py-1 rounded border border-white/20 text-gray-300">
                                     Loan up to {tool.tool_loan_duration_limit} day{tool.tool_loan_duration_limit === 1 ? '' : 's'}
+                                </span>
+                                <span className="text-[0.65rem] px-2 py-1 rounded border border-white/20 text-gray-300">
+                                    Status: {tool.tool_status}
                                 </span>
                             </div>
 
@@ -185,13 +219,41 @@ export default function ToolDetail() {
                                 US 2: Request Reservation button now navigates to the reservation form
                                 Previously this button was disabled with a "not available yet" comment
                                 Now it routes to /tools/:toolId/reserve (added to App.tsx) */}
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/tools/${toolId}/reserve`)}
-                                className="w-full py-3 mt-2 bg-[#e8a838] hover:bg-[#d6962f] text-white rounded font-bold text-sm transition-colors cursor-pointer"
-                            >
-                                Request Reservation
-                            </button>
+
+                            {/* If the user is the owner of the tool, disable the button */}
+                            {isOwner ? (
+                                <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleHide}
+                                            disabled={isHiding || isDeleting}
+                                            className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
+                                        >
+                                            {isHiding 
+                                                ? 'Updating...' 
+                                                : tool.tool_status === 'HIDDEN' 
+                                                    ? 'Unhide Listing' 
+                                                    : 'Hide Listing'}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleDelete}
+                                            disabled={isHiding || isDeleting}
+                                            className="py-2.5 px-4 bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-500/30 rounded font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
+                                        >
+                                            {isDeleting ? 'Deleting...' : 'Delete'}
+                                        </button>
+                                    </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/tools/${toolId}/reserve`)}
+                                    className="w-full py-3 mt-2 bg-[#e8a838] hover:bg-[#d6962f] text-white rounded font-bold text-sm transition-colors cursor-pointer"
+                                >
+                                    Request Reservation
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
