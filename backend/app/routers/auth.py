@@ -3,15 +3,19 @@ Authentication routers.
 Handles registration, login, logout, and password reset.
 """
 
+from datetime import datetime, timezone
+
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.blocklist import TOKEN_BLOCKLIST
 from app.database import get_db
 from app.models.invitation import InvitationStatus
 from app.models.notification import NotificationCategory
+from app.models.password_reset import PasswordReset, PasswordResetStatus
 from app.models.user import User, UserRole, UserStatus
 from app.routers.invitation import get_valid_invite
 from app.schemas.auth import (
@@ -20,6 +24,11 @@ from app.schemas.auth import (
     UserRegisterRequest,
 )
 from app.schemas.common import DetailError, MessageResponse
+from app.schemas.password_reset import (
+    ForgotPasswordRequest,
+    ResetPasswordSubmitRequest,
+    ResetPasswordValidateResponse,
+)
 from app.utils.auth_helpers import (
     ALGORITHM,
     SECRET_KEY,
@@ -27,7 +36,9 @@ from app.utils.auth_helpers import (
     get_password_hash,
     verify_password,
 )
+from app.utils.email import send_reset_password_email
 from app.utils.notification_helpers import create_notification
+from app.utils.token_generator import generate_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -199,3 +210,157 @@ def logout(credentials: HTTPAuthorizationCredentials = Depends(security_scheme))
     TOKEN_BLOCKLIST.add(jti)
 
     return {"message": "Successfully logged out."}
+
+
+def get_valid_password_reset(token: str, db: Session) -> PasswordReset:
+    """
+    Validates a password reset token against all business rules.
+    Returns the PasswordReset record if valid, otherwise raises an HTTPException.
+    """
+    # Fetch reset record
+    reset = db.query(PasswordReset).filter(PasswordReset.reset_token == token).first()
+
+    # Token does not exist
+    if not reset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The password reset link is invalid or does not exist. Please request a new link.",
+        )
+
+    # Token already used
+    if reset.status == PasswordResetStatus.USED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This password reset link has already been used.",
+        )
+
+    # Token expired
+    if reset.status == PasswordResetStatus.EXPIRED or (
+        datetime.now(timezone.utc) > reset.expires_at.replace(tzinfo=timezone.utc)
+    ):
+        if reset.status != PasswordResetStatus.EXPIRED:
+            reset.status = PasswordResetStatus.EXPIRED
+            db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This password reset link has expired. Please request a new link.",
+        )
+
+    return reset
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": DetailError},
+        404: {"model": DetailError},
+    },
+)
+def forgot_password(
+    user_data: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Generate a password reset link and email it to the user.
+    """
+    email = user_data.email
+
+    user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
+
+    # Email not registered -> return success without sending email
+    if not user:
+        return {"message": f"The reset link has been sent to {email}."}
+
+    # Invalidate existing pending tokens for this user
+    existing_resets = (
+        db.query(PasswordReset)
+        .filter(
+            PasswordReset.user_id == user.id,
+            PasswordReset.status == PasswordResetStatus.PENDING,
+        )
+        .all()
+    )
+    # Set all existing pending tokens to expired
+    for old_reset in existing_resets:
+        old_reset.status = PasswordResetStatus.EXPIRED
+
+    # Generate a new reset token
+    reset_token = generate_token()
+    new_reset = PasswordReset(
+        user_id=user.id,
+        reset_token=reset_token,
+        status=PasswordResetStatus.PENDING,
+    )
+
+    db.add(new_reset)
+    try:
+        # Try to commit, if successful send email
+        db.commit()
+        send_reset_password_email(email, reset_token)
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to send password reset email: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send password reset email. Please try again later.",
+        )
+
+    return {"message": f"The reset link has been sent to {email}."}
+
+
+@router.get(
+    "/reset-password/validate",
+    response_model=ResetPasswordValidateResponse,
+    responses={400: {"model": DetailError}, 404: {"model": DetailError}},
+)
+def validate_reset_token(token: str, db: Session = Depends(get_db)):
+    """
+    Check if a reset password token is valid and not expired.
+    """
+    reset = get_valid_password_reset(token, db)
+    return ResetPasswordValidateResponse(email=reset.user.email)
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK,
+    responses={400: {"model": DetailError}, 404: {"model": DetailError}},
+)
+def reset_password(
+    reset_data: ResetPasswordSubmitRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Reset user password using the provided reset token.
+    """
+    # Validate Token
+    reset = get_valid_password_reset(reset_data.reset_token, db)
+
+    # Retrieve user record
+    user = db.query(User).filter(User.id == reset.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User associated with this reset password request was not found.",
+        )
+
+    # Update user password and deactivate the reset link
+    user.password = get_password_hash(reset_data.new_password)
+    reset.status = PasswordResetStatus.USED
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to update user password: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user password. Please try again later.",
+        )
+    return {
+        "message": "Password reset successful. You can now log in with your new password."
+    }
