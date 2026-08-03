@@ -3,9 +3,10 @@
 // Includes the Request Reservation button (US 2) which navigates to /tools/:toolId/reserve
 
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useLocation } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { fetchToolById, type ToolDetails } from '../../api/tools'
+import { fetchCurrentUser, type UserProfile } from '../../api/users'
 
 const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
 const STORAGE_BUCKET_NAME = import.meta.env.VITE_STORAGE_BUCKET_NAME || "community-tool-share-media";
@@ -14,7 +15,12 @@ const PLACEHOLDER_IMAGE = `${STORAGE_BASE_URL}/${STORAGE_BUCKET_NAME}/placeholde
 export default function ToolDetail() {
     const navigate = useNavigate()
     const { toolId } = useParams<{ toolId: string }>()
+    const location = useLocation()
 
+    // Extract user from router state if available
+    const initialUser = (location.state as { user?: UserProfile } | null)?.user ?? null
+    
+    const [user, setUser] = useState<UserProfile | null>(initialUser)
     const [tool, setTool] = useState<ToolDetails | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
@@ -38,11 +44,32 @@ export default function ToolDetail() {
         loadTool()
     }, [toolId])
 
+    // Fetch user profile if it wasn't passed via router state (if refresh page or direct url)
+    useEffect(() => {
+        if (user) return
+
+        const loadUser = async () => {
+            try {
+                const userData = await fetchCurrentUser()
+                setUser(userData)
+            } catch (err){
+                setError(err instanceof Error ? err.message : 'Failed to load profile data.')
+                localStorage.removeItem('access_token')
+            }
+        }
+        loadUser()
+    }, [user])
+
     const photos = tool?.tool_photos ?? []
+
+    // Check if the tool is owned by the current user
+    const isOwner = tool?.owner_id === user?.user_id
+
 
     return (
         <div className="min-h-screen text-white bg-[#1a1f26]">
-            <Navbar />
+            {/* Pass user data to the navbar */}
+            <Navbar user={user}/>
 
             <main className="max-w-4xl mx-auto p-6">
                 <button

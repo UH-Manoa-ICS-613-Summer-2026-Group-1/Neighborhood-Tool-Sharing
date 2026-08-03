@@ -133,3 +133,34 @@ export const fetchToolById = async (toolId: string): Promise<ToolDetails> => {
     return data
 }
  
+
+// Hide the tool listing
+export const hideTool = async (toolId: string): Promise<ToolResponse> => {
+    const response = await fetch(`/api/tools/${toolId}/hide`, {
+        method: 'POST',
+        headers: authHeaders(),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.detail || 'Tool not found.')
+    return data
+}
+
+export const unhideTool = async (toolId: string): Promise<ToolResponse> => {
+    const response = await fetch(`/api/tools/${toolId}/unhide`, {
+        method: 'POST',
+        headers: authHeaders(),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.detail || 'Tool not found.')
+    return data
+}
+
+export const deleteTool = async (toolId: string): Promise<{ message: string }> => {
+    const response = await fetch(`/api/tools/${toolId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.detail || 'Tool not found.')
+    return data
+}
