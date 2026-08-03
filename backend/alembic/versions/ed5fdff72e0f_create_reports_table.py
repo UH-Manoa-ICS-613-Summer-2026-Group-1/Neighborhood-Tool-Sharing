@@ -1,7 +1,7 @@
 """Create reports table
 
 Revision ID: ed5fdff72e0f
-Revises: 136b2a22fa9d
+Revises: e8c84b3977d7
 Create Date: 2026-08-02 07:32:13.156392
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "ed5fdff72e0f"
-down_revision: Union[str, Sequence[str], None] = "136b2a22fa9d"
+down_revision: Union[str, Sequence[str], None] = "e8c84b3977d7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
