@@ -390,7 +390,11 @@ def delete_tool(
             and_(
                 Reservation.tool_id == tool_id,
                 Reservation.status.in_(
-                    [ReservationStatus.APPROVED, ReservationStatus.PICKED_UP]
+                    [
+                        ReservationStatus.REQUESTED,
+                        ReservationStatus.APPROVED,
+                        ReservationStatus.PICKED_UP,
+                    ]
                 ),
             )
         )
@@ -400,7 +404,7 @@ def delete_tool(
     if active_reservation:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete this tool. The tool currently has an active approved or picked up reservation.",
+            detail="Cannot delete this tool. The tool currently has an active requested,approved or picked up reservation.",
         )
 
     try:

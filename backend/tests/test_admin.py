@@ -1,4 +1,5 @@
 from app.models.invitation import InvitationStatus
+from app.models.report import Report, ReportCategory, ReportStatus, ReportTargetType
 from app.models.reservation import ReservationStatus
 from app.models.tool import ToolStatus
 from app.models.user import UserStatus
@@ -1053,3 +1054,204 @@ def test_resend_invitaion_not_logged_in(client, seed_invitation):
 
     # Unauthorized
     assert response.status_code == 401
+
+
+def test_admin_view_reports(
+    client, db_session: Session, seed_user, seed_admin, get_auth_headers
+):
+    """
+    Tests that an admin can view reports.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Place a report
+    report = Report(
+        description="Test report",
+        reporter_id=seed_admin.id,
+        status=ReportStatus.ACTIVE,
+        target_id=str(seed_user.id),
+        target_type=ReportTargetType.USER,
+        category=ReportCategory.INAPPROPRIATE_BEHAVIOR,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    # Hit get ACTIVE reports
+    response = client.get(
+        "/api/admin/reports?status=ACTIVE&limit=10&offset=0", headers=headers
+    )
+
+    # Success
+    assert response.status_code == 200
+    reports = response.json()
+    assert len(reports) == 1
+    assert reports[0]["id"] == str(report.id)
+    assert reports[0]["description"] == report.description
+
+
+def test_admin_resolve_report(
+    client, db_session: Session, seed_user, seed_admin, get_auth_headers
+):
+    """
+    Tests that an admin can resolve a report.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Place a report
+    report = Report(
+        description="Test report",
+        reporter_id=seed_admin.id,
+        status=ReportStatus.ACTIVE,
+        target_id=str(seed_user.id),
+        target_type=ReportTargetType.USER,
+        category=ReportCategory.INAPPROPRIATE_BEHAVIOR,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    assert report.status == ReportStatus.ACTIVE
+
+    # Hit resolve report
+    response = client.post(
+        f"/api/admin/reports/{str(report.id)}/resolve", headers=headers
+    )
+
+    # Success
+    assert response.status_code == 200
+
+    assert report.status == ReportStatus.RESOLVED
+
+
+def test_admin_resolve_report_not_exist(client, seed_admin, get_auth_headers):
+    """
+    Tests that an admin cannot resolve a report that does not exist.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Hit resolve report
+    response = client.post(
+        f"/api/admin/reports/{str('e0000000-0000-0000-0000-000000000999')}/resolve",
+        headers=headers,
+    )
+
+    # Not found
+    assert response.status_code == 404
+
+
+def test_admin_resolve_resolved_report(
+    client, db_session: Session, seed_user, seed_admin, get_auth_headers
+):
+    """
+    Tests that an admin cannot resolve a report that is already resolved.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Place a report
+    report = Report(
+        description="Test report",
+        reporter_id=seed_admin.id,
+        status=ReportStatus.RESOLVED,
+        target_id=str(seed_user.id),
+        target_type=ReportTargetType.USER,
+        category=ReportCategory.INAPPROPRIATE_BEHAVIOR,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    assert report.status == ReportStatus.RESOLVED
+
+    # Hit resolve report
+    response = client.post(
+        f"/api/admin/reports/{str(report.id)}/resolve", headers=headers
+    )
+
+    # Bad request
+    assert response.status_code == 400
+    assert report.status == ReportStatus.RESOLVED
+
+
+def test_admin_reacrivate_report(
+    client, db_session: Session, seed_user, seed_admin, get_auth_headers
+):
+    """
+    Tests that an admin can reactivate a report.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Place a report
+    report = Report(
+        description="Test report",
+        reporter_id=seed_admin.id,
+        status=ReportStatus.RESOLVED,
+        target_id=str(seed_user.id),
+        target_type=ReportTargetType.USER,
+        category=ReportCategory.INAPPROPRIATE_BEHAVIOR,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    assert report.status == ReportStatus.RESOLVED
+
+    # Hit reactivate report
+    response = client.post(
+        f"/api/admin/reports/{str(report.id)}/activate", headers=headers
+    )
+
+    # Success
+    assert response.status_code == 200
+    assert report.status == ReportStatus.ACTIVE
+
+
+def test_admin_activate_active_report(
+    client, db_session: Session, seed_user, seed_admin, get_auth_headers
+):
+    """
+    Tests that an admin cannot reactivate a report that is already active.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Place a report
+    report = Report(
+        description="Test report",
+        reporter_id=seed_admin.id,
+        status=ReportStatus.ACTIVE,
+        target_id=str(seed_user.id),
+        target_type=ReportTargetType.USER,
+        category=ReportCategory.INAPPROPRIATE_BEHAVIOR,
+    )
+    db_session.add(report)
+    db_session.commit()
+
+    assert report.status == ReportStatus.ACTIVE
+
+    # Hit reactivate report
+    response = client.post(
+        f"/api/admin/reports/{str(report.id)}/activate", headers=headers
+    )
+
+    # Bad request
+    assert response.status_code == 400
+    assert report.status == ReportStatus.ACTIVE
+
+
+def test_admin_activate_not_existing_report(client, seed_admin, get_auth_headers):
+    """
+    Tests that an admin cannot reactivate a report that does not exist.
+    """
+    # Admin login
+    headers = get_auth_headers(seed_admin.id)
+
+    # Hit reactivate report
+    response = client.post(
+        f"/api/admin/reports/{str('e0000000-0000-0000-0000-000000000999')}/activate",
+        headers=headers,
+    )
+
+    # Not found
+    assert response.status_code == 404
