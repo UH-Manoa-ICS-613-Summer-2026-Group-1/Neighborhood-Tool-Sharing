@@ -462,7 +462,7 @@ export default function Transactions() {
                             {/* Message — either party, whenever there's an active
                                 coordination need. Opens the reservation's chat thread. */}
                             {(isOwner || isBorrower) &&
-                                ['REQUESTED', 'APPROVED', 'PICKED_UP'].includes(r.reservation_status) && (
+                                ['REQUESTED', 'APPROVED', 'PICKED_UP', 'RETURNED'].includes(r.reservation_status) && (
                                 <button
                                     onClick={() => navigate(`/reservations/${r.reservation_id}/messages`)}
                                     className="px-3 py-1.5 bg-white/5 border border-white/15 text-gray-200 text-xs font-semibold rounded hover:border-[#e8a838] hover:text-[#e8a838] transition-colors cursor-pointer"
