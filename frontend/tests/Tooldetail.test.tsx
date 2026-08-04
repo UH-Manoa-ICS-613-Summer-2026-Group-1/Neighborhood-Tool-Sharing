@@ -1,10 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router";
 import ToolDetail from "../src/pages/Tools/ToolDetail";
 import * as toolsApi from "../src/api/tools";
-import type { ToolDetails } from "../src/api/tools";
+import * as usersApi from "../src/api/users";
+import type { ToolDetails, ToolResponse } from "../src/api/tools";
+import type { UserProfile } from "../src/api/users";
 
 // Mock navigate so we can verify navigation without a real router.
 const { mockNavigate } = vi.hoisted(() => {
@@ -24,6 +26,44 @@ vi.mock("react-router", async (importOriginal) => {
 vi.mock("../src/components/Navbar", () => ({
   default: () => <nav data-testid="navbar" />,
 }));
+
+// Create a mock owner, owner can hide, unhide, and delete the tool
+const mockOwner: UserProfile = {
+  user_id: "user-1",
+  user_first_name: "Jane",
+  user_last_name: "Doe",
+  user_email: "jane@example.com",
+  role_code: "MEMBER",
+  role_name: "Member",
+  role_description: null,
+  status_code: "ACTIVE",
+  status_name: "Active",
+  status_description: null,
+  user_middle_name: null,
+  user_location: null,
+  user_bio: null,
+  user_photo_url: null,
+  user_created_at: "2026-01-01T00:00:00Z",
+};
+
+// Create a mock borrower, borrower can see reservaion request button
+const mockBorrower: UserProfile = {
+  user_id: "user-2",
+  user_first_name: "John",
+  user_last_name: "Smith",
+  user_email: "john@example.com",
+  role_code: "MEMBER",
+  role_name: "Member",
+  role_description: null,
+  status_code: "ACTIVE",
+  status_name: "Active",
+  status_description: null,
+  user_middle_name: null,
+  user_location: null,
+  user_bio: null,
+  user_photo_url: null,
+  user_created_at: "2026-01-01T00:00:00Z",
+};
 
 const tool: ToolDetails = {
   tool_id: "tool-1",
@@ -48,10 +88,31 @@ const tool: ToolDetails = {
   ],
 };
 
+const mockHiddenToolResponse: ToolResponse = {
+  id: "tool-1",
+  tool_type_id: 1,
+  title: "DeWalt 20V Cordless Drill",
+  description: "Great drill, barely used.",
+  condition: "GOOD",
+  photos: [],
+  pickup_notes: "Porch pickup after 5pm",
+  return_notes: "Please return with a full charge",
+  loan_duration_limit: 7,
+  status: "HIDDEN",
+  created_at: "2026-01-01T00:00:00Z",
+};
+
 // Render the page at a real /tools/:toolId URL so useParams works.
-function renderToolDetail(toolId = "tool-1") {
+// And pass the mock user (the owner by default)
+function renderToolDetail(toolId = "tool-1", userState: UserProfile | null = mockOwner) {
   return render(
-    <MemoryRouter initialEntries={[`/tools/${toolId}`]}>
+    <MemoryRouter initialEntries={[
+        {
+          pathname: `/tools/${toolId}`,
+          state: { user: userState },
+        },
+      ]}
+      >
       <Routes>
         <Route path="/tools/:toolId" element={<ToolDetail />} />
       </Routes>
@@ -138,7 +199,8 @@ describe("ToolDetail", () => {
     const user = userEvent.setup();
     vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
 
-    renderToolDetail();
+    // Pass the mock borrower, only borrower can see request reservation button
+    renderToolDetail(undefined, mockBorrower);
     await screen.findByRole("heading", { name: /dewalt/i });
 
     const reserveButton = screen.getByRole("button", { name: /request reservation/i });
@@ -163,5 +225,130 @@ describe("ToolDetail", () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+  });
+
+  // Verify hiding and unhiding a tool updates the UI and calls the API.
+  it("handles hiding and unhiding a tool", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    const hideSpy = vi
+      .spyOn(toolsApi, "hideTool")
+      .mockResolvedValue(mockHiddenToolResponse);
+
+    renderToolDetail();
+
+    const hideButton = await screen.findByRole("button", {
+      name: /hide listing/i,
+    });
+    await user.click(hideButton);
+
+    // Hiding was called with the right tool ID
+    expect(hideSpy).toHaveBeenCalledWith("tool-1");
+
+    // There is a button to unhide the listing
+    expect(
+      await screen.findByRole("button", { name: /unhide listing/i })
+    ).toBeInTheDocument();
+
+    // Status is now hidden
+    expect(screen.getByText(/status: hidden/i)).toBeInTheDocument();
+  });
+
+  // Verify deleting a tool calls API and navigates to dashboard.
+  it("handles deleting a tool and navigating home", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const deleteSpy = vi
+      .spyOn(toolsApi, "deleteTool")
+      .mockResolvedValue({ message: "Deleted" });
+
+    renderToolDetail();
+
+    const deleteButton = await screen.findByRole("button", { name: /delete/i });
+    await user.click(deleteButton);
+
+    // Delete was called with the right tool ID
+    expect(deleteSpy).toHaveBeenCalledWith("tool-1");
+
+    // Navigates to dashboard after delete
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+  });
+
+  // Verify an alert is shown if hiding a tool fails.
+  it("displays alert on hide error", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(toolsApi, "hideTool").mockRejectedValue(new Error("Hide failed"));
+
+    renderToolDetail();
+
+    const hideButton = await screen.findByRole("button", {
+      name: /hide listing/i,
+    });
+    await user.click(hideButton);
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Hide failed");
+    });
+  });
+
+  // Verify user profile is fetched when omitted from router state.
+  it("fetches user profile via API when not supplied in router state", async () => {
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    const fetchUserSpy = vi.spyOn(usersApi, "fetchCurrentUser").mockResolvedValue(mockOwner);
+
+    // Simulate no user in router state
+    renderToolDetail("tool-1", null);
+
+    // Expect user profile to be fetched
+    await waitFor(() => {
+      expect(fetchUserSpy).toHaveBeenCalled();
+    });
+  });
+
+  // Error handling during user profile fetch failure
+  it("handles error when fetching user profile fails", async () => {
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    vi.spyOn(usersApi, "fetchCurrentUser").mockRejectedValue(new Error("Failed profile fetch"));
+
+    renderToolDetail("tool-1", null);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed profile fetch");
+  });
+
+  // Error handling on delete failure
+  it("displays alert on delete error", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.spyOn(toolsApi, "deleteTool").mockRejectedValue(new Error("Delete failed"));
+
+    renderToolDetail();
+
+    const deleteButton = await screen.findByRole("button", { name: /delete/i });
+    await user.click(deleteButton);
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Delete failed");
+    });
+  });
+
+  // Main image onError handler
+  it("replaces main image src with placeholder when main image fails to load", async () => {
+    vi.spyOn(toolsApi, "fetchToolById").mockResolvedValue(tool);
+
+    renderToolDetail();
+
+    const mainImg = await screen.findByRole("img", { name: /photo 1/i });
+    fireEvent.error(mainImg);
+
+    // Main image should be replaced with placeholder
+    expect(mainImg).toHaveAttribute(
+      "src",
+      "http://localhost:9000/community-tool-share-media/placeholders/default-placeholder-image.png"
+    );
   });
 });

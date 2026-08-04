@@ -9,6 +9,9 @@ import {
     createTool,
     fetchTools,
     fetchToolById,
+    hideTool,
+    unhideTool,
+    deleteTool,
     type ToolDetails,
     type ToolResponse,
     type CreateToolPayload,
@@ -265,5 +268,87 @@ describe('fetchToolById', () => {
         fetchMock.mockResolvedValue(jsonError({}, 404))
 
         await expect(fetchToolById('missing')).rejects.toThrow('Tool not found.')
+    })
+})
+
+describe('hideTool', () => {
+    it('POSTs to /api/tools/:id/hide and returns updated tool', async () => {
+        const hiddenTool = { ...createdTool, status: 'HIDDEN' }
+        fetchMock.mockResolvedValue(jsonOk(hiddenTool))
+
+        const result = await hideTool('tool-1')
+
+        expect(result).toEqual(hiddenTool)
+        expect(callUrl(fetchMock)).toBe('/api/tools/tool-1/hide')
+        expect(callInit(fetchMock).method).toBe('POST')
+    })
+
+    it('throws error detail on failure', async () => {
+        fetchMock.mockResolvedValue(
+            jsonError({ detail: 'Tool is currently loaned.' }, 400),
+        )
+
+        await expect(hideTool('tool-1')).rejects.toThrow('Tool is currently loaned.')
+    })
+
+    it('falls back to generic message when detail is missing', async () => {
+        fetchMock.mockResolvedValue(jsonError({}, 404))
+
+        await expect(hideTool('missing')).rejects.toThrow('Tool not found.')
+    })
+})
+
+describe('unhideTool', () => {
+    it('POSTs to /api/tools/:id/unhide and returns updated tool', async () => {
+        const unhiddenTool = { ...createdTool, status: 'AVAILABLE' }
+        fetchMock.mockResolvedValue(jsonOk(unhiddenTool))
+
+        const result = await unhideTool('tool-1')
+
+        expect(result).toEqual(unhiddenTool)
+        expect(callUrl(fetchMock)).toBe('/api/tools/tool-1/unhide')
+        expect(callInit(fetchMock).method).toBe('POST')
+    })
+
+    it('throws error detail on failure', async () => {
+        fetchMock.mockResolvedValue(
+            jsonError({ detail: 'Cannot unhide tool.' }, 400),
+        )
+
+        await expect(unhideTool('tool-1')).rejects.toThrow('Cannot unhide tool.')
+    })
+
+    it('falls back to generic message when detail is missing', async () => {
+        fetchMock.mockResolvedValue(jsonError({}, 404))
+
+        await expect(unhideTool('missing')).rejects.toThrow('Tool not found.')
+    })
+})
+
+describe('deleteTool', () => {
+    it('DELETEs the specified tool', async () => {
+        fetchMock.mockResolvedValue(jsonOk({ message: 'Tool deleted successfully' }))
+
+        const result = await deleteTool('tool-1')
+
+        expect(result).toEqual({ message: 'Tool deleted successfully' })
+        expect(callUrl(fetchMock)).toBe('/api/tools/tool-1')
+        expect(callInit(fetchMock).method).toBe('DELETE')
+    })
+
+    it('throws error detail on failure', async () => {
+        fetchMock.mockResolvedValue(
+            jsonError({ detail: 'Cannot delete tool with active reservation.' }, 400),
+        )
+
+        await expect(deleteTool('tool-1')).rejects.toThrow(
+            'Cannot delete tool with active reservation.',
+        )
+    })
+
+    it('falls back to generic message when detail is missing', async () => {
+        fetchMock.mockResolvedValue(jsonError({}, 404))
+
+        await expect(deleteTool('missing')).rejects.toThrow('Tool not found.')
     })
 })
