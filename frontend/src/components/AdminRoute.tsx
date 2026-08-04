@@ -22,10 +22,7 @@ const AdminRoute = () => {
     const [failed, setFailed] = useState(false)
 
     useEffect(() => {
-        if (!token) {
-            setChecking(false)
-            return
-        }
+        if (!token) return
 
         let cancelled = false
         const verify = async () => {

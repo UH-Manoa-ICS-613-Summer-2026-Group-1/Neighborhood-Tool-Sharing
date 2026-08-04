@@ -5,7 +5,7 @@
 //   POST /api/admin/tools/{id}/suspend
 //   POST /api/admin/tools/{id}/activate  (reinstates a suspended tool as HIDDEN)
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
     fetchAdminTools,
     suspendTool,
@@ -35,7 +35,6 @@ function StatusBadge({ code }: { code: string }) {
 
 export default function SuspendToolsTab() {
     const [tools, setTools] = useState<ToolDetails[]>([])
-    const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
     const [statusFilter, setStatusFilter] = useState('')
@@ -44,31 +43,46 @@ export default function SuspendToolsTab() {
     const [offset, setOffset] = useState(0)
     const [hasMore, setHasMore] = useState(false)
 
+    // Bumping this re-runs the fetch effect (used after a suspend/activate).
+    const [reloadNonce, setReloadNonce] = useState(0)
+    const reload = () => setReloadNonce(n => n + 1)
+
+    // Loading is derived, not set: we're loading until the effect records the
+    // current query as done. This keeps setState out of the effect's sync body
+    // (react-hooks/set-state-in-effect), matching the Dashboard's approach.
+    const queryKey = `${statusFilter}|${search}|${offset}|${reloadNonce}`
+    const [loadedKey, setLoadedKey] = useState<string | null>(null)
+    const loading = loadedKey !== queryKey
+
     const [actingId, setActingId] = useState<string | null>(null)
     const [banner, setBanner] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        try {
-            const data = await fetchAdminTools({
-                status: statusFilter || undefined,
-                search: search || undefined,
-                limit: PAGE_SIZE,
-                offset,
-            })
-            setTools(data)
-            setHasMore(data.length === PAGE_SIZE)
-            setError('')
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load tools.')
-        } finally {
-            setLoading(false)
-        }
-    }, [statusFilter, search, offset])
-
     useEffect(() => {
-        load()
-    }, [load])
+        let cancelled = false
+        const run = async () => {
+            try {
+                const data = await fetchAdminTools({
+                    status: statusFilter || undefined,
+                    search: search || undefined,
+                    limit: PAGE_SIZE,
+                    offset,
+                })
+                if (cancelled) return
+                setTools(data)
+                setHasMore(data.length === PAGE_SIZE)
+                setError('')
+            } catch (err) {
+                if (cancelled) return
+                setError(err instanceof Error ? err.message : 'Failed to load tools.')
+            } finally {
+                if (!cancelled) setLoadedKey(queryKey)
+            }
+        }
+        run()
+        return () => {
+            cancelled = true
+        }
+    }, [statusFilter, search, offset, queryKey])
 
     const applySearch = (e: React.FormEvent) => {
         e.preventDefault()
@@ -84,7 +98,7 @@ export default function SuspendToolsTab() {
         try {
             const res = await suspendTool(tool.tool_id)
             setBanner({ kind: 'ok', text: res.message })
-            await load()
+            reload()
         } catch (err) {
             setBanner({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to suspend tool.' })
         } finally {
@@ -98,7 +112,7 @@ export default function SuspendToolsTab() {
         try {
             const res = await activateTool(tool.tool_id)
             setBanner({ kind: 'ok', text: res.message })
-            await load()
+            reload()
         } catch (err) {
             setBanner({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to activate tool.' })
         } finally {

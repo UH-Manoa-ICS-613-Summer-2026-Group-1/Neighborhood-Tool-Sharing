@@ -9,7 +9,7 @@
 //   - An admin cannot suspend their own account (button hidden for self).
 //   - Other ADMIN accounts are not given a suspend button here.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
     fetchAdminUsers,
     suspendUser,
@@ -41,38 +41,52 @@ interface Props {
 
 export default function SuspendUsersTab({ currentUserId }: Props) {
     const [users, setUsers] = useState<UserProfile[]>([])
-    const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
 
     const [statusFilter, setStatusFilter] = useState('')
     const [offset, setOffset] = useState(0)
     const [hasMore, setHasMore] = useState(false)
 
+    // Bumping this re-runs the fetch effect (used after a suspend/activate).
+    const [reloadNonce, setReloadNonce] = useState(0)
+    const reload = () => setReloadNonce(n => n + 1)
+
+    // Loading is derived, not set: we're loading until the effect records the
+    // current query as done. This keeps setState out of the effect's sync body
+    // (react-hooks/set-state-in-effect), matching the Dashboard's approach.
+    const queryKey = `${statusFilter}|${offset}|${reloadNonce}`
+    const [loadedKey, setLoadedKey] = useState<string | null>(null)
+    const loading = loadedKey !== queryKey
+
     // id of the row whose action is in flight (disables just that button)
     const [actingId, setActingId] = useState<string | null>(null)
     const [banner, setBanner] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
-    const load = useCallback(async () => {
-        setLoading(true)
-        try {
-            const data = await fetchAdminUsers({
-                status: statusFilter || undefined,
-                limit: PAGE_SIZE,
-                offset,
-            })
-            setUsers(data)
-            setHasMore(data.length === PAGE_SIZE)
-            setError('')
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load users.')
-        } finally {
-            setLoading(false)
-        }
-    }, [statusFilter, offset])
-
     useEffect(() => {
-        load()
-    }, [load])
+        let cancelled = false
+        const run = async () => {
+            try {
+                const data = await fetchAdminUsers({
+                    status: statusFilter || undefined,
+                    limit: PAGE_SIZE,
+                    offset,
+                })
+                if (cancelled) return
+                setUsers(data)
+                setHasMore(data.length === PAGE_SIZE)
+                setError('')
+            } catch (err) {
+                if (cancelled) return
+                setError(err instanceof Error ? err.message : 'Failed to load users.')
+            } finally {
+                if (!cancelled) setLoadedKey(queryKey)
+            }
+        }
+        run()
+        return () => {
+            cancelled = true
+        }
+    }, [statusFilter, offset, queryKey])
 
     const handleSuspend = async (user: UserProfile) => {
         const name = `${user.user_first_name} ${user.user_last_name}`
@@ -84,7 +98,7 @@ export default function SuspendUsersTab({ currentUserId }: Props) {
         try {
             const res = await suspendUser(user.user_id)
             setBanner({ kind: 'ok', text: res.message })
-            await load()
+            reload()
         } catch (err) {
             setBanner({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to suspend user.' })
         } finally {
@@ -98,7 +112,7 @@ export default function SuspendUsersTab({ currentUserId }: Props) {
         try {
             const res = await activateUser(user.user_id)
             setBanner({ kind: 'ok', text: res.message })
-            await load()
+            reload()
         } catch (err) {
             setBanner({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to activate user.' })
         } finally {
