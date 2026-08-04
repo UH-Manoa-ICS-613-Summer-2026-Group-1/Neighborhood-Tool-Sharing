@@ -218,6 +218,19 @@ Open http://localhost:5000/docs
         -   React component tests with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
         -   [ESLint](https://eslint.org/) checks for JavaScript, TypeScript, and React code-quality issues
             -   The [No Unsanitized](https://github.com/mozilla/eslint-plugin-no-unsanitized/blob/main/README.md)" ESLint plugin is used to detect unsafe DOM injection patterns to reduce the risk of cross-site scripting (XSS)
+            -   Cyclomatic complexity
+                -   Warns when a function's cyclomatic complexity exceeds 12. Complexity increases as additional decision paths are added like if, switch, and logical expressions
+            -   Cognitive complexity
+                -   Warns when a function's cognitive complexity exceeds 15. This measures how difficult the control flow is for a developer to understand, with additional weight given to nested and structurally complicated logic
+            -   Max depth
+                -   Warns when code is nested more than four levels deep. Excessive nesting can make control flow harder to follow and may indicate that logic should be simplified or extracted into smaller functions
+            -   sonarjs plugin
+                -   no-duplicated-branches
+                    -   Identifies conditional branches that contain the same implementation. Duplicated branches may indicate that the condition is unnecessary or that shared logic can be consolidated.
+                -   no-identical-functions
+                    -   Identifies functions with identical implementations. These functions may be candidates for replacement with a shared reusable function
+                -   no-duplicate-string
+                    -   Identifies strings repeated multiple times in the code. Frequently repeated values may be easier to maintain when defined as named constants
         -   TypeScript/Vite production [build validation](https://vite.dev/guide/build)
     -   #### Test Definitions
         -   The frontend React tests and the vitest configuration file reside in the [frontend/tests folder](./frontend/tests/)
