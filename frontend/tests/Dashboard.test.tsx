@@ -378,7 +378,9 @@ describe("Dashboard", () => {
     await user.click(
       await screen.findByRole("button", { name: /cordless drill/i }),
     );
-    expect(mockNavigate).toHaveBeenCalledWith("/tools/t1");
+    expect(mockNavigate).toHaveBeenCalledWith("/tools/t1", {
+      state: { user: expect.anything() },
+    });
   });
 
   // Verify pagination when the API returns a full page of results.

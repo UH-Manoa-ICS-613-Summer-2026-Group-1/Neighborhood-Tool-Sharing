@@ -344,7 +344,8 @@ export default function Dashboard() {
                                                 tool={tool}
                                                 showOwner={activeTab === 'neighborhood'}
                                                 showStatus={activeTab === 'my-tools'}
-                                                onClick={id => navigate(`/tools/${id}`)}
+                                                // Pass user data to ToolDetail page
+                                                onClick={id => navigate(`/tools/${id}`, { state: { user } })}
                                             />
                                         ))}
                                     </div>
