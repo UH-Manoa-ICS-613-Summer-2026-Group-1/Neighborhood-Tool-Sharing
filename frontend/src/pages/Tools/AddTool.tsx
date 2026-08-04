@@ -10,7 +10,10 @@ type LocalPhoto = {
 }
  
 const MAX_PHOTOS = 5
- 
+
+const isWithinRange = (value: number, minimum: number, maximum: number) =>
+    value >= minimum && value <= maximum
+
 export default function AddTool() {
     const navigate = useNavigate()
  
@@ -115,11 +118,11 @@ export default function AddTool() {
             setError('Please choose a tool category.')
             return
         }
-        if (title.trim().length < 3 || title.trim().length > 255) {
+        if (!isWithinRange(title.trim().length, 3, 255)) {
             setError('Title must be between 3 and 255 characters.')
             return
         }
-        if (description.trim().length < 5 || description.trim().length > 2000) {
+        if (!isWithinRange(description.trim().length, 5, 2000)) {
             setError('Description must be between 5 and 2000 characters.')
             return
         }
@@ -131,7 +134,7 @@ export default function AddTool() {
             setError('You must include at least one photo.')
             return
         }
-        if (loanDurationLimit < 1 || loanDurationLimit > 365) {
+        if (!isWithinRange(loanDurationLimit, 1, 365)) {
             setError('Loan limit must be between 1 and 365 days.')
             return
         }
