@@ -22,7 +22,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import Navbar from '../../components/Navbar'
-import { fetchToolById, type ToolDetails } from '../../api/tools'
+import { fetchToolById, fetchToolAvailability, type ToolDetails } from '../../api/tools'
 import { createReservation } from '../../api/reservations'
 
 export default function RequestReservation() {
@@ -35,6 +35,9 @@ export default function RequestReservation() {
     const [tool, setTool] = useState<ToolDetails | null>(null)
     const [toolLoading, setToolLoading] = useState(true)
     const [toolError, setToolError] = useState('')
+
+    // Tool not available dates
+    const [blockedDates, setBlockedDates] = useState<string[]>([])
 
     // Form state
     const [startDate, setStartDate] = useState('')
@@ -58,6 +61,28 @@ export default function RequestReservation() {
         }
         loadTool()
     }, [toolId])
+
+    // Fetch tool availability
+    useEffect(() => {
+        if (!toolId) return
+
+        const loadAvailability = async () => {
+            try {
+                const availabilityData = await fetchToolAvailability(toolId)
+                setBlockedDates(availabilityData)
+            } catch {
+                // Non-fatal, give the user request a tool anyway
+            }
+        }
+        loadAvailability()
+    }, [toolId])
+
+    // Conver YYYY-MM-DD to MM/DD/YYYY US format
+    const formatToUSDate = (dateStr: string): string => {
+        if (!dateStr) return ''
+        const [year, month, day] = dateStr.split('-')
+        return `${month}/${day}/${year}`
+    }
 
     // Today's date in YYYY-MM-DD format
     // Used as the minimum value on date inputs to prevent past date selection (Scenario 6)
@@ -170,6 +195,29 @@ export default function RequestReservation() {
                             <p className="text-xs text-gray-400 mb-6">
                                 Select your preferred dates. The owner will approve or deny your request.
                             </p>
+
+                            {/* Blocked dates display section */}
+                            <p className="block text-xs font-semibold text-gray-300 mb-1">
+                                Reserved Dates (mm/dd/yyyy)
+                            </p>
+                            <div className="mb-6 p-3 bg-black/30 border border-white/10 rounded-lg">
+                                {blockedDates.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {blockedDates.map(date => (
+                                            <span
+                                                key={date}
+                                                className="px-2.5 py-1 bg-[#e8a838]/10 text-[#e8a838] border border-[#e8a838]/30 text-xs rounded font-medium"
+                                            >
+                                                {formatToUSDate(date)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-emerald-400 mt-1">
+                                        All upcoming dates are currently open
+                                    </p>
+                                )}
+                            </div>
 
                             {/* Form-level error message — covers Scenarios 2, 3, 4, 5, 6 */}
                             {formError && (
