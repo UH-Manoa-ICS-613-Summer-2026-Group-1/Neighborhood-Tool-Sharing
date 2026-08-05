@@ -96,6 +96,10 @@ export default function Dashboard() {
         const loadUserProfile = async () => {
             try {
                 const data = await fetchCurrentUser()
+                if (data.role_code === 'ADMIN') {
+                    navigate('/admin', { replace: true })
+                    return
+                }
                 setUser(data)
             } catch (err: unknown) {
                 setProfileError(err instanceof Error ? err.message : 'Failed to load dashboard data.')

@@ -30,6 +30,9 @@ import MakeReview from "./pages/Reservations/MakeReview";
 import MessageThread from "./pages/Messages/MessageThread";
 // Route guard — redirects unauthenticated users to /login
 import ProtectedRoute from "./components/ProtectedRoute";
+// AdminRoute additionally enforces the admin role and redirects members to /dashboard
+import AdminRoute from "./components/AdminRoute";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
 
 
 function App() {
@@ -62,6 +65,11 @@ function App() {
               US 2: Borrower requests a reservation for a specific tool
               Reached by clicking "Request Reservation" on the Tool Detail page */}
           <Route path="/tools/:toolId/reserve" element={<RequestReservation />} />
+        </Route>
+
+        {/* Admin-only routes — must be logged in AND have the ADMIN role */}
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminDashboard />} />
         </Route>
 
       </Routes>
