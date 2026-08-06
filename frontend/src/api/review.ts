@@ -80,3 +80,16 @@ export const createReview = async (
     if (!response.ok) throw new Error(extractDetail(data, 'Failed to submit review.'))
     return data
 }
+// GET /api/users/{id}/reviews
+// Fetch all reviews where the specified user is the reviewee.
+export const fetchUserReviews = async (
+    userId: string
+): Promise<ReviewDetails[]> => {
+    const response = await fetch(`/api/users/${userId}/reviews`, {
+        headers: authHeaders(),
+    })
+
+    const data = await response.json()
+    if (!response.ok) throw new Error(extractDetail(data, 'Failed to load reviews.'))
+    return data
+}

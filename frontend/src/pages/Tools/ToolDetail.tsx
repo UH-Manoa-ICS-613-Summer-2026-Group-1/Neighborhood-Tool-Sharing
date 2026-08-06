@@ -7,6 +7,7 @@ import { useNavigate, useParams, useLocation } from 'react-router'
 import Navbar from '../../components/Navbar'
 import { hideTool, unhideTool, deleteTool, fetchToolById, type ToolDetails } from '../../api/tools'
 import { fetchCurrentUser, type UserProfile } from '../../api/users'
+import UserStarRating from '../../components/UserStarRating'
 
 const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
 const STORAGE_BUCKET_NAME = import.meta.env.VITE_STORAGE_BUCKET_NAME || "community-tool-share-media";
@@ -177,9 +178,15 @@ export default function ToolDetail() {
 
                             {/* Title and owner */}
                             <h1 className="text-2xl font-bold mb-2">{tool.tool_title}</h1>
-                            <p className="text-xs text-gray-400 mb-4">
-                                Shared by {tool.owner_first_name} {tool.owner_last_name}
-                            </p>
+                            <div className="flex items-center gap-2 mb-4">
+                                <p className="text-xs text-gray-400">
+                                    Shared by {tool.owner_first_name} {tool.owner_last_name}
+                                    {isOwner && <span className="ml-1 text-[#e8a838] font-semibold">(You)</span>}
+                                </p>
+
+                                {/* Render the rating for the tool owner */}
+                                <UserStarRating userId={tool.owner_id} size="sm" showCount={true} />
+                            </div>
 
                             {/* Status,Condition and loan duration badges */}
                             <div className="flex gap-2 mb-4">

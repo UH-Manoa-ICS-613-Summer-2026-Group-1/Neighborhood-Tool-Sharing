@@ -15,6 +15,7 @@ import {
     type ToolDetails,
     type ToolType,
 } from '../../api/tools'
+import UserStarRating from '../../components/UserStarRating'
 
 // ADDED BY MARITZA — 07/19/2026
 // Transactions component covers US 3, 4, 5, 7, 9, 10
@@ -218,6 +219,11 @@ export default function Dashboard() {
                                 <p className="text-sm text-gray-400">
                                     Logged in as <span className="text-[#e8a838]">{user.user_email}</span>
                                 </p>
+                                {/* Current user rating badge */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-400">Your Community Rating:</span>
+                                    <UserStarRating userId={user.user_id} size="md" showCount={true} />
+                                </div>
                             </div>
                         </div>
 
