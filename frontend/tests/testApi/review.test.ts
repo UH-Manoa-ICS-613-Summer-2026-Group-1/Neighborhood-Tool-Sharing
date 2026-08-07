@@ -5,8 +5,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   fetchReservationReviews,
   createReview,
+  fetchUserReviews,
   type ReviewDetails,
 } from "../../src/api/review";
+
+const mockUserId = "user-123";  
 
 // A minimal review fixture returned by the API.
 const review: ReviewDetails = {
@@ -126,5 +129,41 @@ describe("createReview", () => {
     await expect(createReview("res-1", { rating: 3 })).rejects.toThrow(
       "Failed to submit review.",
     );
+  });
+});
+
+describe("fetchUserReviews", () => {
+  it("fetches user reviews successfully", async () => {
+    mockFetch.mockResolvedValue(jsonResponse(true, [review]));
+
+    const reviews = await fetchUserReviews(mockUserId);
+
+    expect(reviews).toEqual([review]);
+    expect(mockFetch).toHaveBeenCalledWith(`/api/users/${mockUserId}/reviews`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-token",
+      },
+    });
+  });
+
+  it("returns an empty array when the user has no reviews", async () => {
+    mockFetch.mockResolvedValue(jsonResponse(true, []));
+
+    const reviews = await fetchUserReviews(mockUserId);
+
+    expect(reviews).toEqual([]);
+  });
+
+  it("throws backend detail on non-200 responses", async () => {
+    mockFetch.mockResolvedValue(jsonResponse(false, { detail: "User not found." }));
+
+    await expect(fetchUserReviews(mockUserId)).rejects.toThrow("User not found.");
+  });
+
+  it("throws an error on failure", async () => {
+    mockFetch.mockRejectedValue(new Error("Could not load reviews."));
+
+    await expect(fetchUserReviews(mockUserId)).rejects.toThrow("Could not load reviews.");
   });
 });

@@ -124,7 +124,7 @@ export default function CalendarPage() {
             try {
                 // GET /api/reservations — returns all reservations for the current user
                 // (both as borrower and as tool owner)
-                const data = await fetchReservations()
+                const data = await fetchReservations({limit: 100})
                 setReservations(data)
             } catch (err: unknown) {
                 setError(err instanceof Error ? err.message : 'Failed to load reservations.')

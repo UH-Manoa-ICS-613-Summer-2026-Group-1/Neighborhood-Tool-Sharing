@@ -1,5 +1,6 @@
 // Card used in the Dashboard grids
 import type { ToolDetails } from '../api/tools'
+import UserStarRating from './UserStarRating'
 
 const STORAGE_BASE_URL = import.meta.env.VITE_STORAGE_EXTERNAL_ENDPOINT || "http://localhost:9000";
 const STORAGE_BUCKET_NAME = import.meta.env.VITE_STORAGE_BUCKET_NAME || "community-tool-share-media";
@@ -92,9 +93,13 @@ export default function ToolCard({ tool, showOwner = false, showStatus = false, 
                 </div>
  
                 {showOwner && (
-                    <p className="text-[0.65rem] text-gray-500 mt-2">
-                        Shared by {tool.owner_first_name} {tool.owner_last_name}
-                    </p>
+                    <div className="mt-4 pt-3 border-t border-white/10 flex flex-col gap-1">
+                        <span className="text-xs text-gray-300 font-medium">
+                            Shared by {tool.owner_first_name} {tool.owner_last_name}
+                        </span>
+                        {/* Render owner star rating using tool.owner_id */}
+                        <UserStarRating userId={tool.owner_id} size="sm" showCount={true} />
+                    </div>
                 )}
             </div>
         </button>

@@ -9,6 +9,7 @@ import {
     createTool,
     fetchTools,
     fetchToolById,
+    fetchToolAvailability,
     hideTool,
     unhideTool,
     deleteTool,
@@ -350,5 +351,35 @@ describe('deleteTool', () => {
         fetchMock.mockResolvedValue(jsonError({}, 404))
 
         await expect(deleteTool('missing')).rejects.toThrow('Tool not found.')
+    })
+})
+
+describe('fetchToolAvailability', () => {
+    it('GETs unavailable dates array for a tool', async () => {
+        const blocked = ['2026-08-20', '2026-08-21']
+        fetchMock.mockResolvedValue(jsonOk(blocked))
+
+        const result = await fetchToolAvailability('tool-1')
+
+        expect(result).toEqual(blocked)
+        expect(callUrl(fetchMock)).toBe('/api/tools/tool-1/availability')
+    })
+
+    it('throws backend error detail message on failure', async () => {
+        fetchMock.mockResolvedValue(
+            jsonError({ detail: 'Tool availability not found.' }, 404),
+        )
+
+        await expect(fetchToolAvailability('invalid')).rejects.toThrow(
+            'Tool availability not found.',
+        )
+    })
+
+    it('falls back to generic error message when detail is omitted', async () => {
+        fetchMock.mockResolvedValue(jsonError({}, 500))
+
+        await expect(fetchToolAvailability('tool-1')).rejects.toThrow(
+            'Failed to load tool availability.',
+        )
     })
 })

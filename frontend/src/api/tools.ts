@@ -164,3 +164,11 @@ export const deleteTool = async (toolId: string): Promise<{ message: string }> =
     if (!response.ok) throw new Error(data.detail || 'Tool not found.')
     return data
 }
+
+// Fetch list of unavailable/blocked dates ('YYYY-MM-DD' format) for a tool
+export const fetchToolAvailability = async (toolId: string): Promise<string[]> => {
+    const response = await fetch(`/api/tools/${toolId}/availability`, { headers: authHeaders() })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.detail || 'Failed to load tool availability.')
+    return data
+}

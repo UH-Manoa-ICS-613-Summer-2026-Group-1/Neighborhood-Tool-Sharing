@@ -224,4 +224,31 @@ describe("RequestReservation", () => {
     );
     expect(createSpy).not.toHaveBeenCalled();
   });
+
+  it("renders blocked dates formatted into US date strings (MM/DD/YYYY)", async () => {
+
+    // Mock blocked dates
+    vi.spyOn(toolsApi, "fetchToolAvailability").mockResolvedValue([
+      "2026-08-15",
+      "2026-08-16",
+    ]);
+
+    renderRequestReservation();
+
+    // Verify blocked dates are rendered in US date format
+    expect(await screen.findByText("08/15/2026")).toBeInTheDocument();
+    expect(screen.getByText("08/16/2026")).toBeInTheDocument();
+  });
+
+  it("displays open availability message when no dates are blocked", async () => {
+    // No blocked dates
+    vi.spyOn(toolsApi, "fetchToolAvailability").mockResolvedValue([]);
+
+    renderRequestReservation();
+
+    // Verify message
+    expect(
+      await screen.findByText(/all upcoming dates are currently open/i),
+    ).toBeInTheDocument();
+  });
 });
